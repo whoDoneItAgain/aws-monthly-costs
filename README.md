@@ -1,1 +1,1 @@
-# script-aws-monthly-costs
+# aws-monthly-costs
