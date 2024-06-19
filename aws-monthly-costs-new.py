@@ -1,6 +1,5 @@
 import argparse
 import configparser
-import csv
 import itertools
 import logging
 import os
@@ -9,6 +8,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import boto3
+import numpy as np
 import yaml
 
 LOGGER = logging.getLogger("amc")
@@ -113,9 +113,6 @@ def main():
         config_settings: dict = yaml.safe_load(cf)
 
     account_list: dict = config_settings["account-groups"]
-    bu_budget: dict = config_settings["bu-budget"]
-    LOGGER.info(bu_budget)
-    bu_budget["total"] = sum(bu_budget.values())
 
     LOGGER.debug(aws_config_file)
     LOGGER.debug(account_list)
@@ -182,31 +179,12 @@ def main():
         bu_month_costs["total"] = sum(bu_month_costs.values())
 
         cost_matrix[cost_month] = bu_month_costs
-        cost_matrix["budget"] = bu_budget
 
     LOGGER.debug(cost_matrix)
 
-    (export_file.parent).mkdir(parents=True, exist_ok=True)
+    numpy_array = np.array(list(cost_matrix.items()))
 
-    with open(export_file, "w", newline="") as ef:
-        writer = csv.writer(ef)
-        csv_header = list(cost_matrix.keys())
-        csv_header.insert(0, "Month")
-        csv_header.extend(["Difference", "Budget"])
-        writer.writerow(csv_header)
-
-        months = list(cost_matrix.keys())
-        bus = list(account_list.keys())
-        bus.extend(["total"])
-        for bu in bus:
-            csv_row: list = []
-            csv_row.append(bu)
-            for month in months:
-                csv_row.append(cost_matrix[month][bu])
-
-            csv_row.append(bu_budget[bu])
-
-            writer.writerow(csv_row)
+    LOGGER.info(numpy_array)
 
 
 if __name__ == "__main__":
