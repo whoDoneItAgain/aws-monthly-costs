@@ -1,10 +1,11 @@
 import argparse
 import configparser
+import csv
 import itertools
 import logging
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime
 from pathlib import Path
 
 import boto3
@@ -27,7 +28,7 @@ def get_config_args():
         "--config-file",
         action="store",
         type=str,
-        default="./account-groups.yaml",
+        default="./aws-monthy-costs-config.yaml",
         help="Path to Configuration File",
     )
     parser.add_argument(
@@ -41,7 +42,7 @@ def get_config_args():
         "--export-file",
         action="store",
         type=str,
-        default="./aws-spend.txt",
+        default="./outputs/aws-spend.csv",
         help="Path to Export File",
     )
     parser.add_argument(
@@ -109,7 +110,9 @@ def main():
     aws_config.read(aws_config_file)
 
     with open(config_file, "r") as cf:
-        account_list: dict = yaml.safe_load(cf)
+        config_settings: dict = yaml.safe_load(cf)
+
+    account_list: dict = config_settings["account-groups"]
 
     LOGGER.debug(aws_config_file)
     LOGGER.debug(account_list)
@@ -122,7 +125,7 @@ def main():
 
     if time_period == "previous":
         end_date = date.today().replace(day=1)
-        start_date = (end_date - timedelta(days=1)).replace(day=1)
+        start_date = end_date.replace(month=1)
     else:
         end_date = (time_period.split("_"))[1]
         start_date = (time_period.split("_"))[0]
@@ -143,37 +146,59 @@ def main():
         GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
     )
 
-    LOGGER.info(response["ResultsByTime"])
+    LOGGER.debug(response["ResultsByTime"])
 
     account_costs: dict = {}
 
-    for account in response["ResultsByTime"][0]["Groups"]:
-        account_costs[account["Keys"][0]] = account["Metrics"]["UnblendedCost"][
-            "Amount"
-        ]
+    for period in response["ResultsByTime"]:
+        month_costs: dict = {}
+        cost_month = (
+            datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
+        ).strftime("%b")
+        for account in period["Groups"]:
+            month_costs[account["Keys"][0]] = account["Metrics"]["UnblendedCost"][
+                "Amount"
+            ]
+        account_costs[cost_month] = month_costs
 
     LOGGER.debug(account_costs)
 
-    bu_costs: dict = {}
+    cost_matrix: dict = {}
 
-    for b, a in account_list.items():  # k = bu name #v = account(s) for bu
-        for i, j in itertools.product(a, account_costs.keys()):
-            if i == j:
-                if b in bu_costs:
-                    bu_costs[b] += float(account_costs[j])
-                else:
-                    bu_costs[b] = float(account_costs[j])
-                account_costs.pop(j)
+    for cost_month, costs_for_month in account_costs.items():
+        bu_month_costs: dict = {}
+        for bu, bu_accounts in account_list.items():
+            for i, j in itertools.product(bu_accounts, costs_for_month.keys()):
+                if i == j:
+                    if bu in bu_month_costs:
+                        bu_month_costs[bu] += float(costs_for_month[j])
+                    else:
+                        bu_month_costs[bu] = float(costs_for_month[j])
+        for k in bu_month_costs:
+            bu_month_costs[k] = round(bu_month_costs[k], 2)
+        bu_month_costs["total"] = sum(bu_month_costs.values())
 
-    for k in bu_costs:
-        bu_costs[k] = round(bu_costs[k], 2)
+        cost_matrix[cost_month] = bu_month_costs
 
-    LOGGER.debug(bu_costs)
+    LOGGER.debug(cost_matrix)
 
-    with open(export_file, "w") as ef:
-        for k in bu_costs:
-            ef.write(str(bu_costs[k]))
-            ef.write("\n")
+    (export_file.parent).mkdir(parents=True, exist_ok=True)
+
+    with open(export_file, "w", newline="") as ef:
+        writer = csv.writer(ef)
+        csv_header = list(cost_matrix.keys())
+        csv_header.insert(0, "Month")
+        writer.writerow(csv_header)
+
+        months = list(cost_matrix.keys())
+        bus = list(account_list.keys())
+        bus.append("total")
+        for bu in bus:
+            csv_row: list = []
+            csv_row.append(bu)
+            for month in months:
+                csv_row.append(cost_matrix[month][bu])
+            writer.writerow(csv_row)
 
 
 if __name__ == "__main__":
