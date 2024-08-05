@@ -19,6 +19,14 @@
       "program": "aws-monthly-costs.py",
       "console": "integratedTerminal",
       "args": "--info-logging"
+    },
+    {
+      "name": "Run Service App with info logging",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "aws-monthly-costs-service.py",
+      "console": "integratedTerminal",
+      "args": "--info-logging"
     }
   ]
 }
