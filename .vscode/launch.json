@@ -43,6 +43,14 @@
       "program": "aws-monthly-costs-service-daily.py",
       "console": "integratedTerminal",
       "args": "--info-logging"
+    },
+    {
+      "name": "Run App for Sandbox with info logging",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "aws-monthly-costs-sandbox.py",
+      "console": "integratedTerminal",
+      "args": "--info-logging"
     }
   ]
 }
