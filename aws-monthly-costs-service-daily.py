@@ -2,7 +2,6 @@ import argparse
 import calendar
 import configparser
 import csv
-import itertools
 import logging
 import os
 import sys
@@ -10,7 +9,6 @@ from datetime import date, datetime
 from pathlib import Path
 
 import boto3
-import yaml
 
 LOGGER = logging.getLogger("amc")
 
@@ -26,13 +24,6 @@ def get_config_args():
         help="Profile Name",
     )
     parser.add_argument(
-        "--config-file",
-        action="store",
-        type=str,
-        default="./aws-monthy-costs-config.yaml",
-        help="Path to Configuration File",
-    )
-    parser.add_argument(
         "--aws-config-file",
         action="store",
         type=str,
@@ -43,7 +34,7 @@ def get_config_args():
         "--export-file",
         action="store",
         type=str,
-        default="./outputs/aws-spend-daily.csv",
+        default="./outputs/aws-spend-top-services-daily.csv",
         help="Path to Export File",
     )
     parser.add_argument(
@@ -103,20 +94,14 @@ def main():
 
     aws_config_file = Path(os.path.expanduser(config_args.aws_config_file)).absolute()
     aws_profile: str = config_args.profile
-    config_file = Path(config_args.config_file).absolute()
     export_file = Path(config_args.export_file).absolute()
     time_period: str = config_args.time_period
 
     aws_config = configparser.RawConfigParser()
     aws_config.read(aws_config_file)
 
-    with open(config_file, "r") as cf:
-        config_settings: dict = yaml.safe_load(cf)
-
-    account_list: dict = config_settings["account-groups"]
-
     LOGGER.debug(aws_config_file)
-    LOGGER.debug(account_list)
+
     LOGGER.debug(aws_config.sections())
 
     if not (aws_config.has_section(f"profile {aws_profile}")):
@@ -146,46 +131,62 @@ def main():
         },
         Granularity="MONTHLY",
         Metrics=["UnblendedCost"],
-        GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
+        GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
     )
 
-    LOGGER.debug(response["ResultsByTime"])
+    LOGGER.debug(response["ResultsByTime"][0]["Groups"][0])
 
-    account_costs: dict = {}
+    service_costs: dict = {}
+    service_list: list = []
 
     for period in response["ResultsByTime"]:
         month_costs: dict = {}
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
         cost_month_name = cost_month.strftime("%b")
         day_count = calendar.monthrange(this_year, cost_month.month)[1]
-
-        for account in period["Groups"]:
-            month_costs[account["Keys"][0]] = (
-                float(account["Metrics"]["UnblendedCost"]["Amount"]) / day_count
+        for service in period["Groups"]:
+            month_costs[service["Keys"][0]] = (
+                float(service["Metrics"]["UnblendedCost"]["Amount"]) / day_count
             )
+            if service not in service_list:
+                service_list.append(service["Keys"][0])
 
-        account_costs[cost_month_name] = month_costs
+        service_costs[cost_month_name] = month_costs
 
-    LOGGER.debug(account_costs)
+    LOGGER.debug(service_costs)
 
     cost_matrix: dict = {}
 
-    for cost_month, costs_for_month in account_costs.items():
-        bu_month_costs: dict = {}
-        for bu, bu_accounts in account_list.items():
-            for i, j in itertools.product(bu_accounts, costs_for_month.keys()):
-                if i == j:
-                    if bu in bu_month_costs:
-                        bu_month_costs[bu] += float(costs_for_month[j])
-                    else:
-                        bu_month_costs[bu] = float(costs_for_month[j])
-        for k in bu_month_costs:
-            bu_month_costs[k] = round(bu_month_costs[k], 2)
-        bu_month_costs["total"] = sum(bu_month_costs.values())
+    for cost_month, costs_for_month in service_costs.items():
+        service_month_costs: dict = {}
+        for service in service_list:
+            if service in costs_for_month:
+                service_month_costs[service] = float(costs_for_month[service])
+        for k in service_month_costs:
+            service_month_costs[k] = round(service_month_costs[k], 2)
+        service_month_costs["total"] = sum(service_month_costs.values())
 
-        cost_matrix[cost_month] = bu_month_costs
+        cost_matrix[cost_month] = service_month_costs
 
-    LOGGER.debug(cost_matrix)
+    LOGGER.debug((list(cost_matrix.items())[-1])[0])
+
+    recent_month = (list(cost_matrix.items())[-1])[0]
+
+    recent_month_costs = cost_matrix[recent_month]
+
+    recent_month_costs_sorted = dict(
+        sorted(recent_month_costs.items(), key=lambda item: item[1], reverse=True)
+    )
+
+    LOGGER.debug(recent_month_costs_sorted)
+
+    top_costs: list = list(recent_month_costs_sorted.items())[1:11]
+
+    top_cost_services: list = []
+    for tc in top_costs:
+        top_cost_services.append(tc[0])
+
+    LOGGER.info(top_cost_services)
 
     (export_file.parent).mkdir(parents=True, exist_ok=True)
 
@@ -197,13 +198,14 @@ def main():
         writer.writerow(csv_header)
 
         months = list(cost_matrix.keys())
-        bus = list(account_list.keys())
-        bus.extend(["total"])
-        for bu in bus:
+
+        service_list.extend(["total"])
+        for service in top_cost_services:
             csv_row: list = []
-            csv_row.append(bu)
+            csv_row.append(service)
             for month in months:
-                csv_row.append(cost_matrix[month][bu])
+                if service in cost_matrix[month]:
+                    csv_row.append(cost_matrix[month][service])
 
             writer.writerow(csv_row)
 
