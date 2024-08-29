@@ -51,6 +51,22 @@
       "program": "aws-monthly-costs-sandbox.py",
       "console": "integratedTerminal",
       "args": "--info-logging"
+    },
+    {
+      "name": "Run Account App with info logging",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "aws-monthly-costs-accounts.py",
+      "console": "integratedTerminal",
+      "args": "--info-logging"
+    },
+    {
+      "name": "Run Account App Alt with info logging",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "aws-monthly-costs-accounts-alt.py",
+      "console": "integratedTerminal",
+      "args": "--info-logging"
     }
   ]
 }
