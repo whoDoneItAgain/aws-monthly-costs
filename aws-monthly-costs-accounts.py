@@ -120,8 +120,9 @@ def main():
 
     aws_session = boto3.Session(profile_name=aws_profile)
     ce_client = aws_session.client("ce")
+    o_client = aws_session.client("organizations")
 
-    response = ce_client.get_cost_and_usage(
+    gcu_response = ce_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
             "End": end_date.strftime("%Y-%m-%d"),
@@ -131,22 +132,32 @@ def main():
         GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
     )
 
-    LOGGER.debug(response["ResultsByTime"][0]["Groups"][0])
+    account_list: list = []
+    la_response = o_client.list_accounts()
+    account_list.extend(la_response["Accounts"])
+
+    while "NextToken" in la_response:
+        la_response = o_client.list_accounts(NextToken=la_response["NextToken"])
+        account_list.extend(la_response["Accounts"])
+
+    LOGGER.debug(gcu_response["ResultsByTime"][0]["Groups"][0])
 
     service_costs: dict = {}
     service_list: list = []
 
-    for period in response["ResultsByTime"]:
+    for period in gcu_response["ResultsByTime"]:
         month_costs: dict = {}
         cost_month = (
             datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
         ).strftime("%b")
         for service in period["Groups"]:
-            month_costs[service["Keys"][0]] = service["Metrics"]["UnblendedCost"][
-                "Amount"
-            ]
-            if service not in service_list:
-                service_list.append(service["Keys"][0])
+            for a in account_list:
+                if service["Keys"][0] == a["Id"]:
+                    month_costs[a["Name"]] = service["Metrics"]["UnblendedCost"][
+                        "Amount"
+                    ]
+                    if service not in service_list:
+                        service_list.append(a["Name"])
 
         service_costs[cost_month] = month_costs
 
