@@ -1,4 +1,5 @@
 import argparse
+import calendar
 import configparser
 import csv
 import itertools
@@ -16,7 +17,7 @@ LOGGER = logging.getLogger("amc")
 DEFAULT_OUTPUT_FOLDER = "./outputs/"
 DEFAULT_OUTPUT_PREFIX = "aws-monthly-costs"
 
-VALID_RUN_MODES = ["bu"]
+VALID_RUN_MODES = ["bu", "bu-daily"]
 
 
 def get_config_args():
@@ -95,19 +96,30 @@ def configure_logging(debug_logging: bool = False, info_logging: bool = False):
     LOGGER.addHandler(ch)
 
 
-def build_account_costs_by_bu(cost_and_usage):
+def build_account_costs_by_bu(cost_and_usage, daily_average=False):
     account_costs: dict = {}
+
+    if daily_average:
+        this_year = (date.today()).year
 
     for period in cost_and_usage["ResultsByTime"]:
         month_costs: dict = {}
-        cost_month = (
-            datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
-        ).strftime("%b")
+        cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
+        cost_month_name = cost_month.strftime("%b")
+
+        if daily_average:
+            day_count = calendar.monthrange(this_year, cost_month.month)[1]
+
         for account in period["Groups"]:
-            month_costs[account["Keys"][0]] = account["Metrics"]["UnblendedCost"][
-                "Amount"
-            ]
-        account_costs[cost_month] = month_costs
+            if daily_average:
+                month_costs[account["Keys"][0]] = (
+                    float(account["Metrics"]["UnblendedCost"]["Amount"]) / day_count
+                )
+            else:
+                month_costs[account["Keys"][0]] = account["Metrics"]["UnblendedCost"][
+                    "Amount"
+                ]
+        account_costs[cost_month_name] = month_costs
 
     return account_costs
 
@@ -145,7 +157,12 @@ def build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_costs
 
 
 def monthly_costs_by_bu(
-    ce_client, start_date, end_date, account_list, ss_allocation_percentages
+    ce_client,
+    start_date,
+    end_date,
+    account_list,
+    ss_allocation_percentages,
+    daily_average=False,
 ):
     ss_get_cost_and_usage = ce_client.get_cost_and_usage(
         TimePeriod={
@@ -186,15 +203,24 @@ def monthly_costs_by_bu(
     LOGGER.debug(ss_get_cost_and_usage["ResultsByTime"])
     LOGGER.debug(account_get_cost_and_usage["ResultsByTime"])
 
-    ss_account_costs = build_account_costs_by_bu(ss_get_cost_and_usage)
-    bu_account_costs = build_account_costs_by_bu(account_get_cost_and_usage)
+    ss_account_costs = build_account_costs_by_bu(
+        ss_get_cost_and_usage,
+        daily_average,
+    )
+    bu_account_costs = build_account_costs_by_bu(
+        account_get_cost_and_usage,
+        daily_average,
+    )
 
     LOGGER.debug(ss_account_costs)
     LOGGER.debug(bu_account_costs)
 
     ss_cost_matrix = build_cost_matrix(account_list, ss_account_costs)
     bu_cost_matrix = build_cost_matrix(
-        account_list, bu_account_costs, ss_allocation_percentages, ss_cost_matrix
+        account_list,
+        bu_account_costs,
+        ss_allocation_percentages,
+        ss_cost_matrix,
     )
 
     LOGGER.debug(ss_cost_matrix)
@@ -292,6 +318,15 @@ def main():
                     end_date,
                     account_list,
                     ss_allocation_percentages,
+                )
+            case "bu-daily":
+                bu_cost_matrix = monthly_costs_by_bu(
+                    ce_client,
+                    start_date,
+                    end_date,
+                    account_list,
+                    ss_allocation_percentages,
+                    daily_average=True,
                 )
 
         export_report(export_file, bu_cost_matrix, account_list)
