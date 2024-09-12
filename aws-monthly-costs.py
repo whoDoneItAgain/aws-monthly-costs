@@ -95,7 +95,7 @@ def configure_logging(debug_logging: bool = False, info_logging: bool = False):
     LOGGER.addHandler(ch)
 
 
-def build_account_month_costs(cost_and_usage):
+def build_account_costs_by_bu(cost_and_usage):
     account_costs: dict = {}
 
     for period in cost_and_usage["ResultsByTime"]:
@@ -186,15 +186,15 @@ def monthly_costs_by_bu(
     LOGGER.debug(ss_get_cost_and_usage["ResultsByTime"])
     LOGGER.debug(account_get_cost_and_usage["ResultsByTime"])
 
-    ss_month_costs = build_account_month_costs(ss_get_cost_and_usage)
-    account_month_costs = build_account_month_costs(account_get_cost_and_usage)
+    ss_account_costs = build_account_costs_by_bu(ss_get_cost_and_usage)
+    bu_account_costs = build_account_costs_by_bu(account_get_cost_and_usage)
 
-    LOGGER.debug(ss_month_costs)
-    LOGGER.debug(account_month_costs)
+    LOGGER.debug(ss_account_costs)
+    LOGGER.debug(bu_account_costs)
 
-    ss_cost_matrix = build_cost_matrix(account_list, ss_month_costs)
+    ss_cost_matrix = build_cost_matrix(account_list, ss_account_costs)
     bu_cost_matrix = build_cost_matrix(
-        account_list, account_month_costs, ss_allocation_percentages, ss_cost_matrix
+        account_list, bu_account_costs, ss_allocation_percentages, ss_cost_matrix
     )
 
     LOGGER.debug(ss_cost_matrix)
@@ -281,11 +281,11 @@ def main():
     ce_client = aws_session.client("ce")
 
     for run_mode in run_modes:
+        export_file = Path(
+            f"{DEFAULT_OUTPUT_FOLDER}{DEFAULT_OUTPUT_PREFIX}-{run_mode}.csv"
+        ).absolute()
         match run_mode:
             case "bu":
-                export_file = Path(
-                    f"{DEFAULT_OUTPUT_FOLDER}{DEFAULT_OUTPUT_PREFIX}-{run_mode}.csv"
-                ).absolute()
                 bu_cost_matrix = monthly_costs_by_bu(
                     ce_client,
                     start_date,
@@ -293,8 +293,6 @@ def main():
                     account_list,
                     ss_allocation_percentages,
                 )
-            case _:
-                raise Exception(f"Run Mode ({run_mode}) Not Recognized")
 
         export_report(export_file, bu_cost_matrix, account_list)
 
