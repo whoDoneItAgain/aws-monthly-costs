@@ -21,42 +21,10 @@
       "args": "--info-logging"
     },
     {
-      "name": "Run Service App with info logging",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "aws-monthly-costs-service.py",
-      "console": "integratedTerminal",
-      "args": "--info-logging"
-    },
-    {
-      "name": "Run Daily App with info logging",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "aws-monthly-costs-daily.py",
-      "console": "integratedTerminal",
-      "args": "--info-logging"
-    },
-    {
-      "name": "Run Daily Service App with info logging",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "aws-monthly-costs-service-daily.py",
-      "console": "integratedTerminal",
-      "args": "--info-logging"
-    },
-    {
       "name": "Run App for Sandbox with info logging",
       "type": "debugpy",
       "request": "launch",
       "program": "aws-monthly-costs-sandbox.py",
-      "console": "integratedTerminal",
-      "args": "--info-logging"
-    },
-    {
-      "name": "Run Account App with info logging",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "aws-monthly-costs-accounts.py",
       "console": "integratedTerminal",
       "args": "--info-logging"
     }
