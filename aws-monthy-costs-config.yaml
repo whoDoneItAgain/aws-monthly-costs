@@ -86,4 +86,5 @@ service-aggregations:
   'Amazon CloudWatch (Monitoring)':
     - 'AmazonCloudWatch'
 top-costs-count:
+  account: 10
   service: 10
