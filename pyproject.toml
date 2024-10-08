@@ -34,3 +34,5 @@ dependencies = [
 [project.scripts]
 amc = "amc.__main__:main"
 
+[project.urls]
+Homepage = "https://github.com/whodoneitagain/aws-monthly-costs"
