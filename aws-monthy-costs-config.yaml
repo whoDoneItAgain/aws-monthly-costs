@@ -68,3 +68,22 @@ ss-allocations:
   stop: 5
   sw: 5
   tca: 20
+service-aggregations:
+  'Amazon EC2 (Hosted Servers)':
+    - 'Amazon Elastic Compute Cloud - Compute'
+    - 'EC2 - Other'
+    - 'Savings Plans for AWS Compute usage'
+  'Amazon RDS (Database)':
+    - 'Amazon Relational Database Service'
+  'Amazon FSx (File Sharing for TCA)':
+    - 'Amazon FSx'
+  'Amazon OpenSearch Service (Security)':
+    - 'Amazon OpenSearch Service'
+  'Amazon VPC (Networking)':
+    - 'Amazon Virtual Private Cloud'
+  'AWS Network Firewall (Security)':
+    - 'AWS Network Firewall'
+  'Amazon CloudWatch (Monitoring)':
+    - 'AmazonCloudWatch'
+top-costs-count:
+  service: 10
