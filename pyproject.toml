@@ -25,7 +25,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
 ]
-dynamic = ["version"]
+
+dynamic = [
+    "version",
+    "readme"
+]
+
 dependencies = [
     "boto3",
     "pyyaml"
