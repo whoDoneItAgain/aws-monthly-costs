@@ -160,6 +160,17 @@ def main():
     LOGGER.debug(end_date)
 
     aws_session = boto3.Session(profile_name=aws_profile)
+
+    sts_client = aws_session.client("sts")
+
+    try:
+        sts_client.get_caller_identity()
+    except Exception:
+        print(
+            f"AWS profile ({aws_profile}) session is not valid. Reauthenticate first."
+        )
+        quit()
+
     ce_client = aws_session.client("ce")
     if any(x in ["account", "account-daily"] for x in run_modes):
         o_client = aws_session.client("organizations")
