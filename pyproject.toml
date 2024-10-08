@@ -13,8 +13,8 @@ name = "aws-monthly-costs"
 description = "Retrieves AWS Monthly Costs"
 requires-python = ">=3.12"
 authors = [
-  {email = "rbowman@authoritybrandsllc.com"},
-  {name = "Ryan Bowman"},
+  {email = "12127434+whoDoneItAgain@users.noreply.github.com"},
+  {name = "whoDoneItAgain"},
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
