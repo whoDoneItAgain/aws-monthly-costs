@@ -16,7 +16,20 @@ authors = [
   {email = "rbowman@authoritybrandsllc.com"},
   {name = "Ryan Bowman"},
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
 dynamic = ["version"]
+dependencies = [
+    "boto3",
+    "pyyaml"
+]
 
 [project.scripts]
 amc = "amc.__main__:main"
+
