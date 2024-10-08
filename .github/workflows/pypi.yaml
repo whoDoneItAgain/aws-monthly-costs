@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade setuptools wheel twine
+          pip install --upgrade build
 
       - name: Build
         run: |
