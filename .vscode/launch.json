@@ -8,7 +8,7 @@
       "name": "Run App with debug logging",
       "type": "debugpy",
       "request": "launch",
-      "program": "aws-monthly-costs.py",
+      "program": "./src/amc/__main__.py",
       "console": "integratedTerminal",
       "args": "--debug-logging"
     },
@@ -16,7 +16,7 @@
       "name": "Run App with info logging",
       "type": "debugpy",
       "request": "launch",
-      "program": "aws-monthly-costs.py",
+      "program": "./src/amc/__main__.py",
       "console": "integratedTerminal",
       "args": "--info-logging"
     },
