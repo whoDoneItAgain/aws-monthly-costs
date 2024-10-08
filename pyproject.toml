@@ -7,6 +7,7 @@ where = ["src"]
 
 [tool.setuptools.dynamic]
 version = {attr = "amc.version.__version__"}
+readme = {file = ["README.md"], content-type = "text/markdown"}
 
 [project]
 name = "aws-monthly-costs"
