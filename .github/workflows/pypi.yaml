@@ -19,11 +19,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.x"
 
       - name: Install dependencies
         run: |
-          pip install --upgrade build
+          pip install --upgrade pip
+          pip install --upgrade setuptools build wheel twine
 
       - name: Build
         run: |
