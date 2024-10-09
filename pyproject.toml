@@ -39,5 +39,8 @@ dependencies = [
 [project.scripts]
 amc = "amc.__main__:main"
 
+[tool.setuptools.package-data]
+cfnlint = ["data/**/*.yaml"]
+
 [project.urls]
 Homepage = "https://github.com/whodoneitagain/aws-monthly-costs"
