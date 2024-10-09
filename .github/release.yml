@@ -1,0 +1,21 @@
+# https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes#configuring-automatically-generated-release-notes
+
+changelog:
+  categories:
+    - title: Enhancements
+      labels:
+        - enhancement
+    - title: Fixes
+      labels:
+        - bug
+    - title: Other Notable Changes
+      labels:
+        - '*'
+      exclude:
+        labels:
+          - chore
+          - dependencies
+          - maintenance
+    - title: Dependency Updates
+      labels:
+        - dependencies

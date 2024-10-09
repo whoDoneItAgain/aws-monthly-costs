@@ -1,0 +1,52 @@
+# .pre-commit-config.yaml
+exclude: '^$'
+fail_fast: true
+repos:
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Identify invalid files
+      - id: check-ast
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+        args:
+          - '--unsafe'
+
+      # git checks
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+      # Python checks
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: fix-byte-order-marker
+      - id: fix-encoding-pragma
+        args:
+          - '--remove'
+      - id: requirements-txt-fixer
+
+      # General quality checks
+      - id: check-executables-have-shebangs
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args:
+          - '--fix=lf'
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # AWS Checks
+      - id: detect-aws-credentials
+
+  - repo: https://github.com/ambv/black
+    rev: 24.10.0 # The version of black to use
+    hooks:
+      - id: black
