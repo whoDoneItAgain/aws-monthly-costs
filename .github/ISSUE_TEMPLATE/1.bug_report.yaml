@@ -1,0 +1,39 @@
+name: Bug Report
+description: Create a report to help us improve workload-core-infra
+title: '[Bug]: '
+labels: ['bug']
+projects: ['authoritybrands/4']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Try to include as much information as you can.
+  - type: markdown
+    attributes:
+      value: |
+        ## Details
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction actions
+      description: How do you reproduce the bug
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of the pipeline are you running?
+    validations:
+      required: true

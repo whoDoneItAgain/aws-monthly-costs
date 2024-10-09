@@ -1,0 +1,27 @@
+name: Configuration Change
+description: Update / Change to the deployed pipeline configuration
+title: '[Config]: '
+labels: ['enhancement']
+projects: ['authoritybrands/4']
+body:
+  - type: textarea
+    attributes:
+      label: Describe the configuration change you'd like to request
+      description: |
+        A clear and concise description of what you want to happen. Please include **any related issues**, documentation, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: |
+        Add any other use cases or context about the feature request here. Please include any prototype, workaround, reference implementation, etc.
+
+  - type: input
+    id: ct
+    attributes:
+      label: CT Number
+      description: CT Number for this configuration change
+    validations:
+      required: true
