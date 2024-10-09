@@ -40,7 +40,7 @@ dependencies = [
 amc = "amc.__main__:main"
 
 [tool.setuptools.package-data]
-cfnlint = ["data/**/*.yaml"]
+amc = ["data/**/*.yaml"]
 
 [project.urls]
 Homepage = "https://github.com/whodoneitagain/aws-monthly-costs"
