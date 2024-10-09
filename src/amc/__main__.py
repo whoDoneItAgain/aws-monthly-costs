@@ -18,6 +18,9 @@ LOGGER = logging.getLogger("amc")
 
 DEFAULT_OUTPUT_FOLDER = "./outputs/"
 DEFAULT_OUTPUT_PREFIX = "aws-monthly-costs"
+DEFAULT_CONFIG_LOCATION = Path(__file__).parent.joinpath(
+    "data/config/aws-monthy-costs-config.yaml"
+)
 
 VALID_RUN_MODES = [
     "account",
@@ -43,7 +46,7 @@ def get_config_args():
         "--config-file",
         action="store",
         type=str,
-        default="./src/amc/data/config/aws-monthy-costs-config.yaml",
+        default=DEFAULT_CONFIG_LOCATION,
         help="Path to Configuration File",
     )
     parser.add_argument(
