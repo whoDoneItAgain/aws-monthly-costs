@@ -25,7 +25,7 @@ def exportreport(export_file, cost_matrix, group_list, group_by_type):
                 writer.writerow(csv_row)
         elif group_by_type == "bu":
             bus = list(group_list.keys())
-            bus.remove("ss")
+            # bus.remove("ss")
             bus.extend(["total"])
             for bu in bus:
                 csv_row: list = []

@@ -57,6 +57,11 @@ def get_config_args():
         help="Path to Configuration File",
     )
     parser.add_argument(
+        "--include-ss",
+        action="store_true",
+        help="Include Shared Services Percentages in Costs",
+    )
+    parser.add_argument(
         "--run-modes",
         action="store",
         type=str,
@@ -123,6 +128,7 @@ def main():
     aws_profile: str = config_args.profile
     config_file = Path(config_args.config_file).absolute()
     run_modes = config_args.run_modes
+    include_ss: bool = config_args.include_ss
 
     if not (set(run_modes).issubset(set(VALID_RUN_MODES))):
         raise Exception(
@@ -138,7 +144,11 @@ def main():
         config_settings: dict = yaml.safe_load(cf)
 
     account_list: dict = config_settings["account-groups"]
-    ss_allocation_percentages: dict = config_settings["ss-allocations"]
+
+    ss_allocation_percentages: dict | None = (
+        config_settings["ss-allocations"] if include_ss else None
+    )
+
     service_aggregation: dict = config_settings["service-aggregations"]
     top_costs_counts: dict = config_settings["top-costs-count"]
 
