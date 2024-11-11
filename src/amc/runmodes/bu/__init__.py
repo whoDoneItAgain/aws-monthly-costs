@@ -54,12 +54,13 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
                     bu_month_costs[bu] += float(
                         ss_costs[cost_month]["ss"] * ss_percentages[bu] / 100
                     )
+        if ss_percentages is None and ss_costs is not None:
+            bu_month_costs["ss"] = float(ss_costs[cost_month]["ss"])
+
         for k in bu_month_costs:
             bu_month_costs[k] = round(bu_month_costs[k], 2)
-        if ss_percentages is None or ss_costs is None:
-            pass
-        else:
-            bu_month_costs["total"] = sum(bu_month_costs.values())
+
+        bu_month_costs["total"] = sum(bu_month_costs.values())
 
         cost_matrix[cost_month] = bu_month_costs
 

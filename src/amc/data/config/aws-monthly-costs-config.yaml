@@ -43,6 +43,10 @@ account-groups:
   hwcg:
     - '561555901624'
     - '210406154989'
+  #  jl:
+  #    - '539247447543'
+  #    - '713881788427'
+  #    - '715841344289'
   ss:
     - '223036315280' #shared-services
     - '125921290422' #backup
@@ -65,7 +69,7 @@ ss-allocations:
   cw: 15
   dc: 10
   hwcg: 20
-  stop: 5
+  jl: 5
   sw: 5
   tca: 20
 service-aggregations:
