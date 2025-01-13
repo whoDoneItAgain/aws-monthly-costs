@@ -3,7 +3,7 @@ import configparser
 import logging
 import os
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import boto3
@@ -166,8 +166,8 @@ def main():
         end_date = date.today().replace(day=1)
         start_date = end_date.replace(month=1)
     else:
-        end_date = (time_period.split("_"))[1]
-        start_date = (time_period.split("_"))[0]
+        end_date = datetime.strptime((time_period.split("_"))[1], "%Y-%m-%d").date()
+        start_date = datetime.strptime((time_period.split("_"))[0], "%Y-%m-%d").date()
 
     LOGGER.debug(start_date)
     LOGGER.debug(end_date)

@@ -31,7 +31,10 @@ def exportreport(export_file, cost_matrix, group_list, group_by_type):
                 csv_row: list = []
                 csv_row.append(bu)
                 for month in months:
-                    csv_row.append(cost_matrix[month][bu])
+                    if bu in cost_matrix[month]:
+                        csv_row.append(cost_matrix[month][bu])
+                    else:
+                        csv_row.append(0)
                 writer.writerow(csv_row)
         elif group_by_type == "service":
             for service in group_list:

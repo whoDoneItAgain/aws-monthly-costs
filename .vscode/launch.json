@@ -21,6 +21,14 @@
       "args": "--info-logging"
     },
     {
+      "name": "Run App with info logging - specific period",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "./src/amc/__main__.py",
+      "console": "integratedTerminal",
+      "args": "--info-logging --time-period 2024-01-01_2025-01-01"
+    },
+    {
       "name": "Run App for Sandbox with info logging",
       "type": "debugpy",
       "request": "launch",
