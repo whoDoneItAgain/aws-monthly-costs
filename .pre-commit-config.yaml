@@ -3,7 +3,7 @@ exclude: '^$'
 fail_fast: true
 repos:
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.0
     hooks:
       - id: isort
         name: isort (python)
@@ -47,6 +47,6 @@ repos:
       - id: detect-aws-credentials
 
   - repo: https://github.com/ambv/black
-    rev: 24.10.0 # The version of black to use
+    rev: 25.1.0 # The version of black to use
     hooks:
       - id: black
