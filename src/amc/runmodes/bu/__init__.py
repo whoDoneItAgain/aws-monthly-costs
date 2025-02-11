@@ -84,7 +84,7 @@ def bucosts(
         Filter={
             "Dimensions": {
                 "Key": "LINKED_ACCOUNT",
-                "Values": account_list["ss"],
+                "Values": list((account_list["ss"]).keys()),
                 "MatchOptions": ["EQUALS"],
             }
         },
@@ -102,7 +102,7 @@ def bucosts(
             "Not": {
                 "Dimensions": {
                     "Key": "LINKED_ACCOUNT",
-                    "Values": account_list["ss"],
+                    "Values": list((account_list["ss"]).keys()),
                     "MatchOptions": ["EQUALS"],
                 }
             }
