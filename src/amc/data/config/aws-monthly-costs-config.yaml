@@ -1,67 +1,119 @@
 account-groups:
   ab:
-    - '765684506403' #prod
-    - '190463094809' #dev
-    - '322567181088' #qa
-    - '287962043945' #dw prod
-    - '576428727935' #dm prod
-    - '578271614473' #dw dev
-    - '657135633971' #dw qa
-    - '410667987868' #ms dev
-    - '547001423680' #ms prod
-    - '048434263161' #mts prod
-    - '684065087053' #sand bu1 dev
-    - '636970378450' #sand bu1 prod
-    - '045078588871' #sand bu1 qa
-    - '497133657955' #sand bu2 dev
-    - '875280194208' #sand bu2 prod
-    - '163459081128' #sand bu2 qa
-    - '309800686348' #sand ss1
-    - '203833935335' #sand ss2
-    - '490765019698' #sandbox
-    - '676002987812' #ssm dev
-    - '387999647295' #ssm prod
-    - '726697428617' #ws
+    '765684506403':
+      cost-class: capex #prod
+    '190463094809':
+      cost-class: opex #dev
+    '322567181088':
+      cost-class: opex #qa
+    '287962043945':
+      cost-class: capex #dw prod
+    '576428727935':
+      cost-class: capex #dm prod
+    '578271614473':
+      cost-class: opex #dw dev
+    '657135633971':
+      cost-class: opex #dw qa
+    '410667987868':
+      cost-class: opex #ms dev
+    '547001423680':
+      cost-class: capex #ms prod
+    '048434263161':
+      cost-class: capex #mts prod
+    '684065087053':
+      cost-class: opex #sand bu1 dev
+    '636970378450':
+      cost-class: opex #sand bu1 prod
+    '045078588871':
+      cost-class: opex #sand bu1 qa
+    '497133657955':
+      cost-class: opex #sand bu2 dev
+    '875280194208':
+      cost-class: opex #sand bu2 prod
+    '163459081128':
+      cost-class: opex #sand bu2 qa
+    '309800686348':
+      cost-class: opex #sand ss1
+    '203833935335':
+      cost-class: opex #sand ss2
+    '490765019698':
+      cost-class: opex #sandbox
+    '676002987812':
+      cost-class: opex #ssm dev
+    '387999647295':
+      cost-class: capex #ssm prod
+    '726697428617':
+      cost-class: capex #ws
   asp:
-    - '767307296409'
-    - '602322647414'
-    - '227005196264'
+    '767307296409':
+      cost-class: opex
+    '602322647414':
+      cost-class: capex
+    '227005196264':
+      cost-class: opex
   bma:
-    - '570644002402'
-    - '673543350263'
+    '570644002402':
+      cost-class: opex
+    '673543350263':
+      cost-class: capex
   cw:
-    - '459135159168'
-    - '133186797263'
-    - '884010862883'
+    '459135159168':
+      cost-class: opex
+    '133186797263':
+      cost-class: capex
+    '884010862883':
+      cost-class: opex
   dc:
-    - '857955887793'
-    - '343886706134'
-    - '115479062754'
-    - '984096407233'
+    '857955887793':
+      cost-class: opex
+    '343886706134':
+      cost-class: capex
+    '115479062754':
+      cost-class: opex
+    '984096407233':
+      cost-class: capex
   hwcg:
-    - '561555901624'
-    - '210406154989'
+    '561555901624':
+      cost-class: opex
+    '210406154989':
+      cost-class: capex
   jl:
-    - '539247447543'
-    - '713881788427'
-    - '715841344289'
+    '539247447543':
+      cost-class: opex
+    '713881788427':
+      cost-class: capex
+    '715841344289':
+      cost-class: opex
   ss:
-    - '125921290422' #backup
-    - '223036315280' #shared-services
-    - '305643865269' #log
-    - '409809348404' #root
-    - '915265457842' #audit
+    '125921290422':
+      cost-class: capex #backup
+    '223036315280':
+      cost-class: capex #shared-services
+    '305643865269':
+      cost-class: capex #log
+    '409809348404':
+      cost-class: capex #root
+    '915265457842':
+      cost-class: capex #audit
   stop:
-    - '376932649127'
-    - '292070290490'
-    - '017242921005'
+    '376932649127':
+      cost-class: opex
+    '292070290490':
+      cost-class: capex
+    '017242921005':
+      cost-class: opex
   sw:
-    - '528790502102'
-    - '845345954491'
+    '528790502102':
+      cost-class: opex
+    '845345954491':
+      cost-class: capex
   tca:
-    - '374520958058'
-    - '301526667410'
-    - '780383408302'
+    '374520958058':
+      cost-class: opex
+    '301526667410':
+      cost-class: opex
+    '780383408302':
+      cost-class: capex
 ss-allocations:
   ab: 15
   asp: 5
