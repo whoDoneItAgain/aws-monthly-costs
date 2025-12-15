@@ -1,5 +1,4 @@
 import calendar
-import itertools
 import logging
 from datetime import date, datetime
 
@@ -10,25 +9,25 @@ def _build_costs(cost_and_usage, daily_average=False):
     account_costs: dict = {}
 
     if daily_average:
-        this_year = (date.today()).year
+        this_year = date.today().year
 
     for period in cost_and_usage["ResultsByTime"]:
-        month_costs: dict = {}
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
         cost_month_name = cost_month.strftime("%b")
 
         if daily_average:
             day_count = calendar.monthrange(this_year, cost_month.month)[1]
+            month_costs = {
+                account["Keys"][0]: float(account["Metrics"]["UnblendedCost"]["Amount"])
+                / day_count
+                for account in period["Groups"]
+            }
+        else:
+            month_costs = {
+                account["Keys"][0]: float(account["Metrics"]["UnblendedCost"]["Amount"])
+                for account in period["Groups"]
+            }
 
-        for account in period["Groups"]:
-            if daily_average:
-                month_costs[account["Keys"][0]] = (
-                    float(account["Metrics"]["UnblendedCost"]["Amount"]) / day_count
-                )
-            else:
-                month_costs[account["Keys"][0]] = account["Metrics"]["UnblendedCost"][
-                    "Amount"
-                ]
         account_costs[cost_month_name] = month_costs
 
     return account_costs
@@ -39,28 +38,28 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
 
     for cost_month, costs_for_month in account_costs.items():
         bu_month_costs: dict = {}
+
+        # Aggregate costs by BU
         for bu, bu_accounts in account_list.items():
-            for i, j in itertools.product(bu_accounts, costs_for_month.keys()):
-                if i == j:
-                    if bu in bu_month_costs:
-                        bu_month_costs[bu] += float(costs_for_month[j])
-                    else:
-                        bu_month_costs[bu] = float(costs_for_month[j])
+            # Sum costs for all accounts in this BU
+            bu_cost = sum(
+                costs_for_month.get(account_id, 0.0)
+                for account_id in bu_accounts.keys()
+            )
 
-            if ss_percentages is None or ss_costs is None:
-                pass
-            else:
-                if bu in ss_percentages:
-                    bu_month_costs[bu] += float(
-                        ss_costs[cost_month]["ss"] * ss_percentages[bu] / 100
-                    )
+            # Add shared services allocation if applicable
+            if ss_percentages and ss_costs and bu in ss_percentages:
+                bu_cost += ss_costs[cost_month]["ss"] * ss_percentages[bu] / 100
+
+            bu_month_costs[bu] = bu_cost
+
+        # Add shared services as separate line item if not allocated
         if ss_percentages is None and ss_costs is not None:
-            bu_month_costs["ss"] = float(ss_costs[cost_month]["ss"])
+            bu_month_costs["ss"] = ss_costs[cost_month]["ss"]
 
-        for k in bu_month_costs:
-            bu_month_costs[k] = round(bu_month_costs[k], 2)
-
-        bu_month_costs["total"] = sum(bu_month_costs.values())
+        # Round all values
+        bu_month_costs = {k: round(v, 2) for k, v in bu_month_costs.items()}
+        bu_month_costs["total"] = round(sum(bu_month_costs.values()), 2)
 
         cost_matrix[cost_month] = bu_month_costs
 

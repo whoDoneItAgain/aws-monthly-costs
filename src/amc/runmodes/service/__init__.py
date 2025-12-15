@@ -7,10 +7,10 @@ LOGGER = logging.getLogger(__name__)
 
 def _build_costs(cost_and_usage, daily_average=False):
     service_costs: dict = {}
-    service_list: list = []
+    service_set = set()  # Use set to avoid duplicates from the start
 
     if daily_average:
-        this_year = (date.today()).year
+        this_year = date.today().year
 
     for period in cost_and_usage["ResultsByTime"]:
         month_costs: dict = {}
@@ -21,61 +21,46 @@ def _build_costs(cost_and_usage, daily_average=False):
             day_count = calendar.monthrange(this_year, cost_month.month)[1]
 
         for service in period["Groups"]:
-            if daily_average:
-                month_costs[service["Keys"][0]] = (
-                    float(service["Metrics"]["UnblendedCost"]["Amount"]) / day_count
-                )
-            else:
-                month_costs[service["Keys"][0]] = service["Metrics"]["UnblendedCost"][
-                    "Amount"
-                ]
+            service_name = service["Keys"][0]
+            cost_amount = float(service["Metrics"]["UnblendedCost"]["Amount"])
 
-            service_list.append(service["Keys"][0])
+            month_costs[service_name] = (
+                cost_amount / day_count if daily_average else cost_amount
+            )
+            service_set.add(service_name)
 
         service_costs[cost_month_name] = month_costs
 
-    service_list = list(set(service_list))
-
-    return service_costs, service_list
+    return service_costs, list(service_set)
 
 
 def _build_cost_matrix(service_list, service_costs, service_aggregation):
     cost_matrix: dict = {}
 
+    # Build reverse mapping for faster lookups: service -> aggregation name
+    service_to_agg = {}
+    for agg_name, agg_services in service_aggregation.items():
+        for service in agg_services:
+            service_to_agg[service] = agg_name
+
     for cost_month, costs_for_month in service_costs.items():
         service_month_costs: dict = {}
+
         for service in service_list:
-            for agg_name, agg_services in service_aggregation.items():
-                if service in agg_services:
-                    if service in costs_for_month:
-                        if agg_name in service_month_costs:
-                            service_month_costs[agg_name] += float(
-                                costs_for_month[service]
-                            )
-                        else:
-                            service_month_costs[agg_name] = float(
-                                costs_for_month[service]
-                            )
+            cost = costs_for_month.get(service, 0.0)
 
-                    else:
-                        service_month_costs[agg_name] = float(0)
-                    break
+            # Check if service belongs to an aggregation
+            if service in service_to_agg:
+                agg_name = service_to_agg[service]
+                service_month_costs[agg_name] = (
+                    service_month_costs.get(agg_name, 0.0) + cost
+                )
+            else:
+                service_month_costs[service] = cost
 
-                elif service in costs_for_month:
-                    service_month_costs[service] = float(costs_for_month[service])
-
-                else:
-                    service_month_costs[service] = float(0)
-
-        for k in service_aggregation:
-            for v in service_aggregation[k]:
-                if v in service_month_costs:
-                    service_month_costs.pop(v)
-
-        for k in service_month_costs:
-            service_month_costs[k] = round(service_month_costs[k], 2)
-
-        service_month_costs["total"] = sum(service_month_costs.values())
+        # Round all values
+        service_month_costs = {k: round(v, 2) for k, v in service_month_costs.items()}
+        service_month_costs["total"] = round(sum(service_month_costs.values()), 2)
 
         cost_matrix[cost_month] = service_month_costs
 
@@ -123,41 +108,36 @@ def servicecosts(
 
     sorted_service_cost_matrix = {}
 
-    sorted_services = list(recent_month_costs_sorted.keys())
+    # Get top services excluding 'total'
+    top_sorted_services = [
+        svc
+        for svc in list(recent_month_costs_sorted.keys())[0:top_cost_count]
+        if svc != "total"
+    ]
 
-    top_sorted_services = sorted_services[0:top_cost_count]
-
-    for cost_month in service_cost_matrix.keys():
-        top_services_month_total: float = 0
-        month_cost: dict = {}
-        for service in top_sorted_services:
-            if service != "total":
-                month_cost[service] = service_cost_matrix[cost_month][service]
-                top_services_month_total += service_cost_matrix[cost_month][service]
-        month_cost["total"] = round(top_services_month_total, 2)
-
+    for cost_month, month_data in service_cost_matrix.items():
+        month_cost = {
+            service: month_data.get(service, 0) for service in top_sorted_services
+        }
+        month_cost["total"] = round(sum(month_cost.values()), 2)
         sorted_service_cost_matrix[cost_month] = month_cost
 
     return sorted_service_cost_matrix
 
 
 def servicecostsagg(cost_matrix, service_aggregation):
-    service_list: list = []
-    agg_service_list: list = []
+    # Collect all unique services across all months using set
+    service_set = set()
+    for month_data in cost_matrix.values():
+        service_set.update(month_data.keys())
 
-    for agg_name in service_aggregation:
-        agg_service_list.extend(service_aggregation[agg_name])
-
+    # Convert to list, keeping most recent month's services first
     months = list(cost_matrix.keys())
+    recent_services = list(cost_matrix[months[-1]].keys())
 
-    current_month = months[-1]
+    # Add remaining services not in recent month
+    for service in service_set:
+        if service not in recent_services:
+            recent_services.append(service)
 
-    service_list.extend(cost_matrix[current_month])
-    months.pop()
-
-    for month in months:
-        for service in cost_matrix[month].keys():
-            if service not in service_list:
-                service_list.append(service)
-
-    return service_list
+    return recent_services
