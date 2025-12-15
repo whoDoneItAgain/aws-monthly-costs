@@ -166,8 +166,9 @@ def main():
         end_date = date.today().replace(day=1)
         start_date = end_date.replace(month=1)
     else:
-        end_date = datetime.strptime((time_period.split("_"))[1], "%Y-%m-%d").date()
-        start_date = datetime.strptime((time_period.split("_"))[0], "%Y-%m-%d").date()
+        time_parts = time_period.split("_")
+        start_date = datetime.strptime(time_parts[0], "%Y-%m-%d").date()
+        end_date = datetime.strptime(time_parts[1], "%Y-%m-%d").date()
 
     LOGGER.debug(start_date)
     LOGGER.debug(end_date)
@@ -178,20 +179,25 @@ def main():
 
     try:
         sts_client.get_caller_identity()
-    except Exception:
+    except Exception as e:
+        LOGGER.error(f"AWS profile ({aws_profile}) session is not valid: {e}")
         print(
             f"AWS profile ({aws_profile}) session is not valid. Reauthenticate first."
         )
-        quit()
+        sys.exit(1)
 
     ce_client = aws_session.client("ce")
-    if any(x in ["account", "account-daily"] for x in run_modes):
+    # Only create organizations client if needed
+    o_client = None
+    if any(mode in ["account", "account-daily"] for mode in run_modes):
         o_client = aws_session.client("organizations")
 
+    # Pre-create output directory once
+    output_dir = Path(DEFAULT_OUTPUT_FOLDER)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     for run_mode in run_modes:
-        export_file = Path(
-            f"{DEFAULT_OUTPUT_FOLDER}{DEFAULT_OUTPUT_PREFIX}-{run_mode}.csv"
-        ).absolute()
+        export_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}.csv"
         match run_mode:
             # by Account
             case "account":

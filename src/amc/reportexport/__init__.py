@@ -5,6 +5,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def exportreport(export_file, cost_matrix, group_list, group_by_type):
+    # Directory should be created by caller, but ensure it exists
     export_file.parent.mkdir(parents=True, exist_ok=True)
 
     months = list(cost_matrix.keys())
