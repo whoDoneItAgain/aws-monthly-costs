@@ -38,12 +38,6 @@ account-groups:
       cost-class: opex #sand ss2
     '490765019698':
       cost-class: opex #sandbox
-    '676002987812':
-      cost-class: opex #ssm dev
-    '387999647295':
-      cost-class: capex #ssm prod
-    '726697428617':
-      cost-class: capex #ws
   asp:
     '767307296409':
       cost-class: opex
@@ -84,6 +78,11 @@ account-groups:
       cost-class: capex
     '715841344289':
       cost-class: opex
+  ms:
+    '538022322231': #dev
+      cost-class: opex
+    '230150303470': #prod
+      cost-class: capex
   ss:
     '125921290422':
       cost-class: capex #backup
@@ -95,6 +94,12 @@ account-groups:
       cost-class: capex #root
     '915265457842':
       cost-class: capex #audit
+    '676002987812':
+      cost-class: opex #ssm dev
+    '387999647295':
+      cost-class: capex #ssm prod
+    '726697428617':
+      cost-class: capex #ws
   stop:
     '376932649127':
       cost-class: opex
