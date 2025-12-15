@@ -18,8 +18,9 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: mheap/github-action-required-labels@v5
+      - uses: mheap/github-action-required-labels@v5.5.0
         with:
+          token: ${{ steps.generate-token.outputs.token }}
           mode: minimum
           count: 1
           labels: |
@@ -27,6 +28,7 @@ jobs:
             chore
             configuration
             dependencies
+            documentation
             enhancement
             maintenance
           add_comment: true
