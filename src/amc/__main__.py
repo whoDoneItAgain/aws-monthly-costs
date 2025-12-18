@@ -86,6 +86,14 @@ def get_config_args():
         action="store_true",
         help="Enables Info Level Logging. Superseded by debug-logging",
     )
+    parser.add_argument(
+        "--output-format",
+        action="store",
+        type=str,
+        default="csv",
+        choices=["csv", "excel"],
+        help="Output format for reports. Choose 'csv' or 'excel' (default: csv)",
+    )
 
     args = parser.parse_args()
 
@@ -129,6 +137,7 @@ def main():
     config_file = Path(config_args.config_file).absolute()
     run_modes = config_args.run_modes
     include_ss: bool = config_args.include_ss
+    output_format: str = config_args.output_format
 
     if not (set(run_modes).issubset(set(VALID_RUN_MODES))):
         raise Exception(
@@ -196,8 +205,11 @@ def main():
     output_dir = Path(DEFAULT_OUTPUT_FOLDER)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Determine file extension based on output format
+    file_extension = ".xlsx" if output_format == "excel" else ".csv"
+
     for run_mode in run_modes:
-        export_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}.csv"
+        export_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
         match run_mode:
             # by Account
             case "account":
@@ -212,7 +224,11 @@ def main():
                 account_names = accountnames(cost_matrix)
 
                 exportreport(
-                    export_file, cost_matrix, account_names, group_by_type="account"
+                    export_file,
+                    cost_matrix,
+                    account_names,
+                    group_by_type="account",
+                    output_format=output_format,
                 )
             case "account-daily":
                 cost_matrix = accountcosts(
@@ -231,6 +247,7 @@ def main():
                     cost_matrix,
                     account_names,
                     group_by_type="account",
+                    output_format=output_format,
                 )
             # by Bu
             case "bu":
@@ -241,7 +258,13 @@ def main():
                     account_list,
                     ss_allocation_percentages,
                 )
-                exportreport(export_file, cost_matrix, account_list, group_by_type="bu")
+                exportreport(
+                    export_file,
+                    cost_matrix,
+                    account_list,
+                    group_by_type="bu",
+                    output_format=output_format,
+                )
             case "bu-daily":
                 cost_matrix = bucosts(
                     ce_client,
@@ -251,7 +274,13 @@ def main():
                     ss_allocation_percentages,
                     daily_average=True,
                 )
-                exportreport(export_file, cost_matrix, account_list, group_by_type="bu")
+                exportreport(
+                    export_file,
+                    cost_matrix,
+                    account_list,
+                    group_by_type="bu",
+                    output_format=output_format,
+                )
             # by Service
             case "service":
                 cost_matrix = servicecosts(
@@ -265,7 +294,11 @@ def main():
                 service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
 
                 exportreport(
-                    export_file, cost_matrix, service_list_agg, group_by_type="service"
+                    export_file,
+                    cost_matrix,
+                    service_list_agg,
+                    group_by_type="service",
+                    output_format=output_format,
                 )
             case "service-daily":
                 cost_matrix = servicecosts(
@@ -280,7 +313,11 @@ def main():
                 service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
 
                 exportreport(
-                    export_file, cost_matrix, service_list_agg, group_by_type="service"
+                    export_file,
+                    cost_matrix,
+                    service_list_agg,
+                    group_by_type="service",
+                    output_format=output_format,
                 )
 
 
