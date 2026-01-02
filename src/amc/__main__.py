@@ -253,7 +253,7 @@ def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Se
     aws_config.read(aws_config_file_path)
 
     if not aws_config.has_section(f"profile {aws_profile}"):
-        raise Exception(
+        raise ValueError(
             f"AWS profile '{aws_profile}' does not exist in config file: {aws_config_file_path}"
         )
 
