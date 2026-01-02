@@ -240,10 +240,15 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     data_start_row = row
     bus = list(group_list.keys())
     for bu in bus:
-        ws.cell(row, 1, bu)
-
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
         val2 = cost_matrix[last_2_months[1]].get(bu, 0)
+        
+        # Skip this BU if both current and previous months are zero
+        if val1 == 0 and val2 == 0:
+            continue
+        
+        ws.cell(row, 1, bu)
+
         diff = abs(val2 - val1)
         pct_diff = diff / val1 if val1 > 0 else 0
         pct_spend = val2 / cost_matrix[last_2_months[1]].get("total", 1)
@@ -271,8 +276,10 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
 
     data_end_row = row
 
-    # Add conditional formatting to column C (latest month) - green if increased, red if decreased
-    _add_conditional_formatting(ws, f"C{data_start_row}:C{data_end_row}")
+    # Add conditional formatting to difference and % difference columns
+    _add_conditional_formatting(
+        ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
+    )
 
     # Daily Average section
     row += 3  # Add spacing
@@ -313,10 +320,17 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     row += 1
     daily_start_row = row
     for bu in bus:
+        val1_monthly = cost_matrix[last_2_months[0]].get(bu, 0)
+        val2_monthly = cost_matrix[last_2_months[1]].get(bu, 0)
+        
+        # Skip this BU if both current and previous months are zero
+        if val1_monthly == 0 and val2_monthly == 0:
+            continue
+        
         ws.cell(row, 1, bu)
 
-        val1 = cost_matrix[last_2_months[0]].get(bu, 0) / days1
-        val2 = cost_matrix[last_2_months[1]].get(bu, 0) / days2
+        val1 = val1_monthly / days1
+        val2 = val2_monthly / days2
         diff = abs(val2 - val1)
         pct_diff = diff / val1 if val1 > 0 else 0
 
@@ -341,39 +355,75 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
 
     daily_end_row = row
 
-    # Add conditional formatting to column C (latest month) for daily average
-    _add_conditional_formatting(ws, f"C{daily_start_row}:C{daily_end_row}")
+    # Add conditional formatting for daily average difference and % difference columns
+    _add_conditional_formatting(
+        ws, f"D{daily_start_row}:D{daily_end_row}", f"E{daily_start_row}:E{daily_end_row}"
+    )
+    
+    # Auto-adjust column widths
+    _auto_adjust_column_widths(ws)
 
 
-def _add_conditional_formatting(ws, cell_range):
-    """Add conditional formatting to highlight increases (green) and decreases (red)."""
+def _add_conditional_formatting(ws, diff_range, pct_range):
+    """Add conditional formatting to difference and % difference columns.
+    
+    Args:
+        ws: Worksheet
+        diff_range: Cell range for Difference column (e.g., "D4:D10")
+        pct_range: Cell range for % Difference column (e.g., "E4:E10")
+    """
     from openpyxl.formatting.rule import Rule
     from openpyxl.styles import Font as CFFont, PatternFill as CFPatternFill
     from openpyxl.styles.differential import DifferentialStyle
 
     # Green for decrease (current < previous) - good, saving money
+    # This means column C < column B, so the formatting should trigger when difference is negative
     green_fill = CFPatternFill(bgColor="FFC6EFCE")
     green_font = CFFont(color="FF006100")
     green_dxf = DifferentialStyle(fill=green_fill, font=green_font)
 
-    # Formula: C < B (current column < previous column)
-    green_rule = Rule(type="expression", dxf=green_dxf)
-    green_rule.formula = [
-        f"C{cell_range.split(':')[0][1:]}<B{cell_range.split(':')[0][1:]}"
-    ]
-
     # Red for increase (current > previous) - bad, spending more
+    # This means column C > column B
     red_fill = CFPatternFill(bgColor="FFFFC7CE")
     red_font = CFFont(color="FF9C0006")
     red_dxf = DifferentialStyle(fill=red_fill, font=red_font)
 
-    red_rule = Rule(type="expression", dxf=red_dxf)
-    red_rule.formula = [
-        f"C{cell_range.split(':')[0][1:]}>B{cell_range.split(':')[0][1:]}"
-    ]
+    # For difference columns: Green when current (C) < previous (B), Red when current > previous
+    start_row = int(diff_range.split(":")[0][1:])
+    
+    green_rule_diff = Rule(type="expression", dxf=green_dxf)
+    green_rule_diff.formula = [f"C{start_row}<B{start_row}"]
+    
+    red_rule_diff = Rule(type="expression", dxf=red_dxf)
+    red_rule_diff.formula = [f"C{start_row}>B{start_row}"]
 
-    ws.conditional_formatting.add(cell_range, green_rule)
-    ws.conditional_formatting.add(cell_range, red_rule)
+    ws.conditional_formatting.add(diff_range, green_rule_diff)
+    ws.conditional_formatting.add(diff_range, red_rule_diff)
+    
+    # Same for % difference columns
+    green_rule_pct = Rule(type="expression", dxf=green_dxf)
+    green_rule_pct.formula = [f"C{start_row}<B{start_row}"]
+    
+    red_rule_pct = Rule(type="expression", dxf=red_dxf)
+    red_rule_pct.formula = [f"C{start_row}>B{start_row}"]
+
+    ws.conditional_formatting.add(pct_range, green_rule_pct)
+    ws.conditional_formatting.add(pct_range, red_rule_pct)
+
+
+def _auto_adjust_column_widths(ws):
+    """Auto-adjust column widths based on content."""
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if cell.value and len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except (AttributeError, TypeError):
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
 
 
 def _create_service_analysis_tables(
@@ -390,9 +440,11 @@ def _create_service_analysis_tables(
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
-    # Get top 10 services by latest month cost
+    # Get top 10 services by latest month cost (excluding 'total')
     service_costs = [
-        (svc, cost_matrix[last_2_months[1]].get(svc, 0)) for svc in group_list
+        (svc, cost_matrix[last_2_months[1]].get(svc, 0))
+        for svc in group_list
+        if svc != "total"
     ]
     service_costs.sort(key=lambda x: x[1], reverse=True)
     top_10_services = [svc for svc, _ in service_costs[:10]]
@@ -486,8 +538,10 @@ def _create_service_analysis_tables(
 
     data_end_row = pie_chart_end_row
 
-    # Add conditional formatting
-    _add_conditional_formatting(ws, f"C{data_start_row}:C{data_end_row}")
+    # Add conditional formatting to difference and % difference columns for service monthly totals
+    _add_conditional_formatting(
+        ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
+    )
 
     # Daily Average section
     try:
@@ -542,8 +596,10 @@ def _create_service_analysis_tables(
 
     daily_end_row = row - 1
 
-    # Add conditional formatting for daily average
-    _add_conditional_formatting(ws, f"C{daily_start_row}:C{daily_end_row}")
+    # Add conditional formatting for service daily average difference and % difference columns
+    _add_conditional_formatting(
+        ws, f"D{daily_start_row}:D{daily_end_row}", f"E{daily_start_row}:E{daily_end_row}"
+    )
 
     # Add pie chart (using column C data, which is the latest month)
     chart = PieChart()
@@ -562,6 +618,9 @@ def _create_service_analysis_tables(
     chart.set_categories(labels)
 
     ws.add_chart(chart, "H3")
+    
+    # Auto-adjust column widths
+    _auto_adjust_column_widths(ws)
 
 
 def _create_account_analysis_tables(
@@ -578,9 +637,11 @@ def _create_account_analysis_tables(
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
-    # Get top 10 accounts by latest month cost
+    # Get top 10 accounts by latest month cost (excluding 'total')
     account_costs = [
-        (acc, cost_matrix[last_2_months[1]].get(acc, 0)) for acc in group_list
+        (acc, cost_matrix[last_2_months[1]].get(acc, 0))
+        for acc in group_list
+        if acc != "total"
     ]
     account_costs.sort(key=lambda x: x[1], reverse=True)
     top_10_accounts = [acc for acc, _ in account_costs[:10]]
@@ -674,8 +735,10 @@ def _create_account_analysis_tables(
 
     data_end_row = pie_chart_end_row
 
-    # Add conditional formatting
-    _add_conditional_formatting(ws, f"C{data_start_row}:C{data_end_row}")
+    # Add conditional formatting to difference and % difference columns for account monthly totals
+    _add_conditional_formatting(
+        ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
+    )
 
     # Daily Average section
     try:
@@ -730,8 +793,10 @@ def _create_account_analysis_tables(
 
     daily_end_row = row - 1
 
-    # Add conditional formatting for daily average
-    _add_conditional_formatting(ws, f"C{daily_start_row}:C{daily_end_row}")
+    # Add conditional formatting for account daily average difference and % difference columns
+    _add_conditional_formatting(
+        ws, f"D{daily_start_row}:D{daily_end_row}", f"E{daily_start_row}:E{daily_end_row}"
+    )
 
     # Add pie chart (using column C data, which is the latest month)
     chart = PieChart()
@@ -750,3 +815,6 @@ def _create_account_analysis_tables(
     chart.set_categories(labels)
 
     ws.add_chart(chart, "H3")
+    
+    # Auto-adjust column widths
+    _auto_adjust_column_widths(ws)
