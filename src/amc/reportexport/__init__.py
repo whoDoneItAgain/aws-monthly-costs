@@ -572,7 +572,7 @@ def _create_service_analysis_tables(
         ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
     )
     data = Reference(
-        ws, min_col=3, min_row=pie_chart_start_row - 1, max_row=pie_chart_end_row
+        ws, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
     )
 
     chart.add_data(data, titles_from_data=False)
@@ -785,7 +785,7 @@ def _create_account_analysis_tables(
         ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
     )
     data = Reference(
-        ws, min_col=3, min_row=pie_chart_start_row - 1, max_row=pie_chart_end_row
+        ws, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
     )
 
     chart.add_data(data, titles_from_data=False)
