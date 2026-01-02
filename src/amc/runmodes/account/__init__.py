@@ -101,8 +101,8 @@ def calculate_account_costs(
 
     account_cost_matrix = _build_cost_matrix(account_costs)
 
-    # Get the most recent month - optimized by avoiding intermediate list
-    recent_month = list(account_cost_matrix.keys())[-1]
+    # Get the most recent month - optimized to avoid creating intermediate list
+    recent_month = next(reversed(account_cost_matrix))
     recent_month_costs = account_cost_matrix[recent_month]
 
     # Sort and get top accounts in one operation - no need to create dict

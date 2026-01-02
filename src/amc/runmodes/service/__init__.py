@@ -109,8 +109,8 @@ def calculate_service_costs(
         service_list, service_costs, service_aggregations
     )
 
-    # Get the most recent month - optimized by avoiding intermediate list
-    recent_month = list(service_cost_matrix.keys())[-1]
+    # Get the most recent month - optimized to avoid creating intermediate list
+    recent_month = next(reversed(service_cost_matrix))
     recent_month_costs = service_cost_matrix[recent_month]
 
     # Sort and get top services in one operation - no need to create dict
