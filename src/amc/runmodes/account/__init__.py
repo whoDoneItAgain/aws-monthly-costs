@@ -50,25 +50,38 @@ def _build_cost_matrix(account_costs):
     return cost_matrix
 
 
-def accountcosts(
-    ce_client,
-    o_client,
+def calculate_account_costs(
+    cost_explorer_client,
+    organizations_client,
     start_date,
     end_date,
     top_cost_count,
     daily_average=False,
 ):
+    """Calculate AWS costs grouped by account.
+
+    Args:
+        cost_explorer_client: AWS Cost Explorer client
+        organizations_client: AWS Organizations client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        top_cost_count: Number of top accounts to include
+        daily_average: If True, calculate daily average costs
+
+    Returns:
+        Dictionary of cost data organized by month and account
+    """
     account_list: list = []
-    list_accounts_response = o_client.list_accounts()
+    list_accounts_response = organizations_client.list_accounts()
     account_list.extend(list_accounts_response["Accounts"])
 
     while "NextToken" in list_accounts_response:
-        list_accounts_response = o_client.list_accounts(
+        list_accounts_response = organizations_client.list_accounts(
             NextToken=list_accounts_response["NextToken"]
         )
         account_list.extend(list_accounts_response["Accounts"])
 
-    account_get_cost_and_usage = ce_client.get_cost_and_usage(
+    account_get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
             "End": end_date.strftime("%Y-%m-%d"),
@@ -117,7 +130,15 @@ def accountcosts(
     return sorted_account_cost_matrix
 
 
-def accountnames(cost_matrix):
+def get_account_names(cost_matrix):
+    """Extract unique account names from cost matrix.
+
+    Args:
+        cost_matrix: Dictionary of cost data organized by month
+
+    Returns:
+        List of account names
+    """
     # Collect all unique account names across all months using set
     account_names_set = set()
     for month_data in cost_matrix.values():

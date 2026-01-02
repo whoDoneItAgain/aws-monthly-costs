@@ -9,102 +9,122 @@ from pathlib import Path
 import boto3
 import yaml
 
-from amc.reportexport import exportreport, export_analysis_excel
-from amc.runmodes.account import accountcosts, accountnames
-from amc.runmodes.bu import bucosts
-from amc.runmodes.service import servicecosts, servicecostsagg
+from amc.constants import (
+    DEFAULT_RUN_MODES,
+    OUTPUT_FORMAT_BOTH,
+    OUTPUT_FORMAT_CSV,
+    OUTPUT_FORMAT_EXCEL,
+    RUN_MODE_ACCOUNT,
+    RUN_MODE_ACCOUNT_DAILY,
+    RUN_MODE_BUSINESS_UNIT,
+    RUN_MODE_BUSINESS_UNIT_DAILY,
+    RUN_MODE_SERVICE,
+    RUN_MODE_SERVICE_DAILY,
+    TIME_PERIOD_PREVIOUS,
+    VALID_OUTPUT_FORMATS,
+    VALID_RUN_MODES,
+)
+from amc.reportexport import export_analysis_excel, export_report
+from amc.runmodes.account import calculate_account_costs, get_account_names
+from amc.runmodes.bu import calculate_business_unit_costs
+from amc.runmodes.service import calculate_service_costs, get_service_list
 
 LOGGER = logging.getLogger("amc")
 
 DEFAULT_OUTPUT_FOLDER = "./outputs/"
 DEFAULT_OUTPUT_PREFIX = "aws-monthly-costs"
+DEFAULT_AWS_CONFIG_FILE = "~/.aws/config"
 DEFAULT_CONFIG_LOCATION = Path(__file__).parent.joinpath(
     "data/config/aws-monthly-costs-config.yaml"
 )
 
-VALID_RUN_MODES = [
-    "account",
-    "account-daily",
-    "bu",
-    "bu-daily",
-    "service",
-    "service-daily",
-]
 
-DEFAULT_RUN_MODES = ["account", "bu", "service"]
+def parse_arguments():
+    """Parse command-line arguments for the AWS Monthly Costs tool.
 
+    Returns:
+        argparse.Namespace: Parsed command-line arguments
+    """
+    parser = argparse.ArgumentParser(
+        description="Generate AWS monthly cost reports by account, business unit, or service",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
-def get_config_args():
-    # Define the parser
-    parser = argparse.ArgumentParser(description="AWS Monthly Costs")
     parser.add_argument(
         "--profile",
-        action="store",
         type=str,
-        default="ab-root-use1-admin",
-        help="Profile Name",
+        required=True,
+        help="AWS profile name to use for authentication (from ~/.aws/config)",
     )
+
     parser.add_argument(
         "--config-file",
-        action="store",
         type=str,
         default=DEFAULT_CONFIG_LOCATION,
-        help="Path to Configuration File",
+        help=f"Path to the configuration YAML file (default: {DEFAULT_CONFIG_LOCATION})",
     )
+
     parser.add_argument(
         "--aws-config-file",
-        action="store",
         type=str,
-        default="~/.aws/config",
-        help="Path to Configuration File",
+        default=DEFAULT_AWS_CONFIG_FILE,
+        help=f"Path to AWS credentials config file (default: {DEFAULT_AWS_CONFIG_FILE})",
     )
+
     parser.add_argument(
-        "--include-ss",
+        "--include-shared-services",
         action="store_true",
-        help="Include Shared Services Percentages in Costs",
+        help="Allocate shared services costs across business units based on configured percentages",
     )
+
     parser.add_argument(
         "--run-modes",
-        action="store",
         type=str,
-        default=DEFAULT_RUN_MODES,
         nargs="*",
-        help="Run Modes of Script. Default: account, bu, service (required for analysis file).",
+        default=DEFAULT_RUN_MODES,
+        choices=VALID_RUN_MODES,
+        help=f"Report types to generate. Default: {', '.join(DEFAULT_RUN_MODES)} (required for analysis file)",
     )
+
     parser.add_argument(
         "--time-period",
-        action="store",
         type=str,
-        default="previous",
-        help="Time Period. Enter in either previous (default) or syntax of YYYY-MM-DD_YYYY-MM-DD",
+        default=TIME_PERIOD_PREVIOUS,
+        help=f"Time period for cost analysis. Use '{TIME_PERIOD_PREVIOUS}' for last month or 'YYYY-MM-DD_YYYY-MM-DD' for custom range (default: {TIME_PERIOD_PREVIOUS})",
     )
+
     parser.add_argument(
         "--debug-logging",
         action="store_true",
-        help="Enables Debug Level Logging",
+        help="Enable debug-level logging for detailed diagnostic information",
     )
+
     parser.add_argument(
         "--info-logging",
         action="store_true",
-        help="Enables Info Level Logging. Superseded by debug-logging",
+        help="Enable info-level logging (overridden by --debug-logging if both are specified)",
     )
+
     parser.add_argument(
         "--output-format",
-        action="store",
         type=str,
         default=None,
-        choices=["csv", "excel", "both"],
-        help="Output format for individual reports. Choose 'csv', 'excel', or 'both'. If not specified, only the analysis Excel file is generated (when account, bu, and service modes are run).",
+        choices=VALID_OUTPUT_FORMATS,
+        help="Format for individual report files: 'csv', 'excel', or 'both'. If not specified, only generates the analysis Excel file",
     )
 
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def configure_logging(debug_logging: bool = False, info_logging: bool = False):
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    """Configure logging for the application.
+
+    Args:
+        debug_logging: If True, enables DEBUG level logging
+        info_logging: If True, enables INFO level logging (superseded by debug_logging)
+    """
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
 
     if debug_logging:
         LOGGER.setLevel(logging.DEBUG)
@@ -112,287 +132,416 @@ def configure_logging(debug_logging: bool = False, info_logging: bool = False):
         LOGGER.setLevel(logging.INFO)
     else:
         LOGGER.setLevel(logging.NOTSET)
+
     log_formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
-    ch.setFormatter(log_formatter)
+    console_handler.setFormatter(log_formatter)
 
-    # make sure all other log handlers are removed before adding it back
+    # Remove existing handlers before adding new one
     for handler in LOGGER.handlers:
         LOGGER.removeHandler(handler)
-    LOGGER.addHandler(ch)
+    LOGGER.addHandler(console_handler)
 
 
-def main():
-    assert sys.version_info >= (3, 12)
+def load_configuration(config_file_path: Path) -> dict:
+    """Load configuration from YAML file.
 
-    config_args = get_config_args()
+    Args:
+        config_file_path: Path to the configuration YAML file
 
-    configure_logging(
-        debug_logging=config_args.debug_logging, info_logging=config_args.info_logging
-    )
+    Returns:
+        Dictionary containing configuration settings
+    """
+    with open(config_file_path, "r") as config_file:
+        return yaml.safe_load(config_file)
 
-    LOGGER.debug(f"Configuration Arguments - {config_args}")
 
-    aws_config_file = Path(os.path.expanduser(config_args.aws_config_file)).absolute()
-    aws_profile: str = config_args.profile
-    config_file = Path(config_args.config_file).absolute()
-    run_modes = config_args.run_modes
-    include_ss: bool = config_args.include_ss
-    output_format: str = config_args.output_format
+def parse_time_period(time_period_str: str) -> tuple[date, date]:
+    """Parse time period string into start and end dates.
 
-    if not (set(run_modes).issubset(set(VALID_RUN_MODES))):
-        raise Exception(
-            f"Run Mode list ({run_modes}) is not Valid. Valid Run Modes are {VALID_RUN_MODES}"
-        )
+    Args:
+        time_period_str: Either 'previous' for last month or 'YYYY-MM-DD_YYYY-MM-DD' format
 
-    time_period: str = config_args.time_period
-
-    aws_config = configparser.RawConfigParser()
-    aws_config.read(aws_config_file)
-
-    with open(config_file, "r") as cf:
-        config_settings: dict = yaml.safe_load(cf)
-
-    account_list: dict = config_settings["account-groups"]
-
-    ss_allocation_percentages: dict | None = (
-        config_settings["ss-allocations"] if include_ss else None
-    )
-
-    service_aggregation: dict = config_settings["service-aggregations"]
-    top_costs_counts: dict = config_settings["top-costs-count"]
-
-    LOGGER.debug(aws_config_file)
-    LOGGER.debug(account_list)
-    LOGGER.debug(ss_allocation_percentages)
-    LOGGER.debug(aws_config.sections())
-
-    if not (aws_config.has_section(f"profile {aws_profile}")):
-        raise Exception(
-            f"AWS profile does not exist in aws config file: {aws_config_file}"
-        )
-
-    if time_period == "previous":
+    Returns:
+        Tuple of (start_date, end_date)
+    """
+    if time_period_str == TIME_PERIOD_PREVIOUS:
         end_date = date.today().replace(day=1)
         start_date = end_date.replace(month=1)
     else:
-        time_parts = time_period.split("_")
+        time_parts = time_period_str.split("_")
         start_date = datetime.strptime(time_parts[0], "%Y-%m-%d").date()
         end_date = datetime.strptime(time_parts[1], "%Y-%m-%d").date()
 
-    LOGGER.debug(start_date)
-    LOGGER.debug(end_date)
+    return start_date, end_date
 
-    aws_session = boto3.Session(profile_name=aws_profile)
 
-    sts_client = aws_session.client("sts")
+def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Session:
+    """Create and validate AWS session.
+
+    Args:
+        aws_profile: AWS profile name to use
+        aws_config_file_path: Path to AWS config file
+
+    Returns:
+        Validated boto3 Session object
+
+    Raises:
+        SystemExit: If profile doesn't exist or session is invalid
+    """
+    # Validate AWS config file has the profile
+    aws_config = configparser.RawConfigParser()
+    aws_config.read(aws_config_file_path)
+
+    if not aws_config.has_section(f"profile {aws_profile}"):
+        raise Exception(
+            f"AWS profile '{aws_profile}' does not exist in config file: {aws_config_file_path}"
+        )
+
+    # Create session and validate credentials
+    session = boto3.Session(profile_name=aws_profile)
+    sts_client = session.client("sts")
 
     try:
         sts_client.get_caller_identity()
     except Exception as e:
         LOGGER.error(f"AWS profile ({aws_profile}) session is not valid: {e}")
         print(
-            f"AWS profile ({aws_profile}) session is not valid. Reauthenticate first."
+            f"AWS profile ({aws_profile}) session is not valid. Please reauthenticate first."
         )
         sys.exit(1)
 
-    ce_client = aws_session.client("ce")
-    # Only create organizations client if needed
-    o_client = None
-    if any(mode in ["account", "account-daily"] for mode in run_modes):
-        o_client = aws_session.client("organizations")
+    LOGGER.debug(f"Successfully authenticated with AWS profile: {aws_profile}")
+    return session
 
-    # Pre-create output directory once
+
+def determine_output_formats(output_format: str | None) -> list[str]:
+    """Determine which output formats to generate.
+
+    Args:
+        output_format: User-specified output format (csv, excel, both, or None)
+
+    Returns:
+        List of formats to generate (empty list if None)
+    """
+    if output_format is None:
+        return []
+    elif output_format == OUTPUT_FORMAT_BOTH:
+        return [OUTPUT_FORMAT_CSV, OUTPUT_FORMAT_EXCEL]
+    else:
+        return [output_format]
+
+
+def generate_output_file_path(
+    output_dir: Path, run_mode: str, file_format: str
+) -> Path:
+    """Generate output file path for a given run mode and format.
+
+    Args:
+        output_dir: Directory to save the file
+        run_mode: Run mode name (e.g., 'account', 'bu', 'service')
+        file_format: File format ('csv' or 'excel')
+
+    Returns:
+        Path object for the output file
+    """
+    file_extension = ".xlsx" if file_format == OUTPUT_FORMAT_EXCEL else ".csv"
+    return output_dir / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+
+
+def _process_account_mode(
+    run_mode: str,
+    cost_explorer_client,
+    organizations_client,
+    start_date: date,
+    end_date: date,
+    top_cost_count: int,
+    output_dir: Path,
+    output_formats: list[str],
+    analysis_data: dict,
+):
+    """Process account-based cost reporting.
+
+    Args:
+        run_mode: The run mode (account or account-daily)
+        cost_explorer_client: AWS Cost Explorer client
+        organizations_client: AWS Organizations client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        top_cost_count: Number of top accounts to include
+        output_dir: Directory for output files
+        output_formats: List of formats to generate
+        analysis_data: Dictionary to store data for analysis file
+    """
+    is_daily = run_mode == RUN_MODE_ACCOUNT_DAILY
+
+    cost_matrix = calculate_account_costs(
+        cost_explorer_client,
+        organizations_client,
+        start_date,
+        end_date,
+        top_cost_count,
+        daily_average=is_daily,
+    )
+
+    account_names = get_account_names(cost_matrix)
+
+    # Store for analysis file (only for non-daily mode)
+    if run_mode == RUN_MODE_ACCOUNT:
+        analysis_data[RUN_MODE_ACCOUNT] = (cost_matrix, account_names)
+
+    # Generate individual reports if requested
+    for file_format in output_formats:
+        export_file = generate_output_file_path(output_dir, run_mode, file_format)
+        export_report(
+            export_file,
+            cost_matrix,
+            account_names,
+            group_by_type="account",
+            output_format=file_format,
+        )
+
+
+def _process_business_unit_mode(
+    run_mode: str,
+    cost_explorer_client,
+    start_date: date,
+    end_date: date,
+    account_groups: dict,
+    shared_services_allocations: dict | None,
+    output_dir: Path,
+    output_formats: list[str],
+    analysis_data: dict,
+):
+    """Process business unit-based cost reporting.
+
+    Args:
+        run_mode: The run mode (bu or bu-daily)
+        cost_explorer_client: AWS Cost Explorer client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        account_groups: Dictionary of business unit account groups
+        shared_services_allocations: Optional shared services allocation percentages
+        output_dir: Directory for output files
+        output_formats: List of formats to generate
+        analysis_data: Dictionary to store data for analysis file
+    """
+    is_daily = run_mode == RUN_MODE_BUSINESS_UNIT_DAILY
+
+    cost_matrix = calculate_business_unit_costs(
+        cost_explorer_client,
+        start_date,
+        end_date,
+        account_groups,
+        shared_services_allocations,
+        daily_average=is_daily,
+    )
+
+    # Store for analysis file (only for non-daily mode)
+    if run_mode == RUN_MODE_BUSINESS_UNIT:
+        analysis_data[RUN_MODE_BUSINESS_UNIT] = (cost_matrix, account_groups)
+
+    # Generate individual reports if requested
+    for file_format in output_formats:
+        export_file = generate_output_file_path(output_dir, run_mode, file_format)
+        export_report(
+            export_file,
+            cost_matrix,
+            account_groups,
+            group_by_type="bu",
+            output_format=file_format,
+        )
+
+
+def _process_service_mode(
+    run_mode: str,
+    cost_explorer_client,
+    start_date: date,
+    end_date: date,
+    service_aggregations: dict,
+    top_cost_count: int,
+    output_dir: Path,
+    output_formats: list[str],
+    analysis_data: dict,
+):
+    """Process service-based cost reporting.
+
+    Args:
+        run_mode: The run mode (service or service-daily)
+        cost_explorer_client: AWS Cost Explorer client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        service_aggregations: Dictionary of service aggregation rules
+        top_cost_count: Number of top services to include
+        output_dir: Directory for output files
+        output_formats: List of formats to generate
+        analysis_data: Dictionary to store data for analysis file
+    """
+    is_daily = run_mode == RUN_MODE_SERVICE_DAILY
+
+    cost_matrix = calculate_service_costs(
+        cost_explorer_client,
+        start_date,
+        end_date,
+        service_aggregations,
+        top_cost_count=top_cost_count,
+        daily_average=is_daily,
+    )
+
+    service_list = get_service_list(cost_matrix, service_aggregations)
+
+    # Store for analysis file (only for non-daily mode)
+    if run_mode == RUN_MODE_SERVICE:
+        analysis_data[RUN_MODE_SERVICE] = (cost_matrix, service_list)
+
+    # Generate individual reports if requested
+    for file_format in output_formats:
+        export_file = generate_output_file_path(output_dir, run_mode, file_format)
+        export_report(
+            export_file,
+            cost_matrix,
+            service_list,
+            group_by_type="service",
+            output_format=file_format,
+        )
+
+
+def _generate_analysis_file(output_dir: Path, analysis_data: dict):
+    """Generate the combined analysis Excel file if all required data is available.
+
+    Args:
+        output_dir: Directory for output files
+        analysis_data: Dictionary containing data for bu, service, and account modes
+    """
+    # Check if we have all three required data types
+    if not all(analysis_data.values()):
+        LOGGER.info(
+            "Skipping analysis file generation - not all required modes were run"
+        )
+        return
+
+    LOGGER.info("Generating analysis Excel file with charts")
+
+    analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
+
+    bu_matrix, bu_groups = analysis_data[RUN_MODE_BUSINESS_UNIT]
+    service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
+    account_matrix, account_names = analysis_data[RUN_MODE_ACCOUNT]
+
+    export_analysis_excel(
+        analysis_file,
+        bu_matrix,
+        bu_groups,
+        service_matrix,
+        service_list,
+        account_matrix,
+        account_names,
+    )
+
+    LOGGER.info(f"Analysis file created: {analysis_file}")
+
+
+def main():
+    """Main entry point for the AWS Monthly Costs tool."""
+    if sys.version_info < (3, 12):
+        raise RuntimeError("Python 3.12 or higher is required")
+
+    # Parse command-line arguments
+    args = parse_arguments()
+
+    # Configure logging
+    configure_logging(debug_logging=args.debug_logging, info_logging=args.info_logging)
+
+    LOGGER.debug(f"Configuration Arguments: {args}")
+
+    # Resolve file paths
+    aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
+    config_file_path = Path(args.config_file).absolute()
+
+    # Load configuration
+    config_settings = load_configuration(config_file_path)
+    account_groups = config_settings["account-groups"]
+    shared_services_allocations = (
+        config_settings["ss-allocations"] if args.include_shared_services else None
+    )
+    service_aggregations = config_settings["service-aggregations"]
+    top_costs_limits = config_settings["top-costs-count"]
+
+    # Parse time period
+    start_date, end_date = parse_time_period(args.time_period)
+    LOGGER.debug(f"Time period: {start_date} to {end_date}")
+
+    # Create and validate AWS session
+    aws_session = create_aws_session(args.profile, aws_config_file_path)
+
+    # Create AWS clients
+    cost_explorer_client = aws_session.client("ce")
+
+    # Only create organizations client if needed for account-related run modes
+    organizations_client = None
+    if any(
+        mode in [RUN_MODE_ACCOUNT, RUN_MODE_ACCOUNT_DAILY] for mode in args.run_modes
+    ):
+        organizations_client = aws_session.client("organizations")
+
+    # Create output directory
     output_dir = Path(DEFAULT_OUTPUT_FOLDER)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine which formats to generate for individual reports
-    # If output_format is None, don't generate individual reports (only analysis Excel)
-    if output_format is None:
-        formats_to_generate = []
-    elif output_format == "both":
-        formats_to_generate = ["csv", "excel"]
-    else:
-        formats_to_generate = [output_format]
+    # Determine output formats for individual reports
+    output_formats = determine_output_formats(args.output_format)
 
-    # Store data for analysis Excel file
-    analysis_data = {"bu": None, "service": None, "account": None}
+    # Store data for analysis Excel file (requires account, bu, and service modes)
+    analysis_data = {
+        RUN_MODE_BUSINESS_UNIT: None,
+        RUN_MODE_SERVICE: None,
+        RUN_MODE_ACCOUNT: None,
+    }
 
-    for run_mode in run_modes:
-        match run_mode:
-            # by Account
-            case "account":
-                cost_matrix = accountcosts(
-                    ce_client,
-                    o_client,
-                    start_date,
-                    end_date,
-                    top_costs_counts["account"] + 1,
-                )
+    # Process each run mode
+    for run_mode in args.run_modes:
+        LOGGER.info(f"Processing run mode: {run_mode}")
 
-                account_names = accountnames(cost_matrix)
-                # Store for analysis file
-                analysis_data["account"] = (cost_matrix, account_names)
+        if run_mode in [RUN_MODE_ACCOUNT, RUN_MODE_ACCOUNT_DAILY]:
+            _process_account_mode(
+                run_mode,
+                cost_explorer_client,
+                organizations_client,
+                start_date,
+                end_date,
+                top_costs_limits["account"] + 1,
+                output_dir,
+                output_formats,
+                analysis_data,
+            )
+        elif run_mode in [RUN_MODE_BUSINESS_UNIT, RUN_MODE_BUSINESS_UNIT_DAILY]:
+            _process_business_unit_mode(
+                run_mode,
+                cost_explorer_client,
+                start_date,
+                end_date,
+                account_groups,
+                shared_services_allocations,
+                output_dir,
+                output_formats,
+                analysis_data,
+            )
+        elif run_mode in [RUN_MODE_SERVICE, RUN_MODE_SERVICE_DAILY]:
+            _process_service_mode(
+                run_mode,
+                cost_explorer_client,
+                start_date,
+                end_date,
+                service_aggregations,
+                top_costs_limits["service"] + 1,
+                output_dir,
+                output_formats,
+                analysis_data,
+            )
 
-                for fmt in formats_to_generate:
-                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
-                    export_file = (
-                        output_dir
-                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
-                    )
-                    exportreport(
-                        export_file,
-                        cost_matrix,
-                        account_names,
-                        group_by_type="account",
-                        output_format=fmt,
-                    )
-            case "account-daily":
-                cost_matrix = accountcosts(
-                    ce_client,
-                    o_client,
-                    start_date,
-                    end_date,
-                    top_costs_counts["account"] + 1,
-                    daily_average=True,
-                )
-
-                account_names = accountnames(cost_matrix)
-
-                for fmt in formats_to_generate:
-                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
-                    export_file = (
-                        output_dir
-                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
-                    )
-                    exportreport(
-                        export_file,
-                        cost_matrix,
-                        account_names,
-                        group_by_type="account",
-                        output_format=fmt,
-                    )
-            # by Bu
-            case "bu":
-                cost_matrix = bucosts(
-                    ce_client,
-                    start_date,
-                    end_date,
-                    account_list,
-                    ss_allocation_percentages,
-                )
-                # Store for analysis file
-                analysis_data["bu"] = (cost_matrix, account_list)
-
-                for fmt in formats_to_generate:
-                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
-                    export_file = (
-                        output_dir
-                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
-                    )
-                    exportreport(
-                        export_file,
-                        cost_matrix,
-                        account_list,
-                        group_by_type="bu",
-                        output_format=fmt,
-                    )
-            case "bu-daily":
-                cost_matrix = bucosts(
-                    ce_client,
-                    start_date,
-                    end_date,
-                    account_list,
-                    ss_allocation_percentages,
-                    daily_average=True,
-                )
-                for fmt in formats_to_generate:
-                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
-                    export_file = (
-                        output_dir
-                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
-                    )
-                    exportreport(
-                        export_file,
-                        cost_matrix,
-                        account_list,
-                        group_by_type="bu",
-                        output_format=fmt,
-                    )
-            # by Service
-            case "service":
-                cost_matrix = servicecosts(
-                    ce_client,
-                    start_date,
-                    end_date,
-                    service_aggregation,
-                    top_cost_count=top_costs_counts["service"] + 1,
-                )
-
-                service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
-                # Store for analysis file
-                analysis_data["service"] = (cost_matrix, service_list_agg)
-
-                for fmt in formats_to_generate:
-                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
-                    export_file = (
-                        output_dir
-                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
-                    )
-                    exportreport(
-                        export_file,
-                        cost_matrix,
-                        service_list_agg,
-                        group_by_type="service",
-                        output_format=fmt,
-                    )
-            case "service-daily":
-                cost_matrix = servicecosts(
-                    ce_client,
-                    start_date,
-                    end_date,
-                    service_aggregation,
-                    top_cost_count=top_costs_counts["service"] + 1,
-                    daily_average=True,
-                )
-
-                service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
-
-                for fmt in formats_to_generate:
-                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
-                    export_file = (
-                        output_dir
-                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
-                    )
-                    exportreport(
-                        export_file,
-                        cost_matrix,
-                        service_list_agg,
-                        group_by_type="service",
-                        output_format=fmt,
-                    )
-
-    # Generate analysis Excel file if we have all three data types
-    if all(analysis_data.values()):
-        LOGGER.info("Generating analysis Excel file with charts")
-
-        analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
-
-        bu_matrix, bu_list = analysis_data["bu"]
-        service_matrix, service_list = analysis_data["service"]
-        account_matrix, account_list = analysis_data["account"]
-
-        export_analysis_excel(
-            analysis_file,
-            bu_matrix,
-            bu_list,
-            service_matrix,
-            service_list,
-            account_matrix,
-            account_list,
-        )
-        LOGGER.info(f"Analysis file created: {analysis_file}")
+    # Generate analysis Excel file if all required data is available
+    _generate_analysis_file(output_dir, analysis_data)
 
 
 if __name__ == "__main__":

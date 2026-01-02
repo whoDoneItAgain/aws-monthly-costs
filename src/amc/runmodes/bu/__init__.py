@@ -66,15 +66,28 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
     return cost_matrix
 
 
-def bucosts(
-    ce_client,
+def calculate_business_unit_costs(
+    cost_explorer_client,
     start_date,
     end_date,
-    account_list,
-    ss_allocation_percentages,
+    account_groups,
+    shared_services_allocations,
     daily_average=False,
 ):
-    ss_get_cost_and_usage = ce_client.get_cost_and_usage(
+    """Calculate AWS costs grouped by business unit.
+
+    Args:
+        cost_explorer_client: AWS Cost Explorer client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        account_groups: Dictionary of business unit account groups
+        shared_services_allocations: Optional shared services allocation percentages
+        daily_average: If True, calculate daily average costs
+
+    Returns:
+        Dictionary of cost data organized by month and business unit
+    """
+    ss_get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
             "End": end_date.strftime("%Y-%m-%d"),
@@ -83,7 +96,7 @@ def bucosts(
         Filter={
             "Dimensions": {
                 "Key": "LINKED_ACCOUNT",
-                "Values": list((account_list["ss"]).keys()),
+                "Values": list((account_groups["ss"]).keys()),
                 "MatchOptions": ["EQUALS"],
             }
         },
@@ -91,7 +104,7 @@ def bucosts(
         GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
     )
 
-    account_get_cost_and_usage = ce_client.get_cost_and_usage(
+    account_get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
             "End": end_date.strftime("%Y-%m-%d"),
@@ -101,7 +114,7 @@ def bucosts(
             "Not": {
                 "Dimensions": {
                     "Key": "LINKED_ACCOUNT",
-                    "Values": list((account_list["ss"]).keys()),
+                    "Values": list((account_groups["ss"]).keys()),
                     "MatchOptions": ["EQUALS"],
                 }
             }
@@ -125,11 +138,11 @@ def bucosts(
     LOGGER.debug(ss_account_costs)
     LOGGER.debug(bu_account_costs)
 
-    ss_cost_matrix = _build_cost_matrix(account_list, ss_account_costs)
+    ss_cost_matrix = _build_cost_matrix(account_groups, ss_account_costs)
     bu_cost_matrix = _build_cost_matrix(
-        account_list,
+        account_groups,
         bu_account_costs,
-        ss_allocation_percentages,
+        shared_services_allocations,
         ss_cost_matrix,
     )
 

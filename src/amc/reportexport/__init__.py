@@ -10,7 +10,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 LOGGER = logging.getLogger(__name__)
 
 
-def exportreport(
+def export_report(
     export_file, cost_matrix, group_list, group_by_type, output_format="csv"
 ):
     """Export cost report to CSV or Excel format.
@@ -170,7 +170,9 @@ def export_analysis_excel(
     # Create analysis sheets
     ws_bu = wb.create_sheet("BU Costs")
     ws_bu_daily = wb.create_sheet("BU Daily Average")
-    _create_bu_analysis_tables(ws_bu, ws_bu_daily, bu_cost_matrix, bu_group_list, last_2_months)
+    _create_bu_analysis_tables(
+        ws_bu, ws_bu_daily, bu_cost_matrix, bu_group_list, last_2_months
+    )
 
     ws_service = wb.create_sheet("Top Services")
     ws_service_daily = wb.create_sheet("Top Services Daily Avg")
@@ -247,11 +249,11 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     for bu in bus:
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
         val2 = cost_matrix[last_2_months[1]].get(bu, 0)
-        
+
         # Skip this BU if both current and previous months are zero
         if val1 == 0 and val2 == 0:
             continue
-        
+
         ws.cell(row, 1, bu)
 
         diff = abs(val2 - val1)
@@ -285,14 +287,14 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     _add_conditional_formatting(
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
-    
+
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
 
     # Daily Average section - on separate sheet
     ws_daily["A1"] = "BU Daily Average"
     ws_daily["A1"].font = Font(bold=True, size=16)
-    
+
     row = 3
 
     ws_daily.cell(row, 1, "Month").font = header_font
@@ -331,11 +333,11 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     for bu in bus:
         val1_monthly = cost_matrix[last_2_months[0]].get(bu, 0)
         val2_monthly = cost_matrix[last_2_months[1]].get(bu, 0)
-        
+
         # Skip this BU if both current and previous months are zero
         if val1_monthly == 0 and val2_monthly == 0:
             continue
-        
+
         ws_daily.cell(row, 1, bu)
 
         val1 = val1_monthly / days1
@@ -343,8 +345,12 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         diff = abs(val2 - val1)
         pct_diff = diff / val1 if val1 > 0 else 0
 
-        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 2, val1
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 3, val2
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
@@ -357,8 +363,12 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     pct_diff = diff / total1_daily if total1_daily > 0 else 0
 
     ws_daily.cell(row, 1, "total")
-    ws_daily.cell(row, 2, total1_daily).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-    ws_daily.cell(row, 3, total2_daily).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+    ws_daily.cell(
+        row, 2, total1_daily
+    ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+    ws_daily.cell(
+        row, 3, total2_daily
+    ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
     ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
     ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
@@ -366,16 +376,18 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
     # Add conditional formatting for daily average difference and % difference columns
     _add_conditional_formatting(
-        ws_daily, f"D{daily_start_row}:D{daily_end_row}", f"E{daily_start_row}:E{daily_end_row}"
+        ws_daily,
+        f"D{daily_start_row}:D{daily_end_row}",
+        f"E{daily_start_row}:E{daily_end_row}",
     )
-    
+
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws_daily)
 
 
 def _add_conditional_formatting(ws, diff_range, pct_range):
     """Add conditional formatting to difference and % difference columns.
-    
+
     Args:
         ws: Worksheet
         diff_range: Cell range for Difference column (e.g., "D4:D10")
@@ -399,20 +411,20 @@ def _add_conditional_formatting(ws, diff_range, pct_range):
 
     # For difference columns: Green when current (C) < previous (B), Red when current > previous
     start_row = int(diff_range.split(":")[0][1:])
-    
+
     green_rule_diff = Rule(type="expression", dxf=green_dxf)
     green_rule_diff.formula = [f"C{start_row}<B{start_row}"]
-    
+
     red_rule_diff = Rule(type="expression", dxf=red_dxf)
     red_rule_diff.formula = [f"C{start_row}>B{start_row}"]
 
     ws.conditional_formatting.add(diff_range, green_rule_diff)
     ws.conditional_formatting.add(diff_range, red_rule_diff)
-    
+
     # Same for % difference columns
     green_rule_pct = Rule(type="expression", dxf=green_dxf)
     green_rule_pct.formula = [f"C{start_row}<B{start_row}"]
-    
+
     red_rule_pct = Rule(type="expression", dxf=red_dxf)
     red_rule_pct.formula = [f"C{start_row}>B{start_row}"]
 
@@ -433,7 +445,7 @@ def _auto_adjust_column_widths(ws):
                         cell_length = 15  # Fixed width for currency/percentage
                     else:
                         cell_length = len(str(cell.value))
-                    
+
                     if cell_length > max_length:
                         max_length = cell_length
             except (AttributeError, TypeError):
@@ -565,7 +577,7 @@ def _create_service_analysis_tables(
     chart.title = "Top Services Distribution"
     chart.style = 10
     chart.height = 15  # Increase height to show all labels
-    chart.width = 20   # Increase width to show all labels
+    chart.width = 20  # Increase width to show all labels
 
     # Use data from monthly totals including "Other" (not including column headers)
     labels = Reference(
@@ -577,20 +589,21 @@ def _create_service_analysis_tables(
 
     chart.add_data(data, titles_from_data=False)
     chart.set_categories(labels)
-    
+
     # Configure data labels to show category name and percentage only on the pie slices
     from openpyxl.chart.label import DataLabelList
+
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
     chart.dataLabels.showVal = False  # Don't show value
     chart.dataLabels.showPercent = True
     chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
-    
+
     # Remove the legend - labels are shown on pie slices
     chart.legend = None
 
     ws.add_chart(chart, "H3")
-    
+
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
 
@@ -605,7 +618,7 @@ def _create_service_analysis_tables(
 
     ws_daily["A1"] = "Top Services Daily Average"
     ws_daily["A1"].font = Font(bold=True, size=16)
-    
+
     row = 3
 
     ws_daily.cell(row, 1, "Month").font = header_font
@@ -639,8 +652,12 @@ def _create_service_analysis_tables(
         diff = abs(val2 - val1)
         pct_diff = diff / val1 if val1 > 0 else 0
 
-        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 2, val1
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 3, val2
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
@@ -650,9 +667,11 @@ def _create_service_analysis_tables(
 
     # Add conditional formatting for service daily average difference and % difference columns
     _add_conditional_formatting(
-        ws_daily, f"D{daily_start_row}:D{daily_end_row}", f"E{daily_start_row}:E{daily_end_row}"
+        ws_daily,
+        f"D{daily_start_row}:D{daily_end_row}",
+        f"E{daily_start_row}:E{daily_end_row}",
     )
-    
+
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws_daily)
 
@@ -779,7 +798,7 @@ def _create_account_analysis_tables(
     chart.title = "Top Accounts Distribution"
     chart.style = 10
     chart.height = 15  # Increase height to show all labels
-    chart.width = 20   # Increase width to show all labels
+    chart.width = 20  # Increase width to show all labels
 
     # Use data from monthly totals including "Other" (not including column headers)
     labels = Reference(
@@ -791,20 +810,21 @@ def _create_account_analysis_tables(
 
     chart.add_data(data, titles_from_data=False)
     chart.set_categories(labels)
-    
+
     # Configure data labels to show category name and percentage only on the pie slices
     from openpyxl.chart.label import DataLabelList
+
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
     chart.dataLabels.showVal = False  # Don't show value
     chart.dataLabels.showPercent = True
     chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
-    
+
     # Remove the legend - labels are shown on pie slices
     chart.legend = None
 
     ws.add_chart(chart, "H3")
-    
+
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
 
@@ -819,7 +839,7 @@ def _create_account_analysis_tables(
 
     ws_daily["A1"] = "Top Accounts Daily Average"
     ws_daily["A1"].font = Font(bold=True, size=16)
-    
+
     row = 3
 
     ws_daily.cell(row, 1, "Month").font = header_font
@@ -853,8 +873,12 @@ def _create_account_analysis_tables(
         diff = abs(val2 - val1)
         pct_diff = diff / val1 if val1 > 0 else 0
 
-        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 2, val1
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 3, val2
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
@@ -864,8 +888,10 @@ def _create_account_analysis_tables(
 
     # Add conditional formatting for account daily average difference and % difference columns
     _add_conditional_formatting(
-        ws_daily, f"D{daily_start_row}:D{daily_end_row}", f"E{daily_start_row}:E{daily_end_row}"
+        ws_daily,
+        f"D{daily_start_row}:D{daily_end_row}",
+        f"E{daily_start_row}:E{daily_end_row}",
     )
-    
+
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws_daily)
