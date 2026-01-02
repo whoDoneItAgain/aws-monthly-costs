@@ -1,6 +1,6 @@
 import calendar
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,53 +85,43 @@ def calculate_business_unit_costs(
     Returns:
         Dictionary of cost data organized by month and business unit
     """
-    ss_get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
+    # Make single API call for all accounts (optimization: reduced from 2 calls to 1)
+    all_costs_response = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
             "End": end_date.strftime("%Y-%m-%d"),
         },
         Granularity="MONTHLY",
-        Filter={
-            "Dimensions": {
-                "Key": "LINKED_ACCOUNT",
-                "Values": list((account_groups["ss"]).keys()),
-                "MatchOptions": ["EQUALS"],
-            }
-        },
         Metrics=["UnblendedCost"],
         GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
     )
 
-    account_get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
-        TimePeriod={
-            "Start": start_date.strftime("%Y-%m-%d"),
-            "End": end_date.strftime("%Y-%m-%d"),
-        },
-        Granularity="MONTHLY",
-        Filter={
-            "Not": {
-                "Dimensions": {
-                    "Key": "LINKED_ACCOUNT",
-                    "Values": list((account_groups["ss"]).keys()),
-                    "MatchOptions": ["EQUALS"],
-                }
-            }
-        },
-        Metrics=["UnblendedCost"],
-        GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
-    )
+    LOGGER.debug(all_costs_response["ResultsByTime"])
 
-    LOGGER.debug(ss_get_cost_and_usage["ResultsByTime"])
-    LOGGER.debug(account_get_cost_and_usage["ResultsByTime"])
-
-    ss_account_costs = _build_costs(
-        ss_get_cost_and_usage,
+    # Build all costs at once
+    all_account_costs = _build_costs(
+        all_costs_response,
         daily_average,
     )
-    bu_account_costs = _build_costs(
-        account_get_cost_and_usage,
-        daily_average,
-    )
+
+    # Separate SS accounts from BU accounts using set for O(1) lookup
+    ss_account_ids = set(account_groups["ss"].keys())
+
+    # Split costs into shared services and business unit accounts
+    ss_account_costs = {}
+    bu_account_costs = {}
+
+    for month, costs in all_account_costs.items():
+        ss_account_costs[month] = {
+            account_id: cost
+            for account_id, cost in costs.items()
+            if account_id in ss_account_ids
+        }
+        bu_account_costs[month] = {
+            account_id: cost
+            for account_id, cost in costs.items()
+            if account_id not in ss_account_ids
+        }
 
     LOGGER.debug(ss_account_costs)
     LOGGER.debug(bu_account_costs)

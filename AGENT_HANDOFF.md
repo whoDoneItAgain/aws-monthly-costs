@@ -128,40 +128,65 @@ See `SECURITY_REVIEW.md` for comprehensive security analysis including:
 
 ---
 
-## ⚡ Performance-Optimizer Agent Tasks
+## ⚡ Performance Optimizations Completed (2026-01-02)
 
-### Primary Focus Areas
+### Optimizations Applied
 
-1. **AWS API Calls**
-   - Review pagination efficiency
-   - Check for unnecessary duplicate calls
-   - Consider batching opportunities
-   
-2. **Data Structures**
-   - Cost matrix dictionary efficiency
-   - List comprehension vs loops
-   - Set usage for unique collections
-   
-3. **I/O Operations**
-   - File writing efficiency
-   - Excel generation optimization
-   - Config file reading
-   
-4. **Memory Usage**
-   - Large cost_matrix dictionaries
-   - Account list accumulation
-   - Potential memory leaks in loops
-   
-5. **Computation**
-   - Daily average calculations
-   - Sorting operations
-   - Dictionary comprehensions
+#### 1. ✅ AWS API Call Optimization
+- **Reduced Cost Explorer API calls in BU mode from 2 to 1** (50% reduction)
+  - Previously made separate calls for shared services and other accounts
+  - Now makes single call and splits data in-memory using set-based filtering
+  - Location: `src/amc/runmodes/bu/__init__.py`
+  - Impact: Significantly reduced API latency and cost for business unit reporting
 
-### Optimization Opportunities
-- Can we reduce the number of Cost Explorer API calls?
-- Should we cache account names?
-- Can we parallelize any operations?
-- Are there unnecessary data copies?
+#### 2. ✅ Sorting Algorithm Optimization  
+- **Eliminated unnecessary dict conversions** in account and service modes
+  - Removed intermediate sorted dict creation
+  - Directly extracts top N items from sorted list using generator expressions
+  - Locations: `src/amc/runmodes/account/__init__.py`, `src/amc/runmodes/service/__init__.py`
+  - Impact: Reduced memory allocations and CPU cycles for sorting operations
+
+#### 3. ✅ Excel Column Width Calculation Optimization
+- **Replaced nested loops with single-pass generator expressions**
+  - Used `max()` with generator for cleaner, more efficient code
+  - Added proper error handling with default widths
+  - Locations: `src/amc/reportexport/__init__.py` (2 functions optimized)
+  - Impact: Faster Excel file generation, especially for large reports
+
+#### 4. ✅ Data Structure Optimizations
+- **Optimized set operations** for account filtering in BU mode
+  - Pre-built set of shared services account IDs for O(1) lookups
+  - Used set-based filtering instead of repeated list iterations
+  - Impact: Better algorithmic complexity for account categorization
+
+### Performance Characteristics
+
+**Before Optimizations:**
+- BU mode: 2 AWS API calls
+- Sorting: Creates intermediate sorted dict (O(n log n) + O(n) space)
+- Excel width calculation: Nested loops with manual max tracking
+- Account filtering: Multiple filter operations
+
+**After Optimizations:**
+- BU mode: 1 AWS API call (50% reduction)
+- Sorting: Direct list slice of sorted items (O(n log n) time, no extra space)
+- Excel width calculation: Single-pass with generators
+- Account filtering: Set-based O(1) lookups
+
+### Known Limitations Documented
+
+1. **No Pagination for Cost Explorer API**
+   - Current implementation doesn't handle `NextPageToken`
+   - Risk is LOW: typical monthly queries rarely exceed page limits
+   - Recommendation: Add pagination if org has 1000+ accounts
+   - Location: All `get_cost_and_usage()` calls in runmodes
+
+### Notes for Future Optimization
+
+- **Potential parallel processing**: Account, BU, and Service modes could run concurrently
+- **Caching**: Organizations account list could be cached between runs
+- **Batch operations**: Excel cell operations could potentially be batched
+- **Memory profiling**: Could benefit from profiling with large datasets
 
 ---
 

@@ -152,7 +152,7 @@ def load_configuration(config_file_path: Path) -> dict:
 
     Returns:
         Dictionary containing configuration settings
-    
+
     Raises:
         FileNotFoundError: If config file doesn't exist
         ValueError: If config file is missing required keys or is invalid
@@ -164,29 +164,37 @@ def load_configuration(config_file_path: Path) -> dict:
         raise FileNotFoundError(f"Configuration file not found: {config_file_path}")
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML in configuration file: {e}")
-    
+
     if config is None:
         raise ValueError(f"Configuration file is empty: {config_file_path}")
-    
+
     # Validate required keys
     required_keys = ["account-groups", "service-aggregations", "top-costs-count"]
     missing_keys = [key for key in required_keys if key not in config]
     if missing_keys:
-        raise ValueError(f"Configuration file missing required keys: {', '.join(missing_keys)}")
-    
+        raise ValueError(
+            f"Configuration file missing required keys: {', '.join(missing_keys)}"
+        )
+
     # Validate account-groups has 'ss' key
     if "ss" not in config["account-groups"]:
-        raise ValueError("Configuration file 'account-groups' must contain 'ss' (shared services) key")
-    
+        raise ValueError(
+            "Configuration file 'account-groups' must contain 'ss' (shared services) key"
+        )
+
     # Validate top-costs-count has required subkeys
     if not isinstance(config["top-costs-count"], dict):
         raise ValueError("Configuration 'top-costs-count' must be a dictionary")
-    
+
     required_top_costs_keys = ["account", "service"]
-    missing_top_costs_keys = [key for key in required_top_costs_keys if key not in config["top-costs-count"]]
+    missing_top_costs_keys = [
+        key for key in required_top_costs_keys if key not in config["top-costs-count"]
+    ]
     if missing_top_costs_keys:
-        raise ValueError(f"Configuration 'top-costs-count' missing required keys: {', '.join(missing_top_costs_keys)}")
-    
+        raise ValueError(
+            f"Configuration 'top-costs-count' missing required keys: {', '.join(missing_top_costs_keys)}"
+        )
+
     return config
 
 
@@ -198,7 +206,7 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
 
     Returns:
         Tuple of (start_date, end_date)
-    
+
     Raises:
         ValueError: If time_period_str is not in valid format
     """
@@ -216,7 +224,9 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
         try:
             time_parts = time_period_str.split("_")
             if len(time_parts) != 2:
-                raise ValueError(f"Time period must be in format 'YYYY-MM-DD_YYYY-MM-DD', got: {time_period_str}")
+                raise ValueError(
+                    f"Time period must be in format 'YYYY-MM-DD_YYYY-MM-DD', got: {time_period_str}"
+                )
             start_date = datetime.strptime(time_parts[0], "%Y-%m-%d").date()
             end_date = datetime.strptime(time_parts[1], "%Y-%m-%d").date()
         except (ValueError, IndexError) as e:

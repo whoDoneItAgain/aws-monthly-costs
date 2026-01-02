@@ -104,18 +104,19 @@ def _export_to_excel(export_file, cost_matrix, group_list, group_by_type, months
                 worksheet.cell(row=row_idx, column=col_idx, value=value)
             row_idx += 1
 
-    # Auto-adjust column widths
-    for column in worksheet.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
-        for cell in column:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except (AttributeError, TypeError):
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        worksheet.column_dimensions[column_letter].width = adjusted_width
+    # Auto-adjust column widths - optimized with single pass
+    for col_idx, column in enumerate(worksheet.columns, start=1):
+        try:
+            # Use generator expression with max() for efficiency
+            max_length = max(
+                (len(str(cell.value)) for cell in column if cell.value is not None),
+                default=0,
+            )
+            adjusted_width = min(max_length + 2, 50)
+            worksheet.column_dimensions[column[0].column_letter].width = adjusted_width
+        except (AttributeError, TypeError, ValueError):
+            # Set default width if calculation fails
+            worksheet.column_dimensions[column[0].column_letter].width = 12
 
     # Save workbook
     workbook.save(export_file)
@@ -336,7 +337,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        
+
         # Infer years for the last 2 months
         # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
         current_year = datetime.now().year
@@ -356,7 +357,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
                 # Both months are from previous year
                 year1 = current_year - 1
                 year2 = current_year - 1
-        
+
         days1 = monthrange(year1, month1_date.month)[1]
         days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
@@ -393,7 +394,9 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 4, diff
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -480,27 +483,28 @@ def _add_conditional_formatting(ws, diff_range, pct_range):
     ws.conditional_formatting.add(pct_range, red_rule_pct)
 
 
-def _auto_adjust_column_widths(ws):
-    """Auto-adjust column widths based on content."""
-    for column in ws.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
-        for cell in column:
-            try:
-                if cell.value is not None:
-                    # For numeric values with formatting, use a reasonable width
-                    if isinstance(cell.value, (int, float)):
-                        cell_length = 15  # Fixed width for currency/percentage
-                    else:
-                        cell_length = len(str(cell.value))
+def _get_cell_length(cell):
+    """Helper function to calculate cell length for column width adjustment."""
+    if cell.value is None:
+        return 0
+    # For numeric values with formatting, use a reasonable width
+    if isinstance(cell.value, (int, float)):
+        return 15  # Fixed width for currency/percentage
+    return len(str(cell.value))
 
-                    if cell_length > max_length:
-                        max_length = cell_length
-            except (AttributeError, TypeError):
-                pass
-        # Add extra padding and ensure minimum width
-        adjusted_width = min(max(max_length + 3, 12), 50)
-        ws.column_dimensions[column_letter].width = adjusted_width
+
+def _auto_adjust_column_widths(ws):
+    """Auto-adjust column widths based on content - optimized."""
+    for column in ws.columns:
+        try:
+            # Use generator expression with max() for efficiency
+            max_length = max((_get_cell_length(cell) for cell in column), default=0)
+            # Add extra padding and ensure minimum width
+            adjusted_width = min(max(max_length + 3, 12), 50)
+            ws.column_dimensions[column[0].column_letter].width = adjusted_width
+        except (AttributeError, TypeError, ValueError):
+            # Set default width if calculation fails
+            ws.column_dimensions[column[0].column_letter].width = 12
 
 
 def _create_service_analysis_tables(
@@ -671,7 +675,7 @@ def _create_service_analysis_tables(
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        
+
         # Infer years for the last 2 months
         # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
         current_year = datetime.now().year
@@ -691,7 +695,7 @@ def _create_service_analysis_tables(
                 # Both months are from previous year
                 year1 = current_year - 1
                 year2 = current_year - 1
-        
+
         days1 = monthrange(year1, month1_date.month)[1]
         days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
@@ -745,7 +749,9 @@ def _create_service_analysis_tables(
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 4, diff
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -931,7 +937,7 @@ def _create_account_analysis_tables(
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        
+
         # Infer years for the last 2 months
         # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
         current_year = datetime.now().year
@@ -951,7 +957,7 @@ def _create_account_analysis_tables(
                 # Both months are from previous year
                 year1 = current_year - 1
                 year2 = current_year - 1
-        
+
         days1 = monthrange(year1, month1_date.month)[1]
         days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
@@ -1005,7 +1011,9 @@ def _create_account_analysis_tables(
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 4, diff
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
