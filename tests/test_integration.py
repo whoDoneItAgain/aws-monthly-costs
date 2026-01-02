@@ -1,5 +1,5 @@
 """Integration tests for the AWS Monthly Costs application."""
-import tempfile
+
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -61,7 +61,9 @@ class TestEndToEndIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 }
@@ -100,7 +102,6 @@ class TestEndToEndIntegration:
         """Test account mode integration with mocked AWS clients."""
         from amc.__main__ import (
             _process_account_mode,
-            create_aws_session,
             load_configuration,
         )
 
@@ -109,7 +110,8 @@ class TestEndToEndIntegration:
         with open(config_file, "w") as f:
             yaml.safe_dump(sample_config, f)
 
-        config = load_configuration(config_file)
+        # Load configuration to verify it's valid (not used, just validated)
+        _config = load_configuration(config_file)
 
         # Mock AWS clients
         mock_ce = MagicMock()
@@ -120,7 +122,9 @@ class TestEndToEndIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 }
@@ -168,11 +172,15 @@ class TestEndToEndIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["123456789015"],
-                            "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
@@ -215,11 +223,15 @@ class TestEndToEndIntegration:
                     "Groups": [
                         {
                             "Keys": ["Amazon EC2"],
-                            "Metrics": {"UnblendedCost": {"Amount": "800.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "800.00", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["Amazon S3"],
-                            "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
@@ -337,7 +349,9 @@ class TestCrossYearBoundaryIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 },
@@ -346,7 +360,9 @@ class TestCrossYearBoundaryIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 },
@@ -378,11 +394,15 @@ class TestSharedServicesAllocationIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["123456789015"],
-                            "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
@@ -414,19 +434,27 @@ class TestSharedServicesAllocationIntegration:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["123456789013"],
-                            "Metrics": {"UnblendedCost": {"Amount": "500.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.00", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["123456789014"],
-                            "Metrics": {"UnblendedCost": {"Amount": "300.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "300.00", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["123456789015"],
-                            "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }

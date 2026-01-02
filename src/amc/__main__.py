@@ -253,7 +253,7 @@ def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Se
     aws_config.read(aws_config_file_path)
 
     if not aws_config.has_section(f"profile {aws_profile}"):
-        raise Exception(
+        raise ValueError(
             f"AWS profile '{aws_profile}' does not exist in config file: {aws_config_file_path}"
         )
 
@@ -506,8 +506,8 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
 
 def main():
     """Main entry point for the AWS Monthly Costs tool."""
-    if sys.version_info < (3, 12):
-        raise RuntimeError("Python 3.12 or higher is required")
+    if sys.version_info < (3, 10):
+        raise RuntimeError("Python 3.10 or higher is required")
 
     # Parse command-line arguments
     args = parse_arguments()

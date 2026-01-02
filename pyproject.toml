@@ -12,7 +12,7 @@ readme = {file = ["README.md"], content-type = "text/markdown"}
 [project]
 name = "aws-monthly-costs"
 description = "Retrieves AWS Monthly Costs"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 authors = [
   {email = "12127434+whoDoneItAgain@users.noreply.github.com"},
   {name = "whoDoneItAgain"},
@@ -23,7 +23,11 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 dynamic = [

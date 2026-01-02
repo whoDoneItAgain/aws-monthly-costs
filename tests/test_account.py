@@ -1,8 +1,7 @@
 """Unit tests for amc.runmodes.account module."""
-from datetime import date
-from unittest.mock import MagicMock
 
-import pytest
+from datetime import date
+
 
 from amc.runmodes.account import (
     _build_cost_matrix,
@@ -15,19 +14,27 @@ from amc.runmodes.account import (
 class TestBuildCosts:
     """Tests for _build_costs function."""
 
-    def test_build_costs_basic(self, sample_cost_and_usage_response, sample_account_list):
+    def test_build_costs_basic(
+        self, sample_cost_and_usage_response, sample_account_list
+    ):
         """Test building costs from API response."""
-        result = _build_costs(sample_cost_and_usage_response, sample_account_list, daily_average=False)
-        
+        result = _build_costs(
+            sample_cost_and_usage_response, sample_account_list, daily_average=False
+        )
+
         assert "Jan" in result
         assert "Feb" in result
         assert "Production Account" in result["Jan"]
         assert result["Jan"]["Production Account"] == 1000.50
 
-    def test_build_costs_daily_average(self, sample_cost_and_usage_response, sample_account_list):
+    def test_build_costs_daily_average(
+        self, sample_cost_and_usage_response, sample_account_list
+    ):
         """Test building costs with daily average."""
-        result = _build_costs(sample_cost_and_usage_response, sample_account_list, daily_average=True)
-        
+        result = _build_costs(
+            sample_cost_and_usage_response, sample_account_list, daily_average=True
+        )
+
         # January has 31 days in 2024
         expected_daily = 1000.50 / 31
         assert "Jan" in result
@@ -43,15 +50,19 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "2900.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "2900.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 }
             ]
         }
-        
-        result = _build_costs(leap_year_response, sample_account_list, daily_average=True)
-        
+
+        result = _build_costs(
+            leap_year_response, sample_account_list, daily_average=True
+        )
+
         # 2900 / 29 days = 100
         assert abs(result["Feb"]["Production Account"] - 100.0) < 0.01
 
@@ -65,15 +76,19 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "2800.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "2800.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 }
             ]
         }
-        
-        result = _build_costs(non_leap_response, sample_account_list, daily_average=True)
-        
+
+        result = _build_costs(
+            non_leap_response, sample_account_list, daily_average=True
+        )
+
         # 2800 / 28 days = 100
         assert abs(result["Feb"]["Production Account"] - 100.0) < 0.01
 
@@ -86,15 +101,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["999999999999"],  # Account not in list
-                            "Metrics": {"UnblendedCost": {"Amount": "100.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "100.00", "Unit": "USD"}
+                            },
                         }
                     ],
                 }
             ]
         }
-        
+
         result = _build_costs(response, sample_account_list, daily_average=False)
-        
+
         # Account not in list should not appear in results
         assert "Jan" in result
         assert len(result["Jan"]) == 0
@@ -115,9 +132,9 @@ class TestBuildCostMatrix:
                 "Account B": 250.012,
             },
         }
-        
+
         result = _build_cost_matrix(account_costs)
-        
+
         assert "Jan" in result
         assert "Feb" in result
         assert result["Jan"]["Account A"] == 100.12
@@ -129,12 +146,12 @@ class TestBuildCostMatrix:
         account_costs = {
             "Jan": {
                 "Account A": 99.995,  # Should round to 100.00
-                "Account B": 0.004,   # Should round to 0.00
+                "Account B": 0.004,  # Should round to 0.00
             },
         }
-        
+
         result = _build_cost_matrix(account_costs)
-        
+
         assert result["Jan"]["Account A"] == 100.00
         assert result["Jan"]["Account B"] == 0.00
         assert result["Jan"]["total"] == 100.00
@@ -144,22 +161,30 @@ class TestBuildCostMatrix:
         account_costs = {
             "Jan": {},
         }
-        
+
         result = _build_cost_matrix(account_costs)
-        
+
         assert result["Jan"]["total"] == 0
 
 
 class TestCalculateAccountCosts:
     """Tests for calculate_account_costs function."""
 
-    def test_calculate_account_costs_basic(self, mock_cost_explorer_client, mock_organizations_client, sample_account_list, sample_cost_and_usage_response):
+    def test_calculate_account_costs_basic(
+        self,
+        mock_cost_explorer_client,
+        mock_organizations_client,
+        sample_account_list,
+        sample_cost_and_usage_response,
+    ):
         """Test calculating account costs."""
         mock_organizations_client.list_accounts.return_value = {
             "Accounts": sample_account_list
         }
-        mock_cost_explorer_client.get_cost_and_usage.return_value = sample_cost_and_usage_response
-        
+        mock_cost_explorer_client.get_cost_and_usage.return_value = (
+            sample_cost_and_usage_response
+        )
+
         result = calculate_account_costs(
             mock_cost_explorer_client,
             mock_organizations_client,
@@ -168,13 +193,15 @@ class TestCalculateAccountCosts:
             top_cost_count=5,
             daily_average=False,
         )
-        
+
         assert "Jan" in result
         assert "Feb" in result
         assert "total" in result["Jan"]
         assert "total" in result["Feb"]
 
-    def test_calculate_account_costs_pagination(self, mock_cost_explorer_client, mock_organizations_client):
+    def test_calculate_account_costs_pagination(
+        self, mock_cost_explorer_client, mock_organizations_client
+    ):
         """Test calculating account costs with paginated account list."""
         # First page
         first_page = [
@@ -185,25 +212,40 @@ class TestCalculateAccountCosts:
         second_page = [
             {"Id": "333333333333", "Name": "Account 3"},
         ]
-        
+
         mock_organizations_client.list_accounts.side_effect = [
             {"Accounts": first_page, "NextToken": "token123"},
             {"Accounts": second_page},
         ]
-        
+
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["111111111111"], "Metrics": {"UnblendedCost": {"Amount": "100.00", "Unit": "USD"}}},
-                        {"Keys": ["222222222222"], "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}}},
-                        {"Keys": ["333333333333"], "Metrics": {"UnblendedCost": {"Amount": "300.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["111111111111"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "100.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["222222222222"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["333333333333"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "300.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_account_costs(
             mock_cost_explorer_client,
             mock_organizations_client,
@@ -212,26 +254,28 @@ class TestCalculateAccountCosts:
             top_cost_count=5,
             daily_average=False,
         )
-        
+
         # Should have called list_accounts twice
         assert mock_organizations_client.list_accounts.call_count == 2
         assert "Jan" in result
 
-    def test_calculate_account_costs_top_accounts_only(self, mock_cost_explorer_client, mock_organizations_client):
+    def test_calculate_account_costs_top_accounts_only(
+        self, mock_cost_explorer_client, mock_organizations_client
+    ):
         """Test that only top N accounts are returned."""
-        accounts = [
-            {"Id": f"{i:012d}", "Name": f"Account {i}"}
-            for i in range(1, 11)
-        ]
-        
+        accounts = [{"Id": f"{i:012d}", "Name": f"Account {i}"} for i in range(1, 11)]
+
         mock_organizations_client.list_accounts.return_value = {"Accounts": accounts}
-        
+
         # Create costs where Account 10 has highest cost
         groups = [
-            {"Keys": [f"{i:012d}"], "Metrics": {"UnblendedCost": {"Amount": str(i * 100), "Unit": "USD"}}}
+            {
+                "Keys": [f"{i:012d}"],
+                "Metrics": {"UnblendedCost": {"Amount": str(i * 100), "Unit": "USD"}},
+            }
             for i in range(1, 11)
         ]
-        
+
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
@@ -240,7 +284,7 @@ class TestCalculateAccountCosts:
                 }
             ]
         }
-        
+
         result = calculate_account_costs(
             mock_cost_explorer_client,
             mock_organizations_client,
@@ -249,7 +293,7 @@ class TestCalculateAccountCosts:
             top_cost_count=3,
             daily_average=False,
         )
-        
+
         # Should only have 3 accounts + total
         assert len(result["Jan"]) == 4  # 3 accounts + total
 
@@ -271,9 +315,9 @@ class TestGetAccountNames:
                 "total": 400,
             },
         }
-        
+
         result = get_account_names(cost_matrix)
-        
+
         assert "Account A" in result
         assert "Account B" in result
         assert "total" in result
@@ -292,9 +336,9 @@ class TestGetAccountNames:
                 "total": 400,
             },
         }
-        
+
         result = get_account_names(cost_matrix)
-        
+
         # Should include all unique accounts
         assert "Account A" in result
         assert "Account B" in result
@@ -314,9 +358,9 @@ class TestGetAccountNames:
                 "total": 500,
             },
         }
-        
+
         result = get_account_names(cost_matrix)
-        
+
         # Feb is the last month, so its accounts should come first
         assert result.index("Account B") < result.index("Account A")
         assert result.index("Account C") < result.index("Account A")

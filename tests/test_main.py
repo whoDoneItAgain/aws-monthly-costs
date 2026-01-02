@@ -1,9 +1,8 @@
 """Unit tests for amc.__main__ module."""
-import configparser
-import sys
+
 from datetime import date
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -42,13 +41,18 @@ class TestParseArguments:
 
     def test_parse_arguments_with_config_file(self):
         """Test parsing arguments with custom config file."""
-        with patch("sys.argv", ["amc", "--profile", "test", "--config-file", "/path/to/config.yaml"]):
+        with patch(
+            "sys.argv",
+            ["amc", "--profile", "test", "--config-file", "/path/to/config.yaml"],
+        ):
             args = parse_arguments()
             assert args.config_file == "/path/to/config.yaml"
 
     def test_parse_arguments_with_include_shared_services(self):
         """Test parsing arguments with shared services flag."""
-        with patch("sys.argv", ["amc", "--profile", "test", "--include-shared-services"]):
+        with patch(
+            "sys.argv", ["amc", "--profile", "test", "--include-shared-services"]
+        ):
             args = parse_arguments()
             assert args.include_shared_services is True
 
@@ -63,13 +67,18 @@ class TestParseArguments:
 
     def test_parse_arguments_with_run_modes(self):
         """Test parsing arguments with custom run modes."""
-        with patch("sys.argv", ["amc", "--profile", "test", "--run-modes", "account", "service"]):
+        with patch(
+            "sys.argv",
+            ["amc", "--profile", "test", "--run-modes", "account", "service"],
+        ):
             args = parse_arguments()
             assert args.run_modes == ["account", "service"]
 
     def test_parse_arguments_with_output_format(self):
         """Test parsing arguments with output format."""
-        with patch("sys.argv", ["amc", "--profile", "test", "--output-format", "excel"]):
+        with patch(
+            "sys.argv", ["amc", "--profile", "test", "--output-format", "excel"]
+        ):
             args = parse_arguments()
             assert args.output_format == "excel"
 
@@ -177,12 +186,12 @@ class TestParseTimePeriod:
     def test_parse_time_period_previous(self):
         """Test parsing 'previous' time period."""
         start_date, end_date = parse_time_period(TIME_PERIOD_PREVIOUS)
-        
+
         # End date should be first day of current month
         today = date.today()
         expected_end = today.replace(day=1)
         assert end_date == expected_end
-        
+
         # Start date should be first day of previous month
         if expected_end.month == 1:
             expected_start = expected_end.replace(year=expected_end.year - 1, month=1)
@@ -223,7 +232,7 @@ class TestCreateAwsSession:
         mock_config = MagicMock()
         mock_config.has_section.return_value = True
         mock_config_parser.return_value = mock_config
-        
+
         mock_sts = MagicMock()
         mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_session_instance = MagicMock()
@@ -231,7 +240,7 @@ class TestCreateAwsSession:
         mock_session.return_value = mock_session_instance
 
         session = create_aws_session("test-profile", Path("~/.aws/config"))
-        
+
         assert session == mock_session_instance
         mock_session.assert_called_once_with(profile_name="test-profile")
 
@@ -247,12 +256,14 @@ class TestCreateAwsSession:
 
     @patch("amc.__main__.boto3.Session")
     @patch("amc.__main__.configparser.RawConfigParser")
-    def test_create_aws_session_invalid_credentials(self, mock_config_parser, mock_session):
+    def test_create_aws_session_invalid_credentials(
+        self, mock_config_parser, mock_session
+    ):
         """Test creating AWS session with invalid credentials."""
         mock_config = MagicMock()
         mock_config.has_section.return_value = True
         mock_config_parser.return_value = mock_config
-        
+
         mock_sts = MagicMock()
         mock_sts.get_caller_identity.side_effect = Exception("Invalid credentials")
         mock_session_instance = MagicMock()
@@ -292,12 +303,16 @@ class TestGenerateOutputFilePath:
 
     def test_generate_output_file_path_csv(self, temp_output_dir):
         """Test generating CSV output file path."""
-        result = generate_output_file_path(temp_output_dir, "account", OUTPUT_FORMAT_CSV)
+        result = generate_output_file_path(
+            temp_output_dir, "account", OUTPUT_FORMAT_CSV
+        )
         assert result == temp_output_dir / "aws-monthly-costs-account.csv"
 
     def test_generate_output_file_path_excel(self, temp_output_dir):
         """Test generating Excel output file path."""
-        result = generate_output_file_path(temp_output_dir, "service", OUTPUT_FORMAT_EXCEL)
+        result = generate_output_file_path(
+            temp_output_dir, "service", OUTPUT_FORMAT_EXCEL
+        )
         assert result == temp_output_dir / "aws-monthly-costs-service.xlsx"
 
     def test_generate_output_file_path_bu(self, temp_output_dir):

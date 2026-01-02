@@ -1,8 +1,7 @@
 """Unit tests for amc.runmodes.bu module."""
-from datetime import date
-from unittest.mock import MagicMock
 
-import pytest
+from datetime import date
+
 
 from amc.runmodes.bu import (
     _build_cost_matrix,
@@ -23,19 +22,23 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.50", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.50", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["123456789013"],
-                            "Metrics": {"UnblendedCost": {"Amount": "500.25", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.25", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         result = _build_costs(response, daily_average=False)
-        
+
         assert "Jan" in result
         assert result["Jan"]["123456789012"] == 1000.50
         assert result["Jan"]["123456789013"] == 500.25
@@ -49,15 +52,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         result = _build_costs(response, daily_average=True)
-        
+
         # January 2024 has 31 days
         expected_daily = 3100.00 / 31
         assert abs(result["Jan"]["123456789012"] - expected_daily) < 0.01
@@ -71,15 +76,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "2900.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "2900.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         result = _build_costs(response, daily_average=True)
-        
+
         # February 2024 has 29 days (leap year)
         expected_daily = 2900.00 / 29
         assert abs(result["Feb"]["123456789012"] - expected_daily) < 0.01
@@ -93,15 +100,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["123456789012"],
-                            "Metrics": {"UnblendedCost": {"Amount": "2800.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "2800.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         result = _build_costs(response, daily_average=True)
-        
+
         # February 2023 has 28 days (non-leap year)
         expected_daily = 2800.00 / 28
         assert abs(result["Feb"]["123456789012"] - expected_daily) < 0.01
@@ -117,16 +126,18 @@ class TestBuildCostMatrix:
             "production": {"123456789012": "Prod Account"},
             "development": {"123456789013": "Dev Account"},
         }
-        
+
         account_costs = {
             "Jan": {
                 "123456789012": 1000.00,
                 "123456789013": 500.00,
             }
         }
-        
-        result = _build_cost_matrix(account_groups, account_costs, ss_percentages=None, ss_costs=None)
-        
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=None
+        )
+
         assert result["Jan"]["production"] == 1000.00
         assert result["Jan"]["development"] == 500.00
         assert result["Jan"]["ss"] == 0.00  # ss is included with 0 cost
@@ -138,21 +149,23 @@ class TestBuildCostMatrix:
             "ss": {"999999999999": "Shared Services"},
             "production": {"123456789012": "Prod Account"},
         }
-        
+
         account_costs = {
             "Jan": {
                 "123456789012": 1000.00,
             }
         }
-        
+
         ss_costs = {
             "Jan": {
                 "ss": 200.00,
             }
         }
-        
-        result = _build_cost_matrix(account_groups, account_costs, ss_percentages=None, ss_costs=ss_costs)
-        
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=ss_costs
+        )
+
         assert result["Jan"]["production"] == 1000.00
         assert result["Jan"]["ss"] == 200.00
         assert result["Jan"]["total"] == 1200.00
@@ -164,27 +177,32 @@ class TestBuildCostMatrix:
             "production": {"123456789012": "Prod Account"},
             "development": {"123456789013": "Dev Account"},
         }
-        
+
         account_costs = {
             "Jan": {
                 "123456789012": 1000.00,
                 "123456789013": 500.00,
             }
         }
-        
+
         ss_costs = {
             "Jan": {
                 "ss": 300.00,
             }
         }
-        
+
         ss_percentages = {
             "production": 60,
             "development": 40,
         }
-        
-        result = _build_cost_matrix(account_groups, account_costs, ss_percentages=ss_percentages, ss_costs=ss_costs)
-        
+
+        result = _build_cost_matrix(
+            account_groups,
+            account_costs,
+            ss_percentages=ss_percentages,
+            ss_costs=ss_costs,
+        )
+
         # Production: 1000 + (300 * 0.60) = 1180
         assert result["Jan"]["production"] == 1180.00
         # Development: 500 + (300 * 0.40) = 620
@@ -198,15 +216,17 @@ class TestBuildCostMatrix:
             "ss": {},
             "production": {"123456789012": "Prod Account"},
         }
-        
+
         account_costs = {
             "Jan": {
                 "123456789012": 0.00,
             }
         }
-        
-        result = _build_cost_matrix(account_groups, account_costs, ss_percentages=None, ss_costs=None)
-        
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=None
+        )
+
         assert result["Jan"]["production"] == 0.00
         assert result["Jan"]["total"] == 0.00
 
@@ -219,16 +239,18 @@ class TestBuildCostMatrix:
                 "123456789014": "Missing Account",
             },
         }
-        
+
         account_costs = {
             "Jan": {
                 "123456789012": 1000.00,
                 # 123456789014 is missing
             }
         }
-        
-        result = _build_cost_matrix(account_groups, account_costs, ss_percentages=None, ss_costs=None)
-        
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=None
+        )
+
         # Should sum available costs and treat missing as 0
         assert result["Jan"]["production"] == 1000.00
 
@@ -238,37 +260,61 @@ class TestBuildCostMatrix:
             "ss": {},
             "production": {"123456789012": "Prod Account"},
         }
-        
+
         account_costs = {
             "Jan": {
                 "123456789012": 99.999,
             }
         }
-        
-        result = _build_cost_matrix(account_groups, account_costs, ss_percentages=None, ss_costs=None)
-        
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=None
+        )
+
         assert result["Jan"]["production"] == 100.00
 
 
 class TestCalculateBusinessUnitCosts:
     """Tests for calculate_business_unit_costs function."""
 
-    def test_calculate_business_unit_costs_without_ss_allocation(self, mock_cost_explorer_client, sample_config):
+    def test_calculate_business_unit_costs_without_ss_allocation(
+        self, mock_cost_explorer_client, sample_config
+    ):
         """Test calculating BU costs without shared services allocation."""
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["123456789012"], "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}}},
-                        {"Keys": ["123456789013"], "Metrics": {"UnblendedCost": {"Amount": "500.00", "Unit": "USD"}}},
-                        {"Keys": ["123456789014"], "Metrics": {"UnblendedCost": {"Amount": "300.00", "Unit": "USD"}}},
-                        {"Keys": ["123456789015"], "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["123456789012"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789013"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789014"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "300.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789015"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -277,28 +323,50 @@ class TestCalculateBusinessUnitCosts:
             shared_services_allocations=None,
             daily_average=False,
         )
-        
+
         assert "Jan" in result
         assert result["Jan"]["production"] == 1000.00
         assert result["Jan"]["development"] == 800.00  # 500 + 300
         assert result["Jan"]["ss"] == 200.00
 
-    def test_calculate_business_unit_costs_with_ss_allocation(self, mock_cost_explorer_client, sample_config):
+    def test_calculate_business_unit_costs_with_ss_allocation(
+        self, mock_cost_explorer_client, sample_config
+    ):
         """Test calculating BU costs with shared services allocation."""
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["123456789012"], "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}}},
-                        {"Keys": ["123456789013"], "Metrics": {"UnblendedCost": {"Amount": "500.00", "Unit": "USD"}}},
-                        {"Keys": ["123456789014"], "Metrics": {"UnblendedCost": {"Amount": "300.00", "Unit": "USD"}}},
-                        {"Keys": ["123456789015"], "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["123456789012"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789013"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789014"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "300.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789015"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -307,26 +375,33 @@ class TestCalculateBusinessUnitCosts:
             shared_services_allocations=sample_config["ss-allocations"],
             daily_average=False,
         )
-        
+
         # Production: 1000 + (200 * 0.60) = 1120
         # Development: 800 + (200 * 0.40) = 880
         assert result["Jan"]["production"] == 1120.00
         assert result["Jan"]["development"] == 880.00
         assert result["Jan"]["ss"] == 0.00  # ss is included with 0 cost when allocated
 
-    def test_calculate_business_unit_costs_daily_average(self, mock_cost_explorer_client, sample_config):
+    def test_calculate_business_unit_costs_daily_average(
+        self, mock_cost_explorer_client, sample_config
+    ):
         """Test calculating BU costs with daily average."""
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["123456789012"], "Metrics": {"UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["123456789012"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -335,11 +410,13 @@ class TestCalculateBusinessUnitCosts:
             shared_services_allocations=None,
             daily_average=True,
         )
-        
+
         # 3100 / 31 days = 100
         assert abs(result["Jan"]["production"] - 100.0) < 0.01
 
-    def test_calculate_business_unit_costs_empty_response(self, mock_cost_explorer_client, sample_config):
+    def test_calculate_business_unit_costs_empty_response(
+        self, mock_cost_explorer_client, sample_config
+    ):
         """Test calculating BU costs with empty API response."""
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
@@ -349,7 +426,7 @@ class TestCalculateBusinessUnitCosts:
                 }
             ]
         }
-        
+
         result = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -358,23 +435,30 @@ class TestCalculateBusinessUnitCosts:
             shared_services_allocations=None,
             daily_average=False,
         )
-        
+
         assert result["Jan"]["production"] == 0.00
         assert result["Jan"]["development"] == 0.00
 
-    def test_calculate_business_unit_costs_single_api_call(self, mock_cost_explorer_client, sample_config):
+    def test_calculate_business_unit_costs_single_api_call(
+        self, mock_cost_explorer_client, sample_config
+    ):
         """Test that only one API call is made (optimization verification)."""
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["123456789012"], "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["123456789012"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -383,6 +467,6 @@ class TestCalculateBusinessUnitCosts:
             shared_services_allocations=None,
             daily_average=False,
         )
-        
+
         # Should only call get_cost_and_usage once (optimization)
         assert mock_cost_explorer_client.get_cost_and_usage.call_count == 1
