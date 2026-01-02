@@ -90,9 +90,9 @@ def get_config_args():
         "--output-format",
         action="store",
         type=str,
-        default="both",
+        default=None,
         choices=["csv", "excel", "both"],
-        help="Output format for reports. Choose 'csv', 'excel', or 'both' (default: both)",
+        help="Output format for individual reports. Choose 'csv', 'excel', or 'both'. If not specified, only the analysis Excel file is generated (when account, bu, and service modes are run).",
     )
 
     args = parser.parse_args()
@@ -205,8 +205,11 @@ def main():
     output_dir = Path(DEFAULT_OUTPUT_FOLDER)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine which formats to generate
-    if output_format == "both":
+    # Determine which formats to generate for individual reports
+    # If output_format is None, don't generate individual reports (only analysis Excel)
+    if output_format is None:
+        formats_to_generate = []
+    elif output_format == "both":
         formats_to_generate = ["csv", "excel"]
     else:
         formats_to_generate = [output_format]

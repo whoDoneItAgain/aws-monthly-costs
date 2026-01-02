@@ -6,8 +6,8 @@ A tool to retrieve and report AWS monthly costs across accounts, business units,
 
 - Generate cost reports by account, business unit, or service
 - Support for daily average cost calculations
-- Export reports in **CSV** and **Excel** format (XLSX) simultaneously (default)
-- **Automatic analysis Excel file with charts** when all three data types are available
+- **Automatic analysis Excel file with charts and formatted tables** (default output)
+- Optional export of individual reports in **CSV** or **Excel** format (XLSX)
 - Customizable cost aggregations and groupings
 - Shared services cost allocation
 
@@ -21,31 +21,42 @@ pip install -e .
 
 ### Basic Usage
 
-Generate cost reports in both CSV and Excel formats (default):
+Generate analysis Excel file only (default):
 
 ```bash
 amc --profile your-aws-profile
 ```
 
-This will create both `.csv` and `.xlsx` files for each run mode.
+This will create the analysis Excel file (`aws-monthly-costs-analysis.xlsx`) with formatted tables and charts when running all three main modes (account, bu, service). Individual report files are NOT generated unless explicitly requested.
 
 ### Output Format Options
 
-The `--output-format` option allows you to choose the output format:
-- `both` (default): Generates both CSV and Excel files
-- `csv`: Generates only CSV files
-- `excel`: Generates only Excel (XLSX) files with formatted headers and auto-adjusted columns
+The `--output-format` option allows you to generate individual report files:
+- **Not specified (default)**: Only generates the analysis Excel file
+- `csv`: Generates individual CSV files for each run mode
+- `excel`: Generates individual Excel (XLSX) files with formatted headers and auto-adjusted columns
+- `both`: Generates both CSV and Excel files for each run mode
 
-### Generate Only CSV
+### Generate Individual Reports
+
+Generate individual CSV reports:
 
 ```bash
 amc --profile your-aws-profile --output-format csv
 ```
 
-### Generate Only Excel
+Generate individual Excel reports:
 
 ```bash
 amc --profile your-aws-profile --output-format excel
+```
+
+Generate both CSV and Excel individual reports:
+
+Generate both CSV and Excel individual reports:
+
+```bash
+amc --profile your-aws-profile --output-format both
 ```
 
 ### Other Options
@@ -62,35 +73,44 @@ Run `amc --help` for all available options.
 
 ## Output
 
-Reports are generated in the `./outputs/` directory with filenames like:
+### Analysis Excel File (Default Output)
+
+By default, when running all three main modes (`account`, `bu`, and `service` - not the daily versions), an analysis file is automatically generated:
+- **File**: `aws-monthly-costs-analysis.xlsx`
+- **Content**: Interactive Excel workbook with 6 sheets containing formatted analysis tables and pie charts:
+  - **BU Costs**: Monthly totals comparison table (last 2 months) with pie chart showing business unit distribution
+  - **BU Costs - Daily Avg**: Daily average comparison for business units
+  - **Top Services**: Monthly totals for top 10 services + "Other" with pie chart
+  - **Top Services - Daily Avg**: Daily average comparison for top services
+  - **Top Accounts**: Monthly totals for top 10 accounts + "Other" with pie chart
+  - **Top Accounts - Daily Avg**: Daily average comparison for top accounts
+  
+**Table Features:**
+- Comparison of last 2 months with Difference and % Difference columns
+- Conditional formatting: Green for cost decreases (savings), Red for cost increases
+- Formatted headers with bold text on light blue background (#D9E1F2)
+- Proper number formatting for currency and percentages
+- Auto-adjusted column widths for immediate readability
+- Business units with zero costs in both months are omitted
+
+**Pie Charts:**
+- Large, easy-to-read charts showing cost distribution
+- Data labels on pie slices (category name and percentage only)
+- No legends (all information shown on slices)
+- Top 10 items + "Other" category for services and accounts
+
+### Individual Report Files (Optional)
+
+When `--output-format` is specified, individual reports are generated in the `./outputs/` directory with filenames like:
 - CSV format: `aws-monthly-costs-{run_mode}.csv`
 - Excel format: `aws-monthly-costs-{run_mode}.xlsx`
 
-By default, both formats are generated for each run mode.
-
-### Analysis Excel File with Charts
-
-When you run all three main modes (`account`, `bu`, and `service` - not the daily versions), an additional analysis file is automatically generated:
-- **File**: `aws-monthly-costs-analysis.xlsx`
-- **Content**: Interactive Excel workbook with formatted analysis tables and pie charts:
-  - **Sheet1 (BU Costs)**: 
-    - Monthly totals table (last 2 months comparison) starting at row 16
-    - Daily average table (last 2 months comparison) starting at row 31
-    - Shows difference, % difference, and % spend for each business unit
-  - **Sheet2 (Top Services)**:
-    - Monthly totals table for top 10 services starting at row 13
-    - Daily average table for top 10 services starting at row 26
-    - Pie chart showing distribution of top 10 services + "Other"
-  - **Sheet3 (Top Accounts)**:
-    - Monthly totals table for top 10 accounts starting at row 13
-    - Daily average table for top 10 accounts starting at row 26
-    - Pie chart showing distribution of top 10 accounts + "Other"
-  - Formatted headers with bold text on light blue background (#D9E1F2)
-  - Proper number formatting for currency and percentages
-  
-This file provides formatted analysis of your AWS spending patterns comparing the most recent 2 months.
-
-**Example**: To generate the analysis file:
+**Example**: Generate only the analysis file (default):
 ```bash
 amc --profile your-aws-profile --run-modes account bu service
+```
+
+**Example**: Generate analysis file AND individual CSV reports:
+```bash
+amc --profile your-aws-profile --run-modes account bu service --output-format csv
 ```
