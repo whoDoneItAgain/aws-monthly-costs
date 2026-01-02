@@ -157,7 +157,7 @@ def export_analysis_excel(
     def get_month_num(month_str):
         try:
             return datetime.strptime(month_str, "%b").month
-        except Exception:
+        except ValueError:
             return 0
 
     months = sorted(list(bu_cost_matrix.keys()), key=get_month_num)
@@ -168,10 +168,10 @@ def export_analysis_excel(
     last_2_months = months[-2:]
 
     # Create analysis sheets
-    ws_bu = wb.create_sheet("Sheet1")
+    ws_bu = wb.create_sheet("BU Costs")
     _create_bu_analysis_tables(ws_bu, bu_cost_matrix, bu_group_list, last_2_months)
 
-    ws_service = wb.create_sheet("Sheet2")
+    ws_service = wb.create_sheet("Top Services")
     _create_service_analysis_tables(
         ws_service,
         service_cost_matrix,
@@ -180,7 +180,7 @@ def export_analysis_excel(
         bu_cost_matrix,
     )
 
-    ws_account = wb.create_sheet("Sheet3")
+    ws_account = wb.create_sheet("Top Accounts")
     _create_account_analysis_tables(
         ws_account,
         account_cost_matrix,
@@ -199,7 +199,6 @@ def export_analysis_excel(
 
 def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     """Create BU analysis tables with monthly totals and daily average."""
-
     # Header formatting
     header_font = Font(bold=True, size=14, color="FF000000")
     header_fill = PatternFill(
@@ -207,8 +206,11 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     )
     header_alignment = Alignment(horizontal="center")
 
-    # Monthly Totals section starting at A16
-    row = 16
+    # Monthly Totals section
+    ws["A1"] = "BU Monthly Totals"
+    ws["A1"].font = Font(bold=True, size=16)
+
+    row = 3
     ws.cell(row, 1, "Month").font = header_font
     ws.cell(row, 1).fill = header_fill
     ws.cell(row, 1).alignment = header_alignment
@@ -224,12 +226,10 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     ws.cell(row, 4, "Difference").font = header_font
     ws.cell(row, 4).fill = header_fill
     ws.cell(row, 4).alignment = header_alignment
-    ws.cell(row, 4).number_format = '"$"#,##0.00'
 
     ws.cell(row, 5, "% Difference").font = header_font
     ws.cell(row, 5).fill = header_fill
     ws.cell(row, 5).alignment = header_alignment
-    ws.cell(row, 5).number_format = "0.00%"
 
     ws.cell(row, 6, "% Spend").font = header_font
     ws.cell(row, 6).fill = header_fill
@@ -237,6 +237,7 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
 
     # Data rows for monthly totals
     row += 1
+    data_start_row = row
     bus = list(group_list.keys())
     for bu in bus:
         ws.cell(row, 1, bu)
@@ -268,8 +269,16 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     ws.cell(row, 5, pct_diff).number_format = "0.00%"
     ws.cell(row, 6, 1.0).number_format = "0.00%"
 
-    # Daily Average section starting at A31
-    row = 31
+    data_end_row = row
+
+    # Add conditional formatting to column C (latest month) - green if increased, red if decreased
+    _add_conditional_formatting(ws, f"C{data_start_row}:C{data_end_row}")
+
+    # Daily Average section
+    row += 3  # Add spacing
+    ws.cell(row, 1, "BU Daily Average").font = Font(bold=True, size=16)
+    row += 2
+
     ws.cell(row, 1, "Month").font = header_font
     ws.cell(row, 1).fill = header_fill
     ws.cell(row, 1).alignment = header_alignment
@@ -285,12 +294,10 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     ws.cell(row, 4, "Difference").font = header_font
     ws.cell(row, 4).fill = header_fill
     ws.cell(row, 4).alignment = header_alignment
-    ws.cell(row, 4).number_format = '"$"#,##0.00'
 
     ws.cell(row, 5, "% Difference").font = header_font
     ws.cell(row, 5).fill = header_fill
     ws.cell(row, 5).alignment = header_alignment
-    ws.cell(row, 5).number_format = "0.00%"
 
     # Calculate days in each month
     try:
@@ -298,12 +305,13 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
         month2_date = datetime.strptime(last_2_months[1], "%b")
         days1 = monthrange(datetime.now().year, month1_date.month)[1]
         days2 = monthrange(datetime.now().year, month2_date.month)[1]
-    except Exception:
+    except ValueError:
         # Fallback to 30 days if parsing fails
         days1 = days2 = 30
 
     # Data rows for daily average
     row += 1
+    daily_start_row = row
     for bu in bus:
         ws.cell(row, 1, bu)
 
@@ -331,12 +339,47 @@ def _create_bu_analysis_tables(ws, cost_matrix, group_list, last_2_months):
     ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
     ws.cell(row, 5, pct_diff).number_format = "0.00%"
 
+    daily_end_row = row
+
+    # Add conditional formatting to column C (latest month) for daily average
+    _add_conditional_formatting(ws, f"C{daily_start_row}:C{daily_end_row}")
+
+
+def _add_conditional_formatting(ws, cell_range):
+    """Add conditional formatting to highlight increases (green) and decreases (red)."""
+    from openpyxl.formatting.rule import Rule
+    from openpyxl.styles import Font as CFFont, PatternFill as CFPatternFill
+    from openpyxl.styles.differential import DifferentialStyle
+
+    # Green for decrease (current < previous) - good, saving money
+    green_fill = CFPatternFill(bgColor="FFC6EFCE")
+    green_font = CFFont(color="FF006100")
+    green_dxf = DifferentialStyle(fill=green_fill, font=green_font)
+
+    # Formula: C < B (current column < previous column)
+    green_rule = Rule(type="expression", dxf=green_dxf)
+    green_rule.formula = [
+        f"C{cell_range.split(':')[0][1:]}<B{cell_range.split(':')[0][1:]}"
+    ]
+
+    # Red for increase (current > previous) - bad, spending more
+    red_fill = CFPatternFill(bgColor="FFFFC7CE")
+    red_font = CFFont(color="FF9C0006")
+    red_dxf = DifferentialStyle(fill=red_fill, font=red_font)
+
+    red_rule = Rule(type="expression", dxf=red_dxf)
+    red_rule.formula = [
+        f"C{cell_range.split(':')[0][1:]}>B{cell_range.split(':')[0][1:]}"
+    ]
+
+    ws.conditional_formatting.add(cell_range, green_rule)
+    ws.conditional_formatting.add(cell_range, red_rule)
+
 
 def _create_service_analysis_tables(
     ws, cost_matrix, group_list, last_2_months, bu_cost_matrix
 ):
     """Create service analysis tables with monthly totals, daily average, and pie chart."""
-
     # Header formatting
     header_font = Font(bold=True, size=14, color="FF000000")
     header_fill = PatternFill(
@@ -344,7 +387,7 @@ def _create_service_analysis_tables(
     )
     header_alignment = Alignment(horizontal="center")
 
-    # Get total from BU costs for % Spend calculation
+    # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
     # Get top 10 services by latest month cost
@@ -354,14 +397,17 @@ def _create_service_analysis_tables(
     service_costs.sort(key=lambda x: x[1], reverse=True)
     top_10_services = [svc for svc, _ in service_costs[:10]]
 
-    # Calculate "Other" for pie chart
+    # Calculate "Other" - difference between BU total and sum of top 10 services
     top_10_total = sum(
         cost_matrix[last_2_months[1]].get(svc, 0) for svc in top_10_services
     )
     other_amount = bu_total - top_10_total
 
-    # Monthly Totals section starting at A13
-    row = 13
+    # Monthly Totals section
+    ws["A1"] = "Top Services Monthly Totals"
+    ws["A1"].font = Font(bold=True, size=16)
+
+    row = 3
     ws.cell(row, 1, "Month").font = header_font
     ws.cell(row, 1).fill = header_fill
     ws.cell(row, 1).alignment = header_alignment
@@ -377,12 +423,10 @@ def _create_service_analysis_tables(
     ws.cell(row, 4, "Difference").font = header_font
     ws.cell(row, 4).fill = header_fill
     ws.cell(row, 4).alignment = header_alignment
-    ws.cell(row, 4).number_format = '"$"#,##0.00'
 
     ws.cell(row, 5, "% Difference").font = header_font
     ws.cell(row, 5).fill = header_fill
     ws.cell(row, 5).alignment = header_alignment
-    ws.cell(row, 5).number_format = "0.00%"
 
     ws.cell(row, 6, "% Spend").font = header_font
     ws.cell(row, 6).fill = header_fill
@@ -390,6 +434,9 @@ def _create_service_analysis_tables(
 
     # Data rows for monthly totals (top 10 only)
     row += 1
+    data_start_row = row
+    pie_chart_start_row = row
+
     for service in top_10_services:
         ws.cell(row, 1, service)
 
@@ -407,16 +454,54 @@ def _create_service_analysis_tables(
 
         row += 1
 
-    # Daily Average section starting at A26
+    # Add "Other" row (for pie chart data, not a total)
+    if other_amount > 0:
+        ws.cell(row, 1, "Other")
+        # Calculate Other values for previous month too
+        top_10_total_prev = sum(
+            cost_matrix[last_2_months[0]].get(svc, 0) for svc in top_10_services
+        )
+        other_amount_prev = (
+            bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
+        )
+
+        diff = abs(other_amount - other_amount_prev)
+        pct_diff = diff / other_amount_prev if other_amount_prev > 0 else 0
+        pct_spend = other_amount / bu_total
+
+        ws.cell(
+            row, 2, other_amount_prev
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws.cell(
+            row, 3, other_amount
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ws.cell(row, 6, pct_spend).number_format = "0.00%"
+
+        pie_chart_end_row = row
+        row += 1
+    else:
+        pie_chart_end_row = row - 1
+
+    data_end_row = pie_chart_end_row
+
+    # Add conditional formatting
+    _add_conditional_formatting(ws, f"C{data_start_row}:C{data_end_row}")
+
+    # Daily Average section
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
         days1 = monthrange(datetime.now().year, month1_date.month)[1]
         days2 = monthrange(datetime.now().year, month2_date.month)[1]
-    except Exception:
+    except ValueError:
         days1 = days2 = 30
 
-    row = 26
+    row += 2
+    ws.cell(row, 1, "Top Services Daily Average").font = Font(bold=True, size=16)
+    row += 2
+
     ws.cell(row, 1, "Month").font = header_font
     ws.cell(row, 1).fill = header_fill
     ws.cell(row, 1).alignment = header_alignment
@@ -432,15 +517,14 @@ def _create_service_analysis_tables(
     ws.cell(row, 4, "Difference").font = header_font
     ws.cell(row, 4).fill = header_fill
     ws.cell(row, 4).alignment = header_alignment
-    ws.cell(row, 4).number_format = '"$"#,##0.00'
 
     ws.cell(row, 5, "% Difference").font = header_font
     ws.cell(row, 5).fill = header_fill
     ws.cell(row, 5).alignment = header_alignment
-    ws.cell(row, 5).number_format = "0.00%"
 
-    # Data rows for daily average
+    # Data rows for daily average (top 10 only, no Other)
     row += 1
+    daily_start_row = row
     for service in top_10_services:
         ws.cell(row, 1, service)
 
@@ -456,49 +540,34 @@ def _create_service_analysis_tables(
 
         row += 1
 
-    # Add pie chart for services (top 10 + Other)
+    daily_end_row = row - 1
+
+    # Add conditional formatting for daily average
+    _add_conditional_formatting(ws, f"C{daily_start_row}:C{daily_end_row}")
+
+    # Add pie chart (using column C data, which is the latest month)
     chart = PieChart()
     chart.title = "Top Services Distribution"
     chart.style = 10
 
-    # Create data for pie chart - add top 10 + Other
-    chart_start_row = 13
-
-    # Add "Other" to chart data if significant
-    if other_amount > 0:
-        other_row = chart_start_row + 11
-        ws.cell(other_row, 1, "Other")
-        ws.cell(
-            other_row, 3, other_amount
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-
-        # Create chart including Other
-        labels = Reference(
-            ws, min_col=1, min_row=chart_start_row + 1, max_row=other_row
-        )
-        data = Reference(ws, min_col=3, min_row=chart_start_row, max_row=other_row)
-    else:
-        labels = Reference(
-            ws,
-            min_col=1,
-            min_row=chart_start_row + 1,
-            max_row=chart_start_row + 10,
-        )
-        data = Reference(
-            ws, min_col=3, min_row=chart_start_row, max_row=chart_start_row + 10
-        )
+    # Use data from monthly totals including "Other" (not including column headers)
+    labels = Reference(
+        ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+    )
+    data = Reference(
+        ws, min_col=3, min_row=pie_chart_start_row - 1, max_row=pie_chart_end_row
+    )
 
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(labels)
 
-    ws.add_chart(chart, "H13")
+    ws.add_chart(chart, "H3")
 
 
 def _create_account_analysis_tables(
     ws, cost_matrix, group_list, last_2_months, bu_cost_matrix
 ):
     """Create account analysis tables with monthly totals, daily average, and pie chart."""
-
     # Header formatting
     header_font = Font(bold=True, size=14, color="FF000000")
     header_fill = PatternFill(
@@ -506,7 +575,7 @@ def _create_account_analysis_tables(
     )
     header_alignment = Alignment(horizontal="center")
 
-    # Get total from BU costs for % Spend calculation
+    # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
     # Get top 10 accounts by latest month cost
@@ -516,14 +585,17 @@ def _create_account_analysis_tables(
     account_costs.sort(key=lambda x: x[1], reverse=True)
     top_10_accounts = [acc for acc, _ in account_costs[:10]]
 
-    # Calculate "Other" for pie chart
+    # Calculate "Other" - difference between BU total and sum of top 10 accounts
     top_10_total = sum(
         cost_matrix[last_2_months[1]].get(acc, 0) for acc in top_10_accounts
     )
     other_amount = bu_total - top_10_total
 
-    # Monthly Totals section starting at A13
-    row = 13
+    # Monthly Totals section
+    ws["A1"] = "Top Accounts Monthly Totals"
+    ws["A1"].font = Font(bold=True, size=16)
+
+    row = 3
     ws.cell(row, 1, "Month").font = header_font
     ws.cell(row, 1).fill = header_fill
     ws.cell(row, 1).alignment = header_alignment
@@ -539,12 +611,10 @@ def _create_account_analysis_tables(
     ws.cell(row, 4, "Difference").font = header_font
     ws.cell(row, 4).fill = header_fill
     ws.cell(row, 4).alignment = header_alignment
-    ws.cell(row, 4).number_format = '"$"#,##0.00'
 
     ws.cell(row, 5, "% Difference").font = header_font
     ws.cell(row, 5).fill = header_fill
     ws.cell(row, 5).alignment = header_alignment
-    ws.cell(row, 5).number_format = "0.00%"
 
     ws.cell(row, 6, "% Spend").font = header_font
     ws.cell(row, 6).fill = header_fill
@@ -552,6 +622,9 @@ def _create_account_analysis_tables(
 
     # Data rows for monthly totals (top 10 only)
     row += 1
+    data_start_row = row
+    pie_chart_start_row = row
+
     for account in top_10_accounts:
         ws.cell(row, 1, account)
 
@@ -569,16 +642,54 @@ def _create_account_analysis_tables(
 
         row += 1
 
-    # Daily Average section starting at A26
+    # Add "Other" row (for pie chart data, not a total)
+    if other_amount > 0:
+        ws.cell(row, 1, "Other")
+        # Calculate Other values for previous month too
+        top_10_total_prev = sum(
+            cost_matrix[last_2_months[0]].get(acc, 0) for acc in top_10_accounts
+        )
+        other_amount_prev = (
+            bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
+        )
+
+        diff = abs(other_amount - other_amount_prev)
+        pct_diff = diff / other_amount_prev if other_amount_prev > 0 else 0
+        pct_spend = other_amount / bu_total
+
+        ws.cell(
+            row, 2, other_amount_prev
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws.cell(
+            row, 3, other_amount
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ws.cell(row, 6, pct_spend).number_format = "0.00%"
+
+        pie_chart_end_row = row
+        row += 1
+    else:
+        pie_chart_end_row = row - 1
+
+    data_end_row = pie_chart_end_row
+
+    # Add conditional formatting
+    _add_conditional_formatting(ws, f"C{data_start_row}:C{data_end_row}")
+
+    # Daily Average section
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
         days1 = monthrange(datetime.now().year, month1_date.month)[1]
         days2 = monthrange(datetime.now().year, month2_date.month)[1]
-    except Exception:
+    except ValueError:
         days1 = days2 = 30
 
-    row = 26
+    row += 2
+    ws.cell(row, 1, "Top Accounts Daily Average").font = Font(bold=True, size=16)
+    row += 2
+
     ws.cell(row, 1, "Month").font = header_font
     ws.cell(row, 1).fill = header_fill
     ws.cell(row, 1).alignment = header_alignment
@@ -594,15 +705,14 @@ def _create_account_analysis_tables(
     ws.cell(row, 4, "Difference").font = header_font
     ws.cell(row, 4).fill = header_fill
     ws.cell(row, 4).alignment = header_alignment
-    ws.cell(row, 4).number_format = '"$"#,##0.00'
 
     ws.cell(row, 5, "% Difference").font = header_font
     ws.cell(row, 5).fill = header_fill
     ws.cell(row, 5).alignment = header_alignment
-    ws.cell(row, 5).number_format = "0.00%"
 
-    # Data rows for daily average
+    # Data rows for daily average (top 10 only, no Other)
     row += 1
+    daily_start_row = row
     for account in top_10_accounts:
         ws.cell(row, 1, account)
 
@@ -618,39 +728,25 @@ def _create_account_analysis_tables(
 
         row += 1
 
-    # Add pie chart for accounts (top 10 + Other)
+    daily_end_row = row - 1
+
+    # Add conditional formatting for daily average
+    _add_conditional_formatting(ws, f"C{daily_start_row}:C{daily_end_row}")
+
+    # Add pie chart (using column C data, which is the latest month)
     chart = PieChart()
     chart.title = "Top Accounts Distribution"
     chart.style = 10
 
-    # Create data for pie chart - add top 10 + Other
-    chart_start_row = 13
-
-    # Add "Other" to chart data if significant
-    if other_amount > 0:
-        other_row = chart_start_row + 11
-        ws.cell(other_row, 1, "Other")
-        ws.cell(
-            other_row, 3, other_amount
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-
-        # Create chart including Other
-        labels = Reference(
-            ws, min_col=1, min_row=chart_start_row + 1, max_row=other_row
-        )
-        data = Reference(ws, min_col=3, min_row=chart_start_row, max_row=other_row)
-    else:
-        labels = Reference(
-            ws,
-            min_col=1,
-            min_row=chart_start_row + 1,
-            max_row=chart_start_row + 10,
-        )
-        data = Reference(
-            ws, min_col=3, min_row=chart_start_row, max_row=chart_start_row + 10
-        )
+    # Use data from monthly totals including "Other" (not including column headers)
+    labels = Reference(
+        ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+    )
+    data = Reference(
+        ws, min_col=3, min_row=pie_chart_start_row - 1, max_row=pie_chart_end_row
+    )
 
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(labels)
 
-    ws.add_chart(chart, "H13")
+    ws.add_chart(chart, "H3")
