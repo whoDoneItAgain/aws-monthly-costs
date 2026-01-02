@@ -1,6 +1,6 @@
 import calendar
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ def calculate_service_costs(
     sorted_items = sorted(
         ((svc, cost) for svc, cost in recent_month_costs.items() if svc != "total"),
         key=lambda item: item[1],
-        reverse=True
+        reverse=True,
     )
     top_sorted_services = [svc for svc, _ in sorted_items[:top_cost_count]]
 

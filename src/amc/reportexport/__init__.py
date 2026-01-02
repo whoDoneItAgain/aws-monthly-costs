@@ -110,7 +110,7 @@ def _export_to_excel(export_file, cost_matrix, group_list, group_by_type, months
             # Use generator expression with max() for efficiency
             max_length = max(
                 (len(str(cell.value)) for cell in column if cell.value is not None),
-                default=0
+                default=0,
             )
             adjusted_width = min(max_length + 2, 50)
             worksheet.column_dimensions[column[0].column_letter].width = adjusted_width
@@ -337,7 +337,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        
+
         # Infer years for the last 2 months
         # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
         current_year = datetime.now().year
@@ -357,7 +357,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
                 # Both months are from previous year
                 year1 = current_year - 1
                 year2 = current_year - 1
-        
+
         days1 = monthrange(year1, month1_date.month)[1]
         days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
@@ -394,7 +394,9 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 4, diff
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -493,11 +495,8 @@ def _auto_adjust_column_widths(ws):
                 if isinstance(cell.value, (int, float)):
                     return 15  # Fixed width for currency/percentage
                 return len(str(cell.value))
-            
-            max_length = max(
-                (get_cell_length(cell) for cell in column),
-                default=0
-            )
+
+            max_length = max((get_cell_length(cell) for cell in column), default=0)
             # Add extra padding and ensure minimum width
             adjusted_width = min(max(max_length + 3, 12), 50)
             ws.column_dimensions[column[0].column_letter].width = adjusted_width
@@ -674,7 +673,7 @@ def _create_service_analysis_tables(
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        
+
         # Infer years for the last 2 months
         # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
         current_year = datetime.now().year
@@ -694,7 +693,7 @@ def _create_service_analysis_tables(
                 # Both months are from previous year
                 year1 = current_year - 1
                 year2 = current_year - 1
-        
+
         days1 = monthrange(year1, month1_date.month)[1]
         days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
@@ -748,7 +747,9 @@ def _create_service_analysis_tables(
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 4, diff
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -934,7 +935,7 @@ def _create_account_analysis_tables(
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        
+
         # Infer years for the last 2 months
         # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
         current_year = datetime.now().year
@@ -954,7 +955,7 @@ def _create_account_analysis_tables(
                 # Both months are from previous year
                 year1 = current_year - 1
                 year2 = current_year - 1
-        
+
         days1 = monthrange(year1, month1_date.month)[1]
         days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
@@ -1008,7 +1009,9 @@ def _create_account_analysis_tables(
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws_daily.cell(
+            row, 4, diff
+        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1

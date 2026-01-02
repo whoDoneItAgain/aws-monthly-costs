@@ -1,6 +1,6 @@
 import calendar
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
 LOGGER = logging.getLogger(__name__)
 
@@ -106,20 +106,20 @@ def calculate_business_unit_costs(
 
     # Separate SS accounts from BU accounts using set for O(1) lookup
     ss_account_ids = set(account_groups["ss"].keys())
-    
+
     # Split costs into shared services and business unit accounts
     ss_account_costs = {}
     bu_account_costs = {}
-    
+
     for month, costs in all_account_costs.items():
         ss_account_costs[month] = {
-            account_id: cost 
-            for account_id, cost in costs.items() 
+            account_id: cost
+            for account_id, cost in costs.items()
             if account_id in ss_account_ids
         }
         bu_account_costs[month] = {
-            account_id: cost 
-            for account_id, cost in costs.items() 
+            account_id: cost
+            for account_id, cost in costs.items()
             if account_id not in ss_account_ids
         }
 
