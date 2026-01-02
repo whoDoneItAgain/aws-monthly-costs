@@ -483,20 +483,22 @@ def _add_conditional_formatting(ws, diff_range, pct_range):
     ws.conditional_formatting.add(pct_range, red_rule_pct)
 
 
+def _get_cell_length(cell):
+    """Helper function to calculate cell length for column width adjustment."""
+    if cell.value is None:
+        return 0
+    # For numeric values with formatting, use a reasonable width
+    if isinstance(cell.value, (int, float)):
+        return 15  # Fixed width for currency/percentage
+    return len(str(cell.value))
+
+
 def _auto_adjust_column_widths(ws):
     """Auto-adjust column widths based on content - optimized."""
     for column in ws.columns:
         try:
             # Use generator expression with max() for efficiency
-            def get_cell_length(cell):
-                if cell.value is None:
-                    return 0
-                # For numeric values with formatting, use a reasonable width
-                if isinstance(cell.value, (int, float)):
-                    return 15  # Fixed width for currency/percentage
-                return len(str(cell.value))
-
-            max_length = max((get_cell_length(cell) for cell in column), default=0)
+            max_length = max((_get_cell_length(cell) for cell in column), default=0)
             # Add extra padding and ensure minimum width
             adjusted_width = min(max(max_length + 3, 12), 50)
             ws.column_dimensions[column[0].column_letter].width = adjusted_width
