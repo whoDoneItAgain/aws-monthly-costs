@@ -101,23 +101,21 @@ def calculate_account_costs(
 
     account_cost_matrix = _build_cost_matrix(account_costs)
 
-    recent_month = (list(account_cost_matrix.items())[-1])[0]
-
+    # Get the most recent month - optimized by avoiding intermediate list
+    recent_month = list(account_cost_matrix.keys())[-1]
     recent_month_costs = account_cost_matrix[recent_month]
 
-    recent_month_costs_sorted = dict(
-        sorted(recent_month_costs.items(), key=lambda item: item[1], reverse=True)
+    # Sort and get top accounts in one operation - no need to create dict
+    # Only sort items excluding 'total', then extract keys
+    sorted_items = sorted(
+        ((acc, cost) for acc, cost in recent_month_costs.items() if acc != "total"),
+        key=lambda item: item[1],
+        reverse=True
     )
+    top_sorted_accounts = [acc for acc, _ in sorted_items[:top_cost_count]]
 
+    # Build sorted matrix with only top accounts
     sorted_account_cost_matrix = {}
-
-    # Get top accounts excluding 'total'
-    top_sorted_accounts = [
-        acc
-        for acc in list(recent_month_costs_sorted.keys())[0:top_cost_count]
-        if acc != "total"
-    ]
-
     for cost_month, month_data in account_cost_matrix.items():
         month_cost = {
             service: month_data.get(service, 0) for service in top_sorted_accounts

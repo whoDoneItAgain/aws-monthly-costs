@@ -109,23 +109,21 @@ def calculate_service_costs(
         service_list, service_costs, service_aggregations
     )
 
-    recent_month = (list(service_cost_matrix.items())[-1])[0]
-
+    # Get the most recent month - optimized by avoiding intermediate list
+    recent_month = list(service_cost_matrix.keys())[-1]
     recent_month_costs = service_cost_matrix[recent_month]
 
-    recent_month_costs_sorted = dict(
-        sorted(recent_month_costs.items(), key=lambda item: item[1], reverse=True)
+    # Sort and get top services in one operation - no need to create dict
+    # Only sort items excluding 'total', then extract keys
+    sorted_items = sorted(
+        ((svc, cost) for svc, cost in recent_month_costs.items() if svc != "total"),
+        key=lambda item: item[1],
+        reverse=True
     )
+    top_sorted_services = [svc for svc, _ in sorted_items[:top_cost_count]]
 
+    # Build sorted matrix with only top services
     sorted_service_cost_matrix = {}
-
-    # Get top services excluding 'total'
-    top_sorted_services = [
-        svc
-        for svc in list(recent_month_costs_sorted.keys())[0:top_cost_count]
-        if svc != "total"
-    ]
-
     for cost_month, month_data in service_cost_matrix.items():
         month_cost = {
             service: month_data.get(service, 0) for service in top_sorted_services
