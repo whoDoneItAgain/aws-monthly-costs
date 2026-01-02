@@ -10,16 +10,14 @@ def _build_costs(cost_and_usage, account_list, daily_average=False):
     # Build account ID to name mapping once for O(1) lookups
     account_map = {acc["Id"]: acc["Name"] for acc in account_list}
 
-    if daily_average:
-        this_year = date.today().year
-
     for period in cost_and_usage["ResultsByTime"]:
         month_costs: dict = {}
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
         cost_month_name = cost_month.strftime("%b")
 
         if daily_average:
-            day_count = calendar.monthrange(this_year, cost_month.month)[1]
+            # Use the actual year from the cost data, not today's year
+            day_count = calendar.monthrange(cost_month.year, cost_month.month)[1]
 
         for account in period["Groups"]:
             account_id = account["Keys"][0]

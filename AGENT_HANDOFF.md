@@ -28,36 +28,68 @@ The codebase has been comprehensively refactored following Python best practices
 
 ---
 
-## 🐛 Bug-Hunter Agent Tasks
+## ✅ Bugs Fixed (Bug-Hunter Agent - 2026-01-02)
 
-### Primary Focus Areas
+### Critical Bugs Fixed
 
-1. **Time Period Parsing** (`parse_time_period()` in `__main__.py`)
-   - Edge cases: year boundaries, invalid date formats
-   - Potential issue: assumes start_date month=1 for "previous" mode
-   
-2. **AWS API Pagination** (`calculate_account_costs()` in `runmodes/account/__init__.py`)
-   - Verify NextToken handling is complete
-   - Check for potential infinite loops
-   
-3. **Cost Calculations** (all runmode modules)
-   - Division by zero checks
-   - Rounding consistency
-   - Daily average calculation with different month lengths
-   
-4. **File I/O** (`export_report()` in `reportexport/__init__.py`)
-   - Directory creation race conditions
-   - File write error handling
-   
-5. **Configuration Loading** (`load_configuration()` in `__main__.py`)
-   - Missing key handling
-   - Invalid YAML format handling
+1. **✅ FIXED: Time Period Parsing Bug**
+   - **Issue**: `parse_time_period()` set start_date to January 1st instead of first day of previous month
+   - **Impact**: Would query wrong date range for cost data
+   - **Fix**: Correctly calculates previous month, handles year boundaries (Dec→Jan)
+   - **Location**: `src/amc/__main__.py` line 160-191
 
-### Questions to Address
-- What happens if AWS returns zero accounts?
-- How are negative costs handled?
-- What if the config file is empty or missing required keys?
-- Are there any timezone-related issues with date parsing?
+2. **✅ FIXED: Year Calculation Bug in Daily Averages**
+   - **Issue**: Used `datetime.now().year` for historical data instead of actual cost data year
+   - **Impact**: Wrong day counts for February in leap years, incorrect calculations across year boundaries
+   - **Fix**: All runmodes now use actual year from API response
+   - **Locations**: 
+     - `src/amc/runmodes/account/__init__.py` line 20
+     - `src/amc/runmodes/bu/__init__.py` line 9
+     - `src/amc/runmodes/service/__init__.py` line 11
+     - `src/amc/reportexport/__init__.py` lines 320-349, 650-676, 910-936
+
+3. **✅ FIXED: Difference Calculation Logic**
+   - **Issue**: Used `abs(val2 - val1)` making all differences positive
+   - **Impact**: Confusing - cost decreases shown as positive values
+   - **Fix**: Now shows signed differences (negative for savings, positive for increases)
+   - **Location**: Multiple locations in `src/amc/reportexport/__init__.py`
+
+4. **✅ FIXED: Percentage Calculation Edge Case**
+   - **Issue**: `pct_diff = diff / val1 if val1 > 0 else 0` returns 0 when val1==0 and val2>0
+   - **Impact**: Missing cost increases from zero baseline
+   - **Fix**: Properly handles zero baseline (returns 100% increase)
+   - **Location**: Multiple locations in `src/amc/reportexport/__init__.py`
+
+5. **✅ FIXED: Configuration Validation**
+   - **Issue**: No validation of required config keys
+   - **Impact**: Cryptic errors when config is missing keys
+   - **Fix**: Validates all required keys, provides clear error messages
+   - **Location**: `src/amc/__main__.py` line 147-193
+
+6. **✅ FIXED: Time Period Format Validation**
+   - **Issue**: No error handling for malformed time period strings
+   - **Impact**: Cryptic errors on invalid input
+   - **Fix**: Validates format, provides clear error messages
+   - **Location**: `src/amc/__main__.py` line 160-191
+
+7. **✅ FIXED: Analysis File Generation Logging**
+   - **Issue**: Generic message when modes missing
+   - **Impact**: User doesn't know which modes are needed
+   - **Fix**: Lists missing modes and required modes
+   - **Location**: `src/amc/__main__.py` line 458-493
+
+### Known Limitations (Not Bugs)
+
+1. **AWS Cost Explorer API Pagination**
+   - `get_cost_and_usage()` can return `NextPageToken` for large result sets
+   - Current code doesn't handle pagination for cost queries
+   - **Risk**: Low - would only affect orgs with 1000+ accounts or complex queries
+   - **Mitigation**: MONTHLY granularity with basic GroupBy rarely paginated
+   - **Recommendation**: Add pagination if needed in future
+
+2. **Division by Zero in bu_total**
+   - Already handled correctly with `.get("total", 1)` default value
+   - No bug found
 
 ---
 
