@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "./src/amc/__main__.py",
       "console": "integratedTerminal",
-      "args": "--debug-logging"
+      "args": "--profile ab-root-use1-admin --debug-logging"
     },
     {
       "name": "Run App with info logging",
@@ -18,7 +18,7 @@
       "request": "launch",
       "program": "./src/amc/__main__.py",
       "console": "integratedTerminal",
-      "args": "--info-logging"
+      "args": "--profile ab-root-use1-admin --info-logging"
     },
     {
       "name": "Run App with info logging - specific period",
@@ -26,7 +26,7 @@
       "request": "launch",
       "program": "./src/amc/__main__.py",
       "console": "integratedTerminal",
-      "args": "--info-logging --time-period 2025-01-01_2026-01-01"
+      "args": "--profile ab-root-use1-admin --info-logging --time-period 2025-01-01_2026-01-01"
     },
     {
       "name": "Run App for Sandbox with info logging",
@@ -34,7 +34,7 @@
       "request": "launch",
       "program": "aws-monthly-costs-sandbox.py",
       "console": "integratedTerminal",
-      "args": "--info-logging"
+      "args": "--profile ab-root-use1-admin --info-logging"
     }
   ]
 }
