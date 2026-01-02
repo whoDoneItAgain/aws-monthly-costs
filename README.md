@@ -72,15 +72,23 @@ By default, both formats are generated for each run mode.
 
 When you run all three main modes (`account`, `bu`, and `service` - not the daily versions), an additional analysis file is automatically generated:
 - **File**: `aws-monthly-costs-analysis.xlsx`
-- **Content**: Interactive Excel workbook with:
-  - Data sheets: `aws-spend` (BU data), `aws-spend-top-services` (service data), `aws-spend-top-accounts` (account data)
-  - Analysis sheets with charts:
-    - **Analysis - BU Costs**: Area chart and line chart showing cost trends by business unit
-    - **Analysis - Services**: Bar chart showing top services by cost
-    - **Analysis - Accounts**: Pie chart showing cost distribution by account
-  - All charts are generated programmatically and automatically populated with your cost data
+- **Content**: Interactive Excel workbook with formatted analysis tables and pie charts:
+  - **Sheet1 (BU Costs)**: 
+    - Monthly totals table (last 2 months comparison) starting at row 16
+    - Daily average table (last 2 months comparison) starting at row 31
+    - Shows difference, % difference, and % spend for each business unit
+  - **Sheet2 (Top Services)**:
+    - Monthly totals table for top 10 services starting at row 13
+    - Daily average table for top 10 services starting at row 26
+    - Pie chart showing distribution of top 10 services + "Other"
+  - **Sheet3 (Top Accounts)**:
+    - Monthly totals table for top 10 accounts starting at row 13
+    - Daily average table for top 10 accounts starting at row 26
+    - Pie chart showing distribution of top 10 accounts + "Other"
+  - Formatted headers with bold text on light blue background (#D9E1F2)
+  - Proper number formatting for currency and percentages
   
-This file provides visual insights into your AWS spending patterns without requiring any external templates.
+This file provides formatted analysis of your AWS spending patterns comparing the most recent 2 months.
 
 **Example**: To generate the analysis file:
 ```bash
