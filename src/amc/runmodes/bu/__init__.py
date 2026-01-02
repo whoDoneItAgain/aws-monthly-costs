@@ -8,15 +8,13 @@ LOGGER = logging.getLogger(__name__)
 def _build_costs(cost_and_usage, daily_average=False):
     account_costs: dict = {}
 
-    if daily_average:
-        this_year = date.today().year
-
     for period in cost_and_usage["ResultsByTime"]:
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
         cost_month_name = cost_month.strftime("%b")
 
         if daily_average:
-            day_count = calendar.monthrange(this_year, cost_month.month)[1]
+            # Use the actual year from the cost data, not today's year
+            day_count = calendar.monthrange(cost_month.year, cost_month.month)[1]
             month_costs = {
                 account["Keys"][0]: float(account["Metrics"]["UnblendedCost"]["Amount"])
                 / day_count

@@ -256,13 +256,21 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
         ws.cell(row, 1, bu)
 
-        diff = abs(val2 - val1)
-        pct_diff = diff / val1 if val1 > 0 else 0
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            # If starting from 0, show as 100% increase
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            # Both are 0
+            pct_diff = 0
         pct_spend = val2 / cost_matrix[last_2_months[1]].get("total", 1)
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -271,13 +279,19 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     # Total row
     total1 = cost_matrix[last_2_months[0]].get("total", 0)
     total2 = cost_matrix[last_2_months[1]].get("total", 0)
-    diff = abs(total2 - total1)
-    pct_diff = diff / total1 if total1 > 0 else 0
+    diff = total2 - total1
+    # Handle percentage calculation properly
+    if total1 > 0:
+        pct_diff = (total2 - total1) / total1
+    elif total1 == 0 and total2 != 0:
+        pct_diff = 1.0 if total2 > 0 else 0
+    else:
+        pct_diff = 0
 
     ws.cell(row, 1, "total")
     ws.cell(row, 2, total1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
     ws.cell(row, 3, total2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-    ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+    ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
     ws.cell(row, 5, pct_diff).number_format = "0.00%"
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
@@ -318,11 +332,33 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws_daily.cell(row, 5).alignment = header_alignment
 
     # Calculate days in each month
+    # For the last 2 months, infer the year intelligently
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        days1 = monthrange(datetime.now().year, month1_date.month)[1]
-        days2 = monthrange(datetime.now().year, month2_date.month)[1]
+        
+        # Infer years for the last 2 months
+        # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
+        current_year = datetime.now().year
+        if month2_date.month < month1_date.month:
+            # Year boundary case: month1 is from previous year
+            year1 = current_year - 1
+            year2 = current_year
+        else:
+            # Normal case: both months from same year
+            # Determine if they're from current or previous year
+            current_month = datetime.now().month
+            if month2_date.month <= current_month:
+                # Both months are from current year or earlier
+                year1 = current_year
+                year2 = current_year
+            else:
+                # Both months are from previous year
+                year1 = current_year - 1
+                year2 = current_year - 1
+        
+        days1 = monthrange(year1, month1_date.month)[1]
+        days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
         # Fallback to 30 days if parsing fails
         days1 = days2 = 30
@@ -342,8 +378,14 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
         val1 = val1_monthly / days1
         val2 = val2_monthly / days2
-        diff = abs(val2 - val1)
-        pct_diff = diff / val1 if val1 > 0 else 0
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
 
         ws_daily.cell(
             row, 2, val1
@@ -351,7 +393,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -359,8 +401,14 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     # Total row for daily average
     total1_daily = cost_matrix[last_2_months[0]].get("total", 0) / days1
     total2_daily = cost_matrix[last_2_months[1]].get("total", 0) / days2
-    diff = abs(total2_daily - total1_daily)
-    pct_diff = diff / total1_daily if total1_daily > 0 else 0
+    diff = total2_daily - total1_daily
+    # Handle percentage calculation properly
+    if total1_daily > 0:
+        pct_diff = (total2_daily - total1_daily) / total1_daily
+    elif total1_daily == 0 and total2_daily != 0:
+        pct_diff = 1.0 if total2_daily > 0 else 0
+    else:
+        pct_diff = 0
 
     ws_daily.cell(row, 1, "total")
     ws_daily.cell(
@@ -369,7 +417,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws_daily.cell(
         row, 3, total2_daily
     ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-    ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+    ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
     ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
     daily_end_row = row
@@ -523,13 +571,19 @@ def _create_service_analysis_tables(
 
         val1 = cost_matrix[last_2_months[0]].get(service, 0)
         val2 = cost_matrix[last_2_months[1]].get(service, 0)
-        diff = abs(val2 - val1)
-        pct_diff = diff / val1 if val1 > 0 else 0
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
         pct_spend = val2 / bu_total
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -546,8 +600,14 @@ def _create_service_analysis_tables(
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
 
-        diff = abs(other_amount - other_amount_prev)
-        pct_diff = diff / other_amount_prev if other_amount_prev > 0 else 0
+        diff = other_amount - other_amount_prev
+        # Handle percentage calculation properly
+        if other_amount_prev > 0:
+            pct_diff = (other_amount - other_amount_prev) / other_amount_prev
+        elif other_amount_prev == 0 and other_amount != 0:
+            pct_diff = 1.0 if other_amount > 0 else 0
+        else:
+            pct_diff = 0
         pct_spend = other_amount / bu_total
 
         ws.cell(
@@ -556,7 +616,7 @@ def _create_service_analysis_tables(
         ws.cell(
             row, 3, other_amount
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -611,8 +671,29 @@ def _create_service_analysis_tables(
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        days1 = monthrange(datetime.now().year, month1_date.month)[1]
-        days2 = monthrange(datetime.now().year, month2_date.month)[1]
+        
+        # Infer years for the last 2 months
+        # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
+        current_year = datetime.now().year
+        if month2_date.month < month1_date.month:
+            # Year boundary case: month1 is from previous year
+            year1 = current_year - 1
+            year2 = current_year
+        else:
+            # Normal case: both months from same year
+            # Determine if they're from current or previous year
+            current_month = datetime.now().month
+            if month2_date.month <= current_month:
+                # Both months are from current year or earlier
+                year1 = current_year
+                year2 = current_year
+            else:
+                # Both months are from previous year
+                year1 = current_year - 1
+                year2 = current_year - 1
+        
+        days1 = monthrange(year1, month1_date.month)[1]
+        days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
         days1 = days2 = 30
 
@@ -649,8 +730,14 @@ def _create_service_analysis_tables(
 
         val1 = cost_matrix[last_2_months[0]].get(service, 0) / days1
         val2 = cost_matrix[last_2_months[1]].get(service, 0) / days2
-        diff = abs(val2 - val1)
-        pct_diff = diff / val1 if val1 > 0 else 0
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
 
         ws_daily.cell(
             row, 2, val1
@@ -658,7 +745,7 @@ def _create_service_analysis_tables(
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -744,13 +831,19 @@ def _create_account_analysis_tables(
 
         val1 = cost_matrix[last_2_months[0]].get(account, 0)
         val2 = cost_matrix[last_2_months[1]].get(account, 0)
-        diff = abs(val2 - val1)
-        pct_diff = diff / val1 if val1 > 0 else 0
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
         pct_spend = val2 / bu_total
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -767,8 +860,14 @@ def _create_account_analysis_tables(
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
 
-        diff = abs(other_amount - other_amount_prev)
-        pct_diff = diff / other_amount_prev if other_amount_prev > 0 else 0
+        diff = other_amount - other_amount_prev
+        # Handle percentage calculation properly
+        if other_amount_prev > 0:
+            pct_diff = (other_amount - other_amount_prev) / other_amount_prev
+        elif other_amount_prev == 0 and other_amount != 0:
+            pct_diff = 1.0 if other_amount > 0 else 0
+        else:
+            pct_diff = 0
         pct_spend = other_amount / bu_total
 
         ws.cell(
@@ -777,7 +876,7 @@ def _create_account_analysis_tables(
         ws.cell(
             row, 3, other_amount
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -832,8 +931,29 @@ def _create_account_analysis_tables(
     try:
         month1_date = datetime.strptime(last_2_months[0], "%b")
         month2_date = datetime.strptime(last_2_months[1], "%b")
-        days1 = monthrange(datetime.now().year, month1_date.month)[1]
-        days2 = monthrange(datetime.now().year, month2_date.month)[1]
+        
+        # Infer years for the last 2 months
+        # If month2 < month1 (e.g., Dec -> Jan), they span year boundary
+        current_year = datetime.now().year
+        if month2_date.month < month1_date.month:
+            # Year boundary case: month1 is from previous year
+            year1 = current_year - 1
+            year2 = current_year
+        else:
+            # Normal case: both months from same year
+            # Determine if they're from current or previous year
+            current_month = datetime.now().month
+            if month2_date.month <= current_month:
+                # Both months are from current year or earlier
+                year1 = current_year
+                year2 = current_year
+            else:
+                # Both months are from previous year
+                year1 = current_year - 1
+                year2 = current_year - 1
+        
+        days1 = monthrange(year1, month1_date.month)[1]
+        days2 = monthrange(year2, month2_date.month)[1]
     except ValueError:
         days1 = days2 = 30
 
@@ -870,8 +990,14 @@ def _create_account_analysis_tables(
 
         val1 = cost_matrix[last_2_months[0]].get(account, 0) / days1
         val2 = cost_matrix[last_2_months[1]].get(account, 0) / days2
-        diff = abs(val2 - val1)
-        pct_diff = diff / val1 if val1 > 0 else 0
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
 
         ws_daily.cell(
             row, 2, val1
@@ -879,7 +1005,7 @@ def _create_account_analysis_tables(
         ws_daily.cell(
             row, 3, val2
         ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1

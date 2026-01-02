@@ -9,16 +9,14 @@ def _build_costs(cost_and_usage, daily_average=False):
     service_costs: dict = {}
     service_set = set()  # Use set to avoid duplicates from the start
 
-    if daily_average:
-        this_year = date.today().year
-
     for period in cost_and_usage["ResultsByTime"]:
         month_costs: dict = {}
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
         cost_month_name = cost_month.strftime("%b")
 
         if daily_average:
-            day_count = calendar.monthrange(this_year, cost_month.month)[1]
+            # Use the actual year from the cost data, not today's year
+            day_count = calendar.monthrange(cost_month.year, cost_month.month)[1]
 
         for service in period["Groups"]:
             service_name = service["Keys"][0]
