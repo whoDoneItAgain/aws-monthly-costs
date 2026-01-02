@@ -9,7 +9,7 @@ from pathlib import Path
 import boto3
 import yaml
 
-from amc.reportexport import exportreport
+from amc.reportexport import exportreport, export_analysis_excel
 from amc.runmodes.account import accountcosts, accountnames
 from amc.runmodes.bu import bucosts
 from amc.runmodes.service import servicecosts, servicecostsagg
@@ -211,6 +211,9 @@ def main():
     else:
         formats_to_generate = [output_format]
 
+    # Store data for analysis Excel file
+    analysis_data = {"bu": None, "service": None, "account": None}
+
     for run_mode in run_modes:
         match run_mode:
             # by Account
@@ -224,6 +227,8 @@ def main():
                 )
 
                 account_names = accountnames(cost_matrix)
+                # Store for analysis file
+                analysis_data["account"] = (cost_matrix, account_names)
 
                 for fmt in formats_to_generate:
                     file_extension = ".xlsx" if fmt == "excel" else ".csv"
@@ -272,6 +277,9 @@ def main():
                     account_list,
                     ss_allocation_percentages,
                 )
+                # Store for analysis file
+                analysis_data["bu"] = (cost_matrix, account_list)
+
                 for fmt in formats_to_generate:
                     file_extension = ".xlsx" if fmt == "excel" else ".csv"
                     export_file = (
@@ -318,6 +326,8 @@ def main():
                 )
 
                 service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
+                # Store for analysis file
+                analysis_data["service"] = (cost_matrix, service_list_agg)
 
                 for fmt in formats_to_generate:
                     file_extension = ".xlsx" if fmt == "excel" else ".csv"
@@ -357,6 +367,39 @@ def main():
                         group_by_type="service",
                         output_format=fmt,
                     )
+
+    # Generate analysis Excel file if we have all three data types
+    if all(analysis_data.values()):
+        LOGGER.info("Generating analysis Excel file with charts")
+
+        # Get template path - check in tmp directory
+        template_path = Path("tmp/example.xlsx")
+        if not template_path.exists():
+            # Try absolute path
+            template_path = Path(__file__).parent.parent.parent / "tmp" / "example.xlsx"
+
+        if template_path.exists():
+            analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
+
+            bu_matrix, bu_list = analysis_data["bu"]
+            service_matrix, service_list = analysis_data["service"]
+            account_matrix, account_list = analysis_data["account"]
+
+            export_analysis_excel(
+                analysis_file,
+                bu_matrix,
+                bu_list,
+                service_matrix,
+                service_list,
+                account_matrix,
+                account_list,
+                template_path,
+            )
+            LOGGER.info(f"Analysis file created: {analysis_file}")
+        else:
+            LOGGER.warning(
+                f"Template file not found at {template_path}, skipping analysis file generation"
+            )
 
 
 if __name__ == "__main__":

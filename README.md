@@ -7,6 +7,7 @@ A tool to retrieve and report AWS monthly costs across accounts, business units,
 - Generate cost reports by account, business unit, or service
 - Support for daily average cost calculations
 - Export reports in **CSV** and **Excel** format (XLSX) simultaneously (default)
+- **Automatic analysis Excel file with charts** when all three data types are available
 - Customizable cost aggregations and groupings
 - Shared services cost allocation
 
@@ -66,3 +67,19 @@ Reports are generated in the `./outputs/` directory with filenames like:
 - Excel format: `aws-monthly-costs-{run_mode}.xlsx`
 
 By default, both formats are generated for each run mode.
+
+### Analysis Excel File with Charts
+
+When you run all three main modes (`account`, `bu`, and `service` - not the daily versions), an additional analysis file is automatically generated:
+- **File**: `aws-monthly-costs-analysis.xlsx`
+- **Content**: Interactive Excel workbook with:
+  - Data sheets: `aws-spend` (BU data), `aws-spend-top-services` (service data), `aws-spend-top-accounts` (account data)
+  - Analysis sheets: `Sheet1`, `Sheet2`, `Sheet3` with formulas that reference the data sheets
+  - Charts: Visual representations of cost trends and breakdowns
+  
+This file is based on a template that includes pre-configured formulas and charts, automatically populated with your actual cost data.
+
+**Example**: To generate the analysis file:
+```bash
+amc --profile your-aws-profile --run-modes account bu service
+```
