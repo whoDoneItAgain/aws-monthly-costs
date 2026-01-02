@@ -110,8 +110,8 @@ class TestEndToEndIntegration:
         with open(config_file, "w") as f:
             yaml.safe_dump(sample_config, f)
 
-        # Load configuration to verify it's valid
-        load_configuration(config_file)
+        # Load configuration to verify it's valid (not used, just validated)
+        _config = load_configuration(config_file)
 
         # Mock AWS clients
         mock_ce = MagicMock()
