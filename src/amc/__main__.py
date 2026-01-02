@@ -9,7 +9,7 @@ from pathlib import Path
 import boto3
 import yaml
 
-from amc.reportexport import exportreport
+from amc.reportexport import exportreport, export_analysis_excel
 from amc.runmodes.account import accountcosts, accountnames
 from amc.runmodes.bu import bucosts
 from amc.runmodes.service import servicecosts, servicecostsagg
@@ -30,6 +30,8 @@ VALID_RUN_MODES = [
     "service",
     "service-daily",
 ]
+
+DEFAULT_RUN_MODES = ["account", "bu", "service"]
 
 
 def get_config_args():
@@ -65,9 +67,9 @@ def get_config_args():
         "--run-modes",
         action="store",
         type=str,
-        default=VALID_RUN_MODES,
+        default=DEFAULT_RUN_MODES,
         nargs="*",
-        help="Run Modes of Script.",
+        help="Run Modes of Script. Default: account, bu, service (required for analysis file).",
     )
     parser.add_argument(
         "--time-period",
@@ -85,6 +87,14 @@ def get_config_args():
         "--info-logging",
         action="store_true",
         help="Enables Info Level Logging. Superseded by debug-logging",
+    )
+    parser.add_argument(
+        "--output-format",
+        action="store",
+        type=str,
+        default=None,
+        choices=["csv", "excel", "both"],
+        help="Output format for individual reports. Choose 'csv', 'excel', or 'both'. If not specified, only the analysis Excel file is generated (when account, bu, and service modes are run).",
     )
 
     args = parser.parse_args()
@@ -129,6 +139,7 @@ def main():
     config_file = Path(config_args.config_file).absolute()
     run_modes = config_args.run_modes
     include_ss: bool = config_args.include_ss
+    output_format: str = config_args.output_format
 
     if not (set(run_modes).issubset(set(VALID_RUN_MODES))):
         raise Exception(
@@ -196,8 +207,19 @@ def main():
     output_dir = Path(DEFAULT_OUTPUT_FOLDER)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Determine which formats to generate for individual reports
+    # If output_format is None, don't generate individual reports (only analysis Excel)
+    if output_format is None:
+        formats_to_generate = []
+    elif output_format == "both":
+        formats_to_generate = ["csv", "excel"]
+    else:
+        formats_to_generate = [output_format]
+
+    # Store data for analysis Excel file
+    analysis_data = {"bu": None, "service": None, "account": None}
+
     for run_mode in run_modes:
-        export_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}.csv"
         match run_mode:
             # by Account
             case "account":
@@ -210,10 +232,22 @@ def main():
                 )
 
                 account_names = accountnames(cost_matrix)
+                # Store for analysis file
+                analysis_data["account"] = (cost_matrix, account_names)
 
-                exportreport(
-                    export_file, cost_matrix, account_names, group_by_type="account"
-                )
+                for fmt in formats_to_generate:
+                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
+                    export_file = (
+                        output_dir
+                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+                    )
+                    exportreport(
+                        export_file,
+                        cost_matrix,
+                        account_names,
+                        group_by_type="account",
+                        output_format=fmt,
+                    )
             case "account-daily":
                 cost_matrix = accountcosts(
                     ce_client,
@@ -226,12 +260,19 @@ def main():
 
                 account_names = accountnames(cost_matrix)
 
-                exportreport(
-                    export_file,
-                    cost_matrix,
-                    account_names,
-                    group_by_type="account",
-                )
+                for fmt in formats_to_generate:
+                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
+                    export_file = (
+                        output_dir
+                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+                    )
+                    exportreport(
+                        export_file,
+                        cost_matrix,
+                        account_names,
+                        group_by_type="account",
+                        output_format=fmt,
+                    )
             # by Bu
             case "bu":
                 cost_matrix = bucosts(
@@ -241,7 +282,22 @@ def main():
                     account_list,
                     ss_allocation_percentages,
                 )
-                exportreport(export_file, cost_matrix, account_list, group_by_type="bu")
+                # Store for analysis file
+                analysis_data["bu"] = (cost_matrix, account_list)
+
+                for fmt in formats_to_generate:
+                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
+                    export_file = (
+                        output_dir
+                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+                    )
+                    exportreport(
+                        export_file,
+                        cost_matrix,
+                        account_list,
+                        group_by_type="bu",
+                        output_format=fmt,
+                    )
             case "bu-daily":
                 cost_matrix = bucosts(
                     ce_client,
@@ -251,7 +307,19 @@ def main():
                     ss_allocation_percentages,
                     daily_average=True,
                 )
-                exportreport(export_file, cost_matrix, account_list, group_by_type="bu")
+                for fmt in formats_to_generate:
+                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
+                    export_file = (
+                        output_dir
+                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+                    )
+                    exportreport(
+                        export_file,
+                        cost_matrix,
+                        account_list,
+                        group_by_type="bu",
+                        output_format=fmt,
+                    )
             # by Service
             case "service":
                 cost_matrix = servicecosts(
@@ -263,10 +331,22 @@ def main():
                 )
 
                 service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
+                # Store for analysis file
+                analysis_data["service"] = (cost_matrix, service_list_agg)
 
-                exportreport(
-                    export_file, cost_matrix, service_list_agg, group_by_type="service"
-                )
+                for fmt in formats_to_generate:
+                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
+                    export_file = (
+                        output_dir
+                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+                    )
+                    exportreport(
+                        export_file,
+                        cost_matrix,
+                        service_list_agg,
+                        group_by_type="service",
+                        output_format=fmt,
+                    )
             case "service-daily":
                 cost_matrix = servicecosts(
                     ce_client,
@@ -279,9 +359,40 @@ def main():
 
                 service_list_agg = servicecostsagg(cost_matrix, service_aggregation)
 
-                exportreport(
-                    export_file, cost_matrix, service_list_agg, group_by_type="service"
-                )
+                for fmt in formats_to_generate:
+                    file_extension = ".xlsx" if fmt == "excel" else ".csv"
+                    export_file = (
+                        output_dir
+                        / f"{DEFAULT_OUTPUT_PREFIX}-{run_mode}{file_extension}"
+                    )
+                    exportreport(
+                        export_file,
+                        cost_matrix,
+                        service_list_agg,
+                        group_by_type="service",
+                        output_format=fmt,
+                    )
+
+    # Generate analysis Excel file if we have all three data types
+    if all(analysis_data.values()):
+        LOGGER.info("Generating analysis Excel file with charts")
+
+        analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
+
+        bu_matrix, bu_list = analysis_data["bu"]
+        service_matrix, service_list = analysis_data["service"]
+        account_matrix, account_list = analysis_data["account"]
+
+        export_analysis_excel(
+            analysis_file,
+            bu_matrix,
+            bu_list,
+            service_matrix,
+            service_list,
+            account_matrix,
+            account_list,
+        )
+        LOGGER.info(f"Analysis file created: {analysis_file}")
 
 
 if __name__ == "__main__":
