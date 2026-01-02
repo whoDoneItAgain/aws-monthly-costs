@@ -67,15 +67,28 @@ def _build_cost_matrix(service_list, service_costs, service_aggregation):
     return cost_matrix
 
 
-def servicecosts(
-    ce_client,
+def calculate_service_costs(
+    cost_explorer_client,
     start_date,
     end_date,
-    service_aggregation,
+    service_aggregations,
     top_cost_count,
     daily_average=False,
 ):
-    get_cost_and_usage = ce_client.get_cost_and_usage(
+    """Calculate AWS costs grouped by service.
+
+    Args:
+        cost_explorer_client: AWS Cost Explorer client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        service_aggregations: Dictionary of service aggregation rules
+        top_cost_count: Number of top services to include
+        daily_average: If True, calculate daily average costs
+
+    Returns:
+        Dictionary of cost data organized by month and service
+    """
+    get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
             "End": end_date.strftime("%Y-%m-%d"),
@@ -95,7 +108,7 @@ def servicecosts(
     LOGGER.debug(service_costs)
 
     service_cost_matrix = _build_cost_matrix(
-        service_list, service_costs, service_aggregation
+        service_list, service_costs, service_aggregations
     )
 
     recent_month = (list(service_cost_matrix.items())[-1])[0]
@@ -125,7 +138,16 @@ def servicecosts(
     return sorted_service_cost_matrix
 
 
-def servicecostsagg(cost_matrix, service_aggregation):
+def get_service_list(cost_matrix, service_aggregations):
+    """Extract unique service names from cost matrix.
+
+    Args:
+        cost_matrix: Dictionary of cost data organized by month
+        service_aggregations: Dictionary of service aggregation rules (not used currently)
+
+    Returns:
+        List of service names
+    """
     # Collect all unique services across all months using set
     service_set = set()
     for month_data in cost_matrix.values():
