@@ -1,8 +1,7 @@
 """Unit tests for amc.runmodes.service module."""
-from datetime import date
-from unittest.mock import MagicMock
 
-import pytest
+from datetime import date
+
 
 from amc.runmodes.service import (
     _build_cost_matrix,
@@ -24,19 +23,23 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["Amazon EC2"],
-                            "Metrics": {"UnblendedCost": {"Amount": "1000.50", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.50", "Unit": "USD"}
+                            },
                         },
                         {
                             "Keys": ["Amazon S3"],
-                            "Metrics": {"UnblendedCost": {"Amount": "500.25", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.25", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         costs, services = _build_costs(response, daily_average=False)
-        
+
         assert "Jan" in costs
         assert costs["Jan"]["Amazon EC2"] == 1000.50
         assert costs["Jan"]["Amazon S3"] == 500.25
@@ -52,15 +55,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["Amazon EC2"],
-                            "Metrics": {"UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         costs, services = _build_costs(response, daily_average=True)
-        
+
         # January 2024 has 31 days
         expected_daily = 3100.00 / 31
         assert abs(costs["Jan"]["Amazon EC2"] - expected_daily) < 0.01
@@ -74,15 +79,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["Amazon EC2"],
-                            "Metrics": {"UnblendedCost": {"Amount": "2900.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "2900.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         costs, services = _build_costs(response, daily_average=True)
-        
+
         # February 2024 has 29 days (leap year)
         expected_daily = 2900.00 / 29
         assert abs(costs["Feb"]["Amazon EC2"] - expected_daily) < 0.01
@@ -96,15 +103,17 @@ class TestBuildCosts:
                     "Groups": [
                         {
                             "Keys": ["Amazon EC2"],
-                            "Metrics": {"UnblendedCost": {"Amount": "2800.00", "Unit": "USD"}},
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "2800.00", "Unit": "USD"}
+                            },
                         },
                     ],
                 }
             ]
         }
-        
+
         costs, services = _build_costs(response, daily_average=True)
-        
+
         # February 2023 has 28 days (non-leap year)
         expected_daily = 2800.00 / 28
         assert abs(costs["Feb"]["Amazon EC2"] - expected_daily) < 0.01
@@ -116,22 +125,42 @@ class TestBuildCosts:
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["Amazon EC2"], "Metrics": {"UnblendedCost": {"Amount": "100.00", "Unit": "USD"}}},
-                        {"Keys": ["Amazon S3"], "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["Amazon EC2"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "100.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["Amazon S3"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 },
                 {
                     "TimePeriod": {"Start": "2024-02-01", "End": "2024-03-01"},
                     "Groups": [
-                        {"Keys": ["Amazon EC2"], "Metrics": {"UnblendedCost": {"Amount": "150.00", "Unit": "USD"}}},
-                        {"Keys": ["AWS Lambda"], "Metrics": {"UnblendedCost": {"Amount": "50.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["Amazon EC2"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "150.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["AWS Lambda"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "50.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 },
             ]
         }
-        
+
         costs, services = _build_costs(response, daily_average=False)
-        
+
         # Should have unique services
         assert len(services) == 3
         assert "Amazon EC2" in services
@@ -152,9 +181,9 @@ class TestBuildCostMatrix:
             }
         }
         service_aggregation = {}
-        
+
         result = _build_cost_matrix(service_list, service_costs, service_aggregation)
-        
+
         assert result["Jan"]["Amazon EC2"] == 1000.00
         assert result["Jan"]["Amazon S3"] == 500.00
         assert result["Jan"]["total"] == 1500.00
@@ -173,13 +202,11 @@ class TestBuildCostMatrix:
                 "Amazon Simple Storage Service": 500.00,
             }
         }
-        
+
         result = _build_cost_matrix(
-            service_list,
-            service_costs,
-            sample_config["service-aggregations"]
+            service_list, service_costs, sample_config["service-aggregations"]
         )
-        
+
         # Compute aggregation: EC2 + Lambda = 1000
         assert result["Jan"]["compute"] == 1000.00
         # Storage aggregation: S3 = 500
@@ -202,9 +229,9 @@ class TestBuildCostMatrix:
         service_aggregation = {
             "compute": ["Amazon EC2"],
         }
-        
+
         result = _build_cost_matrix(service_list, service_costs, service_aggregation)
-        
+
         # EC2 is aggregated
         assert result["Jan"]["compute"] == 800.00
         # S3 and RDS are not aggregated
@@ -220,9 +247,9 @@ class TestBuildCostMatrix:
                 "Amazon EC2": 0.00,
             }
         }
-        
+
         result = _build_cost_matrix(service_list, service_costs, {})
-        
+
         assert result["Jan"]["Amazon EC2"] == 0.00
         assert result["Jan"]["total"] == 0.00
 
@@ -234,9 +261,9 @@ class TestBuildCostMatrix:
                 "Amazon EC2": 99.999,
             }
         }
-        
+
         result = _build_cost_matrix(service_list, service_costs, {})
-        
+
         assert result["Jan"]["Amazon EC2"] == 100.00
 
 
@@ -250,14 +277,29 @@ class TestCalculateServiceCosts:
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["Amazon EC2"], "Metrics": {"UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}}},
-                        {"Keys": ["Amazon S3"], "Metrics": {"UnblendedCost": {"Amount": "500.00", "Unit": "USD"}}},
-                        {"Keys": ["AWS Lambda"], "Metrics": {"UnblendedCost": {"Amount": "100.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["Amazon EC2"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "1000.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["Amazon S3"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["AWS Lambda"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "100.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_service_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -266,25 +308,42 @@ class TestCalculateServiceCosts:
             top_cost_count=5,
             daily_average=False,
         )
-        
+
         assert "Jan" in result
         assert "total" in result["Jan"]
 
-    def test_calculate_service_costs_with_aggregation(self, mock_cost_explorer_client, sample_config):
+    def test_calculate_service_costs_with_aggregation(
+        self, mock_cost_explorer_client, sample_config
+    ):
         """Test calculating service costs with aggregation."""
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["Amazon Elastic Compute Cloud - Compute"], "Metrics": {"UnblendedCost": {"Amount": "800.00", "Unit": "USD"}}},
-                        {"Keys": ["AWS Lambda"], "Metrics": {"UnblendedCost": {"Amount": "200.00", "Unit": "USD"}}},
-                        {"Keys": ["Amazon Simple Storage Service"], "Metrics": {"UnblendedCost": {"Amount": "500.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["Amazon Elastic Compute Cloud - Compute"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "800.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["AWS Lambda"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "200.00", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["Amazon Simple Storage Service"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "500.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_service_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -293,7 +352,7 @@ class TestCalculateServiceCosts:
             top_cost_count=5,
             daily_average=False,
         )
-        
+
         # Should have aggregated services
         assert "compute" in result["Jan"]
         assert "storage" in result["Jan"]
@@ -301,10 +360,13 @@ class TestCalculateServiceCosts:
     def test_calculate_service_costs_top_services_only(self, mock_cost_explorer_client):
         """Test that only top N services are returned."""
         groups = [
-            {"Keys": [f"Service {i}"], "Metrics": {"UnblendedCost": {"Amount": str(i * 100), "Unit": "USD"}}}
+            {
+                "Keys": [f"Service {i}"],
+                "Metrics": {"UnblendedCost": {"Amount": str(i * 100), "Unit": "USD"}},
+            }
             for i in range(1, 11)
         ]
-        
+
         mock_cost_explorer_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
                 {
@@ -313,7 +375,7 @@ class TestCalculateServiceCosts:
                 }
             ]
         }
-        
+
         result = calculate_service_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -322,7 +384,7 @@ class TestCalculateServiceCosts:
             top_cost_count=3,
             daily_average=False,
         )
-        
+
         # Should only have 3 services + total
         assert len(result["Jan"]) == 4
 
@@ -333,12 +395,17 @@ class TestCalculateServiceCosts:
                 {
                     "TimePeriod": {"Start": "2024-01-01", "End": "2024-02-01"},
                     "Groups": [
-                        {"Keys": ["Amazon EC2"], "Metrics": {"UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}}},
+                        {
+                            "Keys": ["Amazon EC2"],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "3100.00", "Unit": "USD"}
+                            },
+                        },
                     ],
                 }
             ]
         }
-        
+
         result = calculate_service_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
@@ -347,7 +414,7 @@ class TestCalculateServiceCosts:
             top_cost_count=5,
             daily_average=True,
         )
-        
+
         # 3100 / 31 days = 100
         assert abs(result["Jan"]["Amazon EC2"] - 100.0) < 0.01
 
@@ -369,9 +436,9 @@ class TestGetServiceList:
                 "total": 400,
             },
         }
-        
+
         result = get_service_list(cost_matrix)
-        
+
         assert "Amazon EC2" in result
         assert "Amazon S3" in result
         assert "total" in result
@@ -390,9 +457,9 @@ class TestGetServiceList:
                 "total": 400,
             },
         }
-        
+
         result = get_service_list(cost_matrix)
-        
+
         # Should include all unique services
         assert "Amazon EC2" in result
         assert "Amazon S3" in result
@@ -412,9 +479,9 @@ class TestGetServiceList:
                 "total": 500,
             },
         }
-        
+
         result = get_service_list(cost_matrix)
-        
+
         # Feb is the last month, so its services should come first
         assert result.index("Amazon S3") < result.index("Amazon EC2")
         assert result.index("AWS Lambda") < result.index("Amazon EC2")
@@ -428,9 +495,9 @@ class TestGetServiceList:
                 "total": 1500,
             },
         }
-        
+
         result = get_service_list(cost_matrix, service_aggregations={})
-        
+
         assert "compute" in result
         assert "storage" in result
         assert "total" in result

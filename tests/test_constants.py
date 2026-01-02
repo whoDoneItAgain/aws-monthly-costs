@@ -1,4 +1,5 @@
 """Unit tests for amc.constants module."""
+
 from amc.constants import (
     AWS_DIMENSION_LINKED_ACCOUNT,
     AWS_DIMENSION_SERVICE,

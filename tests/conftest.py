@@ -1,7 +1,6 @@
 """Shared fixtures and configuration for pytest."""
-import sys
+
 from datetime import date
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -49,15 +48,21 @@ def sample_cost_and_usage_response():
                 "Groups": [
                     {
                         "Keys": ["123456789012"],
-                        "Metrics": {"UnblendedCost": {"Amount": "1000.50", "Unit": "USD"}},
+                        "Metrics": {
+                            "UnblendedCost": {"Amount": "1000.50", "Unit": "USD"}
+                        },
                     },
                     {
                         "Keys": ["123456789013"],
-                        "Metrics": {"UnblendedCost": {"Amount": "500.25", "Unit": "USD"}},
+                        "Metrics": {
+                            "UnblendedCost": {"Amount": "500.25", "Unit": "USD"}
+                        },
                     },
                     {
                         "Keys": ["123456789014"],
-                        "Metrics": {"UnblendedCost": {"Amount": "250.75", "Unit": "USD"}},
+                        "Metrics": {
+                            "UnblendedCost": {"Amount": "250.75", "Unit": "USD"}
+                        },
                     },
                 ],
             },
@@ -66,15 +71,21 @@ def sample_cost_and_usage_response():
                 "Groups": [
                     {
                         "Keys": ["123456789012"],
-                        "Metrics": {"UnblendedCost": {"Amount": "1100.00", "Unit": "USD"}},
+                        "Metrics": {
+                            "UnblendedCost": {"Amount": "1100.00", "Unit": "USD"}
+                        },
                     },
                     {
                         "Keys": ["123456789013"],
-                        "Metrics": {"UnblendedCost": {"Amount": "550.50", "Unit": "USD"}},
+                        "Metrics": {
+                            "UnblendedCost": {"Amount": "550.50", "Unit": "USD"}
+                        },
                     },
                     {
                         "Keys": ["123456789014"],
-                        "Metrics": {"UnblendedCost": {"Amount": "275.25", "Unit": "USD"}},
+                        "Metrics": {
+                            "UnblendedCost": {"Amount": "275.25", "Unit": "USD"}
+                        },
                     },
                 ],
             },
