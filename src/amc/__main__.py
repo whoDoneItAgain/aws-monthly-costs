@@ -444,7 +444,8 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
 
 def main():
     """Main entry point for the AWS Monthly Costs tool."""
-    assert sys.version_info >= (3, 12), "Python 3.12 or higher is required"
+    if sys.version_info < (3, 12):
+        raise RuntimeError("Python 3.12 or higher is required")
 
     # Parse command-line arguments
     args = parse_arguments()

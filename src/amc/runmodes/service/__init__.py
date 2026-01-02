@@ -138,12 +138,12 @@ def calculate_service_costs(
     return sorted_service_cost_matrix
 
 
-def get_service_list(cost_matrix, service_aggregations):
+def get_service_list(cost_matrix, service_aggregations=None):
     """Extract unique service names from cost matrix.
 
     Args:
         cost_matrix: Dictionary of cost data organized by month
-        service_aggregations: Dictionary of service aggregation rules (not used currently)
+        service_aggregations: Dictionary of service aggregation rules (reserved for future use)
 
     Returns:
         List of service names
