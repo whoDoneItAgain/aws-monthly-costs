@@ -427,11 +427,19 @@ def _auto_adjust_column_widths(ws):
         column_letter = column[0].column_letter
         for cell in column:
             try:
-                if cell.value and len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
+                if cell.value is not None:
+                    # For numeric values with formatting, use a reasonable width
+                    if isinstance(cell.value, (int, float)):
+                        cell_length = 15  # Fixed width for currency/percentage
+                    else:
+                        cell_length = len(str(cell.value))
+                    
+                    if cell_length > max_length:
+                        max_length = cell_length
             except (AttributeError, TypeError):
                 pass
-        adjusted_width = min(max_length + 2, 50)
+        # Add extra padding and ensure minimum width
+        adjusted_width = min(max(max_length + 3, 12), 50)
         ws.column_dimensions[column_letter].width = adjusted_width
 
 
@@ -570,12 +578,15 @@ def _create_service_analysis_tables(
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(labels)
     
-    # Configure data labels to show on the pie slices
+    # Configure data labels to show category name and percentage only on the pie slices
     from openpyxl.chart.label import DataLabelList
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
-    chart.dataLabels.showVal = True
+    chart.dataLabels.showVal = False  # Don't show value
     chart.dataLabels.showPercent = True
+    
+    # Remove the legend - labels are shown on pie slices
+    chart.legend = None
 
     ws.add_chart(chart, "H3")
     
@@ -780,12 +791,15 @@ def _create_account_analysis_tables(
     chart.add_data(data, titles_from_data=True)
     chart.set_categories(labels)
     
-    # Configure data labels to show on the pie slices
+    # Configure data labels to show category name and percentage only on the pie slices
     from openpyxl.chart.label import DataLabelList
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
-    chart.dataLabels.showVal = True
+    chart.dataLabels.showVal = False  # Don't show value
     chart.dataLabels.showPercent = True
+    
+    # Remove the legend - labels are shown on pie slices
+    chart.legend = None
 
     ws.add_chart(chart, "H3")
     
