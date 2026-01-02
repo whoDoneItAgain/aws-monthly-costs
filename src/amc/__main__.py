@@ -463,9 +463,13 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
         analysis_data: Dictionary containing data for bu, service, and account modes
     """
     # Check if we have all three required data types
-    if not all(analysis_data.values()):
+    missing_modes = [mode for mode, data in analysis_data.items() if data is None]
+    if missing_modes:
         LOGGER.info(
-            "Skipping analysis file generation - not all required modes were run"
+            f"Skipping analysis file generation - missing required modes: {', '.join(missing_modes)}"
+        )
+        LOGGER.info(
+            f"To generate analysis file, run with modes: {RUN_MODE_ACCOUNT}, {RUN_MODE_BUSINESS_UNIT}, {RUN_MODE_SERVICE}"
         )
         return
 
