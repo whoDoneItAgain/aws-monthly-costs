@@ -27,7 +27,7 @@ Generate analysis Excel file only (default):
 amc --profile your-aws-profile
 ```
 
-This will create the analysis Excel file (`aws-monthly-costs-analysis.xlsx`) with formatted tables and charts when running all three main modes (account, bu, service). Individual report files are NOT generated unless explicitly requested.
+This will automatically run the three modes needed for the analysis file (`account`, `bu`, `service`) and create the analysis Excel file (`aws-monthly-costs-analysis.xlsx`) with formatted tables and charts. Individual report files are NOT generated unless explicitly requested with `--output-format`.
 
 ### Output Format Options
 
@@ -53,8 +53,6 @@ amc --profile your-aws-profile --output-format excel
 
 Generate both CSV and Excel individual reports:
 
-Generate both CSV and Excel individual reports:
-
 ```bash
 amc --profile your-aws-profile --output-format both
 ```
@@ -62,14 +60,20 @@ amc --profile your-aws-profile --output-format both
 ### Other Options
 
 ```bash
+# Run with custom options
 amc --profile your-aws-profile \
     --config-file path/to/config.yaml \
-    --run-modes account bu service \
     --time-period previous \
     --output-format both
+
+# Run specific modes (e.g., include daily modes)
+amc --profile your-aws-profile \
+    --run-modes account bu service account-daily bu-daily service-daily
 ```
 
 Run `amc --help` for all available options.
+
+**Note**: By default, the tool runs `account`, `bu`, and `service` modes, which are the three modes required to generate the analysis Excel file.
 
 ## Output
 
@@ -112,5 +116,7 @@ amc --profile your-aws-profile --run-modes account bu service
 
 **Example**: Generate analysis file AND individual CSV reports:
 ```bash
-amc --profile your-aws-profile --run-modes account bu service --output-format csv
+amc --profile your-aws-profile --output-format csv
 ```
+
+Note: The analysis file is only generated when all three required modes (`account`, `bu`, `service`) are run, which is the default behavior.

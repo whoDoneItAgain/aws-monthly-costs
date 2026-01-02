@@ -65,9 +65,9 @@ def get_config_args():
         "--run-modes",
         action="store",
         type=str,
-        default=VALID_RUN_MODES,
+        default=["account", "bu", "service"],
         nargs="*",
-        help="Run Modes of Script.",
+        help="Run Modes of Script. Default: account, bu, service (required for analysis file).",
     )
     parser.add_argument(
         "--time-period",
