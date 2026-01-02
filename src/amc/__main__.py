@@ -31,6 +31,8 @@ VALID_RUN_MODES = [
     "service-daily",
 ]
 
+DEFAULT_RUN_MODES = ["account", "bu", "service"]
+
 
 def get_config_args():
     # Define the parser
@@ -65,7 +67,7 @@ def get_config_args():
         "--run-modes",
         action="store",
         type=str,
-        default=["account", "bu", "service"],
+        default=DEFAULT_RUN_MODES,
         nargs="*",
         help="Run Modes of Script. Default: account, bu, service (required for analysis file).",
     )

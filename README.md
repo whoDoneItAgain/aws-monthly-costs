@@ -111,7 +111,7 @@ When `--output-format` is specified, individual reports are generated in the `./
 
 **Example**: Generate only the analysis file (default):
 ```bash
-amc --profile your-aws-profile --run-modes account bu service
+amc --profile your-aws-profile
 ```
 
 **Example**: Generate analysis file AND individual CSV reports:
