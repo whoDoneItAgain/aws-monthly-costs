@@ -584,6 +584,7 @@ def _create_service_analysis_tables(
     chart.dataLabels.showCatName = True
     chart.dataLabels.showVal = False  # Don't show value
     chart.dataLabels.showPercent = True
+    chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
     
     # Remove the legend - labels are shown on pie slices
     chart.legend = None
@@ -797,6 +798,7 @@ def _create_account_analysis_tables(
     chart.dataLabels.showCatName = True
     chart.dataLabels.showVal = False  # Don't show value
     chart.dataLabels.showPercent = True
+    chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
     
     # Remove the legend - labels are shown on pie slices
     chart.legend = None
