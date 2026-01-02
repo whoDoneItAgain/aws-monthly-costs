@@ -372,34 +372,22 @@ def main():
     if all(analysis_data.values()):
         LOGGER.info("Generating analysis Excel file with charts")
 
-        # Get template path - check in tmp directory
-        template_path = Path("tmp/example.xlsx")
-        if not template_path.exists():
-            # Try absolute path
-            template_path = Path(__file__).parent.parent.parent / "tmp" / "example.xlsx"
+        analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
 
-        if template_path.exists():
-            analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
+        bu_matrix, bu_list = analysis_data["bu"]
+        service_matrix, service_list = analysis_data["service"]
+        account_matrix, account_list = analysis_data["account"]
 
-            bu_matrix, bu_list = analysis_data["bu"]
-            service_matrix, service_list = analysis_data["service"]
-            account_matrix, account_list = analysis_data["account"]
-
-            export_analysis_excel(
-                analysis_file,
-                bu_matrix,
-                bu_list,
-                service_matrix,
-                service_list,
-                account_matrix,
-                account_list,
-                template_path,
-            )
-            LOGGER.info(f"Analysis file created: {analysis_file}")
-        else:
-            LOGGER.warning(
-                f"Template file not found at {template_path}, skipping analysis file generation"
-            )
+        export_analysis_excel(
+            analysis_file,
+            bu_matrix,
+            bu_list,
+            service_matrix,
+            service_list,
+            account_matrix,
+            account_list,
+        )
+        LOGGER.info(f"Analysis file created: {analysis_file}")
 
 
 if __name__ == "__main__":

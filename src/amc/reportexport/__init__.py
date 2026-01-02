@@ -1,8 +1,8 @@
 import csv
 import logging
-from pathlib import Path
 
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
+from openpyxl.chart import AreaChart, BarChart, LineChart, PieChart, Reference
 from openpyxl.styles import Font, PatternFill
 
 LOGGER = logging.getLogger(__name__)
@@ -127,9 +127,8 @@ def export_analysis_excel(
     service_group_list,
     account_cost_matrix,
     account_group_list,
-    template_path,
 ):
-    """Export analysis Excel file with charts based on template.
+    """Export analysis Excel file with charts (template-free implementation).
 
     Args:
         output_file: Path to the output analysis Excel file
@@ -139,42 +138,34 @@ def export_analysis_excel(
         service_group_list: List of services
         account_cost_matrix: Dictionary containing account cost data organized by month
         account_group_list: List of accounts
-        template_path: Path to the template Excel file
     """
     LOGGER.info(f"Creating analysis Excel file: {output_file}")
 
-    # Load the template workbook
-    template_path = Path(template_path)
-    if not template_path.exists():
-        LOGGER.error(f"Template file not found: {template_path}")
-        raise FileNotFoundError(f"Template file not found: {template_path}")
+    # Create a new workbook
+    wb = Workbook()
+    wb.remove(wb.active)  # Remove default sheet
 
-    wb = load_workbook(template_path)
+    # Create data sheets
+    ws_bu = wb.create_sheet("aws-spend")
+    _populate_data_sheet(ws_bu, bu_cost_matrix, bu_group_list, "bu")
 
-    # Populate aws-spend sheet with BU data
-    if "aws-spend" in wb.sheetnames and bu_cost_matrix:
-        _populate_data_sheet(wb["aws-spend"], bu_cost_matrix, bu_group_list, "bu")
-        LOGGER.info("Populated aws-spend sheet with BU data")
+    ws_service = wb.create_sheet("aws-spend-top-services")
+    _populate_data_sheet(ws_service, service_cost_matrix, service_group_list, "service")
 
-    # Populate aws-spend-top-services sheet with service data
-    if "aws-spend-top-services" in wb.sheetnames and service_cost_matrix:
-        _populate_data_sheet(
-            wb["aws-spend-top-services"],
-            service_cost_matrix,
-            service_group_list,
-            "service",
-        )
-        LOGGER.info("Populated aws-spend-top-services sheet with service data")
+    ws_account = wb.create_sheet("aws-spend-top-accounts")
+    _populate_data_sheet(ws_account, account_cost_matrix, account_group_list, "account")
 
-    # Populate aws-spend-top-accounts sheet with account data
-    if "aws-spend-top-accounts" in wb.sheetnames and account_cost_matrix:
-        _populate_data_sheet(
-            wb["aws-spend-top-accounts"],
-            account_cost_matrix,
-            account_group_list,
-            "account",
-        )
-        LOGGER.info("Populated aws-spend-top-accounts sheet with account data")
+    # Create analysis sheet with charts for BU data
+    ws_chart = wb.create_sheet("Analysis - BU Costs")
+    _create_bu_analysis_sheet(ws_chart, ws_bu)
+
+    # Create analysis sheet for service costs
+    ws_service_chart = wb.create_sheet("Analysis - Services")
+    _create_service_analysis_sheet(ws_service_chart, ws_service)
+
+    # Create analysis sheet for account costs
+    ws_account_chart = wb.create_sheet("Analysis - Accounts")
+    _create_account_analysis_sheet(ws_account_chart, ws_account)
 
     # Ensure output directory exists
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -182,6 +173,107 @@ def export_analysis_excel(
     # Save the workbook
     wb.save(output_file)
     LOGGER.info(f"Analysis Excel file saved: {output_file}")
+
+
+def _create_bu_analysis_sheet(ws_chart, ws_data):
+    """Create analysis sheet with charts for BU data."""
+    # Add title
+    ws_chart["A1"] = "Business Unit Cost Analysis"
+    ws_chart["A1"].font = Font(bold=True, size=14)
+
+    # Get data dimensions
+    max_row = ws_data.max_row
+    max_col = ws_data.max_column
+
+    if max_row < 2:
+        return
+
+    # Create Area Chart
+    chart1 = AreaChart()
+    chart1.title = "BU Costs Over Time"
+    chart1.style = 13
+    chart1.y_axis.title = "Cost ($)"
+    chart1.x_axis.title = "Month"
+
+    # Data for chart (skip total row if present)
+    last_row = max_row - 1 if ws_data.cell(max_row, 1).value == "total" else max_row
+    data = Reference(ws_data, min_col=2, min_row=1, max_col=max_col, max_row=last_row)
+    cats = Reference(ws_data, min_col=1, min_row=2, max_row=last_row)
+
+    chart1.add_data(data, titles_from_data=True)
+    chart1.set_categories(cats)
+
+    ws_chart.add_chart(chart1, "A3")
+
+    # Create Line Chart for trends
+    chart2 = LineChart()
+    chart2.title = "BU Cost Trends"
+    chart2.style = 12
+    chart2.y_axis.title = "Cost ($)"
+    chart2.x_axis.title = "Month"
+
+    chart2.add_data(data, titles_from_data=True)
+    chart2.set_categories(cats)
+
+    ws_chart.add_chart(chart2, "J3")
+
+
+def _create_service_analysis_sheet(ws_chart, ws_data):
+    """Create analysis sheet with charts for service data."""
+    # Add title
+    ws_chart["A1"] = "Top Services Cost Analysis"
+    ws_chart["A1"].font = Font(bold=True, size=14)
+
+    max_row = ws_data.max_row
+    max_col = ws_data.max_column
+
+    if max_row < 2:
+        return
+
+    # Create Bar Chart for services
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = "Top Services by Cost"
+    chart.y_axis.title = "Cost ($)"
+    chart.x_axis.title = "Service"
+
+    # Data for chart - last month column
+    data = Reference(ws_data, min_col=max_col, min_row=1, max_row=max_row)
+    cats = Reference(ws_data, min_col=1, min_row=2, max_row=max_row)
+
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(cats)
+    chart.shape = 4
+
+    ws_chart.add_chart(chart, "A3")
+
+
+def _create_account_analysis_sheet(ws_chart, ws_data):
+    """Create analysis sheet with charts for account data."""
+    # Add title
+    ws_chart["A1"] = "Top Accounts Cost Analysis"
+    ws_chart["A1"].font = Font(bold=True, size=14)
+
+    max_row = ws_data.max_row
+    max_col = ws_data.max_column
+
+    if max_row < 2:
+        return
+
+    # Create Pie Chart for account distribution
+    chart = PieChart()
+    chart.title = "Cost Distribution by Account (Latest Month)"
+    chart.style = 10
+
+    # Data for chart - last month column
+    labels = Reference(ws_data, min_col=1, min_row=2, max_row=max_row)
+    data = Reference(ws_data, min_col=max_col, min_row=1, max_row=max_row)
+
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(labels)
+
+    ws_chart.add_chart(chart, "A3")
 
 
 def _populate_data_sheet(worksheet, cost_matrix, group_list, group_by_type):
@@ -193,16 +285,18 @@ def _populate_data_sheet(worksheet, cost_matrix, group_list, group_by_type):
         group_list: List or dictionary of groups
         group_by_type: Type of grouping ("account", "bu", or "service")
     """
-    # Clear existing data (keep row 1 for headers if needed)
-    worksheet.delete_rows(1, worksheet.max_row)
-
     # Get months from cost matrix
     months = list(cost_matrix.keys())
 
     # Write header row
     header = ["Month"] + months
     for col_idx, header_value in enumerate(header, start=1):
-        worksheet.cell(row=1, column=col_idx, value=header_value)
+        cell = worksheet.cell(row=1, column=col_idx, value=header_value)
+        # Style header
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(
+            start_color="366092", end_color="366092", fill_type="solid"
+        )
 
     # Write data rows
     row_idx = 2

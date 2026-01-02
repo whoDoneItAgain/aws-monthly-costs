@@ -74,10 +74,13 @@ When you run all three main modes (`account`, `bu`, and `service` - not the dail
 - **File**: `aws-monthly-costs-analysis.xlsx`
 - **Content**: Interactive Excel workbook with:
   - Data sheets: `aws-spend` (BU data), `aws-spend-top-services` (service data), `aws-spend-top-accounts` (account data)
-  - Analysis sheets: `Sheet1`, `Sheet2`, `Sheet3` with formulas that reference the data sheets
-  - Charts: Visual representations of cost trends and breakdowns
+  - Analysis sheets with charts:
+    - **Analysis - BU Costs**: Area chart and line chart showing cost trends by business unit
+    - **Analysis - Services**: Bar chart showing top services by cost
+    - **Analysis - Accounts**: Pie chart showing cost distribution by account
+  - All charts are generated programmatically and automatically populated with your cost data
   
-This file is based on a template that includes pre-configured formulas and charts, automatically populated with your actual cost data.
+This file provides visual insights into your AWS spending patterns without requiring any external templates.
 
 **Example**: To generate the analysis file:
 ```bash
