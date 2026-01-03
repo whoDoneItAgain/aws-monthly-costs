@@ -19,13 +19,13 @@ See the [Migration Guide](#migration-guide) below for upgrade instructions.
 - 💾 Optional export of individual reports in **CSV** or **Excel** format (XLSX)
 - 🔧 Customizable cost aggregations and groupings
 - 🤝 Shared services cost allocation across business units
-- ✅ Comprehensive test coverage (112 tests, 100% core logic)
+- ✅ Comprehensive test coverage (112 tests, 48% overall, 100% core business logic)
 - 🔒 Security-focused design (no vulnerabilities)
 - 📝 Well-documented with inline docstrings
 
 ## Requirements
 
-- Python 3.12 or higher
+- Python 3.10 or higher
 - AWS credentials configured (via `~/.aws/config`)
 - Required AWS IAM permissions:
   - `ce:GetCostAndUsage` (AWS Cost Explorer)
@@ -743,7 +743,7 @@ open htmlcov/index.html
 ### Test Statistics
 
 - **Total Tests**: 112 (all passing ✅)
-- **Coverage**: 48% overall, 100% core business logic
+- **Coverage**: 48% overall, 100% core business logic (runmodes, main orchestration)
 - **Execution Time**: < 2 seconds
 - **Test Types**: Unit tests (100) + Integration tests (12)
 
@@ -836,7 +836,7 @@ See `LICENSE.md` for license information.
 - No vulnerable dependencies
 - Comprehensive security review completed
 
-See `AGENT_HANDOFF.md`, `REFACTORING_SUMMARY.md`, and `TEST_IMPLEMENTATION_SUMMARY.md` for detailed change logs.
+See `AGENT_HANDOFF.md`, `REFACTORING_SUMMARY.md`, `TEST_IMPLEMENTATION_SUMMARY.md`, and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
 
 ## Acknowledgments
 
