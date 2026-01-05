@@ -31,36 +31,6 @@ The workflow will:
 - ✅ Package published at https://pypi.org/p/aws-monthly-costs
 - ✅ Updated CHANGELOG.md in repository
 
-## Managing Dependencies
-
-### Via Dependabot (Recommended)
-Dependabot runs weekly and creates PRs for outdated dependencies:
-1. Review the Dependabot PR
-2. Tests run automatically via pr-ci workflow
-3. Merge the PR if tests pass
-4. Create a release with updated dependencies
-
-### Manual Updates
-Update dependencies manually before creating a release:
-
-```bash
-# Check for outdated dependencies
-pip list --outdated
-
-# Update specific packages
-pip install --upgrade boto3 pyyaml openpyxl
-
-# Update requirements.txt
-pip freeze | grep -E "^(boto3|pyyaml|openpyxl)==" > requirements.txt
-
-# Commit and push (tests will run via pr-ci on the PR)
-git checkout -b update-deps
-git add requirements.txt
-git commit -m "chore: update dependencies"
-git push origin update-deps
-# Create PR and merge after tests pass
-```
-
 ## Troubleshooting
 
 ### Workflow Fails During Tests
@@ -106,10 +76,9 @@ Then create a GitHub Release manually, which triggers PyPI publishing.
 ## Best Practices
 
 1. **Ensure all PRs are merged** before creating a release (pr-ci workflow tests all PRs)
-2. **Update dependencies** before major/minor releases
-3. **Use patch releases** for bug fixes only
-4. **Review the generated CHANGELOG.md** after release
-5. **Monitor the workflow run** to ensure all steps complete successfully
+2. **Use patch releases** for bug fixes only
+3. **Review the generated CHANGELOG.md** after release
+4. **Monitor the workflow run** to ensure all steps complete successfully
 
 ## Getting Help
 

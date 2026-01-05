@@ -8,7 +8,6 @@ The project includes automated workflows to manage releases and PyPI publishing:
 
 1. **Automated Release** (`release.yml`) - Main workflow for creating releases
 2. **PyPI Publishing** (`pypi.yaml`) - Publishes to PyPI when a release is created
-3. **Dependabot** (`dependabot.yml`) - Automated dependency updates via pull requests
 
 ## Semantic Versioning
 
@@ -24,8 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 
 Before creating a release:
 1. Ensure all PRs are merged to main branch (tests will have run via pr-ci workflow)
-2. **Manually update dependencies** if needed (see section below)
-3. Review the current version number
+2. Review the current version number
 
 ### Automated Release Workflow
 
@@ -68,41 +66,6 @@ The workflow performs the following steps automatically:
 - Builds the Python package
 - Publishes to PyPI using trusted publishing
 - Package becomes available at https://pypi.org/p/aws-monthly-costs
-
-## Dependency Management
-
-### Manual Dependency Updates (Before Release)
-
-Dependencies should be updated manually before creating a release:
-
-```bash
-# Check for outdated dependencies
-pip list --outdated
-
-# Update specific packages
-pip install --upgrade boto3 pyyaml openpyxl
-
-# Update requirements.txt
-pip freeze | grep -E "^(boto3|pyyaml|openpyxl)==" > requirements.txt
-
-# Commit the changes
-git add requirements.txt
-git commit -m "chore: update dependencies"
-git push
-```
-
-### Dependabot
-
-Dependabot is configured to automatically create PRs for dependency updates:
-- Runs weekly to check for updates
-- Creates separate PRs for GitHub Actions and Python packages
-- PRs are automatically labeled with `dependencies`
-
-**To use Dependabot updates:**
-1. Review the Dependabot PR
-2. Check that tests pass
-3. Merge the PR
-4. Then create a release with the updated dependencies
 
 ## PyPI Publishing
 
@@ -164,7 +127,6 @@ The changelog is automatically updated during the release process, but can be ma
 
 1. **Before Creating a Release**:
    - Ensure all PRs are merged to main
-   - **Update dependencies manually** (or merge Dependabot PRs)
    - Review the current version number
    - Decide on the appropriate version bump
    - Note: Tests will run automatically in the release workflow
@@ -175,12 +137,7 @@ The changelog is automatically updated during the release process, but can be ma
    - Use `major` for breaking changes
    - Use specific version only when necessary (e.g., aligning with another project)
 
-3. **Dependency Updates**:
-   - Review Dependabot PRs regularly
-   - Test dependency updates before merging (pr-ci workflow runs tests automatically)
-   - Update dependencies before creating releases
-
-4. **Changelog Maintenance**:
+3. **Changelog Maintenance**:
    - Review auto-generated changelog entries
    - Add manual entries for significant changes
    - Keep the Unreleased section up to date
