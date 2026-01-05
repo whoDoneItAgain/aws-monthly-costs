@@ -112,6 +112,10 @@ The PyPI publishing uses **Trusted Publishers**, which requires:
 - The repository must be configured in PyPI project settings
 - The workflow must run from the main branch or a release tag
 - The GitHub Actions environment `pypi` must exist
+- A `PAT_TOKEN` (Personal Access Token) secret must be configured in repository settings as a fine-grained token
+  - Required permissions: `Contents: Read and write`, `Pull requests: Read and write`, `Metadata: Read-only`, `Workflows: Read and write`
+  - This enables the release workflow to create PRs, push tags, create releases, and trigger the PyPI workflow automatically
+  - Without it, the workflow falls back to `GITHUB_TOKEN`, which cannot trigger dependent workflows (GitHub security feature)
 
 ## Changelog Management
 
@@ -183,6 +187,23 @@ The changelog is automatically updated during the release process, but can be ma
 - Verify the PyPI project is configured for trusted publishing
 - Check that the version number is unique (not already published)
 - Ensure the `pypi` environment exists in repository settings
+
+### PyPI Publishing Doesn't Trigger After Release
+- Ensure a `PAT_TOKEN` (Personal Access Token) secret is configured in repository settings:
+  1. Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
+  2. Click "Generate new token"
+  3. Set token name (e.g., "AWS Monthly Costs Release Token") and expiration
+  4. Under "Repository access", select "Only select repositories" and choose this repository
+  5. Under "Repository permissions", set:
+     - Contents: Read and write
+     - Pull requests: Read and write
+     - Metadata: Read-only (automatically set)
+     - Workflows: Read and write
+  6. Click "Generate token" and copy it (you won't be able to see it again)
+  7. In repository settings → Secrets and variables → Actions → New repository secret
+  8. Name: `PAT_TOKEN`, Value: paste the token
+- If `PAT_TOKEN` is not available, workflows created by `GITHUB_TOKEN` won't trigger other workflows (GitHub security feature)
+- To verify: Check the Actions tab for pypi workflow runs after release creation
 
 ### Release PR Fails CI Checks
 - Review the PR CI workflow logs for the release PR
