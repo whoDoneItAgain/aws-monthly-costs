@@ -112,7 +112,9 @@ The PyPI publishing uses **Trusted Publishers**, which requires:
 - The repository must be configured in PyPI project settings
 - The workflow must run from the main branch or a release tag
 - The GitHub Actions environment `pypi` must exist
-- A `PAT_TOKEN` secret must be configured in repository settings for the release workflow to trigger the PyPI workflow (alternatively, the workflow falls back to `GITHUB_TOKEN` but this prevents automatic PyPI workflow triggering)
+- A `PAT_TOKEN` (Personal Access Token) secret must be configured in repository settings with `repo` scope
+  - This enables the release workflow to trigger the PyPI workflow automatically
+  - Without it, the workflow falls back to `GITHUB_TOKEN`, which cannot trigger dependent workflows (GitHub security feature)
 
 ## Changelog Management
 
@@ -186,8 +188,12 @@ The changelog is automatically updated during the release process, but can be ma
 - Ensure the `pypi` environment exists in repository settings
 
 ### PyPI Publishing Doesn't Trigger After Release
-- Ensure a `PAT_TOKEN` (Personal Access Token) secret is configured in repository settings
-- The PAT must have `repo` scope to trigger workflows
+- Ensure a `PAT_TOKEN` (Personal Access Token) secret is configured in repository settings:
+  1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+  2. Generate new token with `repo` scope
+  3. Copy the token (you won't be able to see it again)
+  4. In repository settings → Secrets and variables → Actions → New repository secret
+  5. Name: `PAT_TOKEN`, Value: paste the token
 - If `PAT_TOKEN` is not available, workflows created by `GITHUB_TOKEN` won't trigger other workflows (GitHub security feature)
 - To verify: Check the Actions tab for pypi workflow runs after release creation
 
