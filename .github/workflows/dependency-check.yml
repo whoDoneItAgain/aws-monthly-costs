@@ -1,0 +1,116 @@
+name: Dependency Update Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-dependencies:
+    name: Check and Update Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools pip-review
+
+      - name: Check for updates
+        id: check
+        run: |
+          echo "Installing current dependencies..."
+          pip install -r requirements.txt
+          
+          echo "Checking for outdated packages..."
+          outdated=$(pip list --outdated --format=json)
+          
+          if [ "$outdated" != "[]" ]; then
+            echo "has-updates=true" >> $GITHUB_OUTPUT
+            echo "Found outdated dependencies:"
+            echo "$outdated" | python -m json.tool
+            
+            # Save the list of updates
+            echo "$outdated" | python -m json.tool > /tmp/outdated.json
+          else
+            echo "has-updates=false" >> $GITHUB_OUTPUT
+            echo "All dependencies are up to date!"
+          fi
+
+      - name: Create update summary
+        if: steps.check.outputs.has-updates == 'true'
+        run: |
+          echo "## Dependency Updates Available 📦" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following dependencies have updates available:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          python3 << 'EOF'
+          import json
+          import sys
+          
+          with open('/tmp/outdated.json', 'r') as f:
+              outdated = json.load(f)
+          
+          print("| Package | Current Version | Latest Version |")
+          print("|---------|----------------|----------------|")
+          
+          for pkg in outdated:
+              print(f"| {pkg['name']} | {pkg['version']} | {pkg['latest_version']} |")
+          EOF >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To update dependencies, run the **Automated Release** workflow with dependency updates enabled." >> $GITHUB_STEP_SUMMARY
+
+      - name: Update dependencies
+        if: steps.check.outputs.has-updates == 'true'
+        run: |
+          # Update all dependencies to latest versions
+          pip-review --auto
+          pip freeze > requirements.txt.new
+          
+          # Only keep the core dependencies
+          grep -E "^(boto3|pyyaml|openpyxl)==" requirements.txt.new > requirements.txt || cp requirements.txt.new requirements.txt
+
+      - name: Create Pull Request
+        if: steps.check.outputs.has-updates == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): update Python dependencies'
+          title: 'chore(deps): Update Python dependencies'
+          body: |
+            ## Dependency Updates
+            
+            This PR updates Python dependencies to their latest versions.
+            
+            ### Changes
+            See the summary in the workflow run for details of updated packages.
+            
+            ### Checklist
+            - [ ] Review dependency changes
+            - [ ] Run tests to ensure compatibility
+            - [ ] Merge if all checks pass
+            
+            ---
+            *This PR was automatically created by the Dependency Update Check workflow.*
+          branch: automated-dependency-updates
+          delete-branch: true
+          labels: |
+            dependencies
+            automated

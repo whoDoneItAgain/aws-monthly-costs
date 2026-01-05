@@ -772,6 +772,14 @@ Contributions are welcome! Please ensure:
 4. **Documentation updated**: Update README if adding features
 5. **Security**: No new vulnerabilities introduced
 
+### Release Process
+
+For maintainers, see [RELEASE_WORKFLOW.md](RELEASE_WORKFLOW.md) for detailed instructions on:
+- Creating releases with semantic versioning
+- Automated changelog generation
+- Dependency management
+- Publishing to PyPI
+
 ### Development Setup
 
 ```bash

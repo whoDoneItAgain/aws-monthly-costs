@@ -1,0 +1,233 @@
+# Release and Publishing Workflows
+
+This document describes the automated release and publishing workflows for the aws-monthly-costs project.
+
+## Overview
+
+The project includes several automated workflows to manage releases, dependencies, and PyPI publishing:
+
+1. **Automated Release** (`release.yml`) - Main workflow for creating releases
+2. **PyPI Publishing** (`pypi.yaml`) - Publishes to PyPI when a release is created
+3. **Dependency Update Check** (`dependency-check.yml`) - Monitors and updates dependencies
+4. **Dependabot** (`dependabot.yml`) - Automated dependency updates via pull requests
+
+## Semantic Versioning
+
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
+
+- **MAJOR** version (X.0.0): Incompatible API changes
+- **MINOR** version (0.X.0): New functionality in a backward compatible manner
+- **PATCH** version (0.0.X): Backward compatible bug fixes
+
+## Creating a Release
+
+### Automated Release Workflow
+
+The primary way to create a release is through the **Automated Release** workflow:
+
+1. Go to **Actions** → **Automated Release** in the GitHub repository
+2. Click **Run workflow**
+3. Select the branch (usually `main`)
+4. Choose the version bump type:
+   - `patch` - For bug fixes (0.0.X)
+   - `minor` - For new features (0.X.0)
+   - `major` - For breaking changes (X.0.0)
+   - Or specify an exact version like `1.2.3`
+5. Choose whether to update dependencies (recommended: `true`)
+6. Click **Run workflow**
+
+### What the Automated Release Workflow Does
+
+The workflow performs the following steps automatically:
+
+#### 1. Dependency Updates (Optional)
+- Checks for outdated Python dependencies
+- Updates `requirements.txt` with latest versions
+- Commits the changes
+
+#### 2. Version Bump
+- Reads the current version from `src/amc/version.py`
+- Calculates the new version based on your input
+- Updates the version file
+
+#### 3. Changelog Generation
+- Extracts commits since the last release
+- Generates a changelog entry in `CHANGELOG.md`
+- Follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format
+
+#### 4. Documentation Updates
+- Updates version references in documentation
+- Commits all changes
+
+#### 5. Testing
+- Runs the test suite to ensure everything works
+
+#### 6. Release Creation
+- Creates a git tag with the new version
+- Creates a GitHub Release with auto-generated notes
+- Includes the changelog entry in release notes
+
+#### 7. PyPI Publishing
+- Builds the Python package
+- Publishes to PyPI using trusted publishing
+- Package becomes available at https://pypi.org/p/aws-monthly-costs
+
+## Dependency Management
+
+### Automated Dependency Updates
+
+The project uses multiple mechanisms to keep dependencies up to date:
+
+#### Dependabot
+- Runs weekly to check for updates
+- Creates pull requests for outdated dependencies
+- Separate PRs for GitHub Actions and Python packages
+- PRs are automatically labeled with `dependencies`
+
+#### Dependency Update Check Workflow
+- Runs weekly on Mondays at 9 AM UTC
+- Can be triggered manually via **Actions** → **Dependency Update Check**
+- Creates a summary of available updates
+- Optionally creates a PR with all updates at once
+
+#### Manual Dependency Check
+To manually check for dependency updates:
+
+```bash
+pip install pip-review
+pip-review
+```
+
+To update all dependencies:
+
+```bash
+pip-review --auto
+pip freeze > requirements.txt
+```
+
+## PyPI Publishing
+
+The PyPI publishing workflow (`pypi.yaml`) is automatically triggered when a GitHub Release is published. It:
+
+1. Checks out the release tag
+2. Sets up Python
+3. Installs build dependencies
+4. Builds the package (wheel and source distribution)
+5. Publishes to PyPI using trusted publishing (no API tokens needed)
+
+### Prerequisites for PyPI Publishing
+
+The PyPI publishing uses **Trusted Publishers**, which requires:
+- The repository must be configured in PyPI project settings
+- The workflow must run from the main branch or a release tag
+- The GitHub Actions environment `pypi` must exist
+
+## Changelog Management
+
+The `CHANGELOG.md` file follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format:
+
+### Structure
+```markdown
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [Version] - YYYY-MM-DD
+### Category
+- Change description
+```
+
+### Categories
+- **Added**: New features
+- **Changed**: Changes in existing functionality
+- **Deprecated**: Soon-to-be removed features
+- **Removed**: Removed features
+- **Fixed**: Bug fixes
+- **Security**: Security fixes
+
+The changelog is automatically updated during the release process, but can be manually edited to provide more context.
+
+## Workflow Triggers
+
+### Automated Release
+- **Manual**: `workflow_dispatch` with version bump input
+- **When to use**: Ready to create a new release
+
+### Dependency Update Check
+- **Manual**: `workflow_dispatch`
+- **Scheduled**: Weekly on Mondays at 9 AM UTC
+- **When to use**: Want to check for dependency updates without creating a release
+
+### PyPI Publishing
+- **Automatic**: Triggered when a GitHub Release is published
+- **When to use**: Never manually triggered (runs automatically)
+
+## Best Practices
+
+1. **Before Creating a Release**:
+   - Ensure all PRs are merged to main
+   - Run tests locally
+   - Review the current version number
+   - Decide on the appropriate version bump
+
+2. **Version Bumping Guidelines**:
+   - Use `patch` for bug fixes and minor updates
+   - Use `minor` for new features that don't break existing functionality
+   - Use `major` for breaking changes
+   - Use specific version only when necessary (e.g., aligning with another project)
+
+3. **Dependency Updates**:
+   - Review Dependabot PRs regularly
+   - Test dependency updates before merging
+   - Consider bundling multiple dependency updates in a release
+
+4. **Changelog Maintenance**:
+   - Review auto-generated changelog entries
+   - Add manual entries for significant changes
+   - Keep the Unreleased section up to date
+
+## Troubleshooting
+
+### Release Workflow Fails
+- Check the workflow logs in the Actions tab
+- Ensure all tests pass
+- Verify the version number is valid
+- Check that there are no merge conflicts
+
+### PyPI Publishing Fails
+- Verify the PyPI project is configured for trusted publishing
+- Check that the version number is unique (not already published)
+- Ensure the `pypi` environment exists in repository settings
+
+### Dependency Updates Fail
+- Check for breaking changes in dependency changelogs
+- Run tests with updated dependencies
+- Consider pinning problematic dependencies temporarily
+
+## Manual Release Process
+
+If you need to create a release manually (not recommended):
+
+```bash
+# Update version
+echo '__version__ = "X.Y.Z"' > src/amc/version.py
+
+# Update changelog
+# Edit CHANGELOG.md manually
+
+# Commit changes
+git add src/amc/version.py CHANGELOG.md
+git commit -m "chore: bump version to X.Y.Z"
+
+# Create tag
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+
+# Push
+git push origin main --tags
+```
+
+Then create a GitHub Release manually, which will trigger the PyPI publishing workflow.

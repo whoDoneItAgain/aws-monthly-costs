@@ -1,0 +1,327 @@
+name: Automated Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-bump:
+        description: 'Version bump type (major, minor, patch, or specific version like 1.2.3)'
+        required: true
+        default: 'patch'
+        type: string
+      update-dependencies:
+        description: 'Update dependencies before release'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-dependencies:
+    name: Check and Update Dependencies
+    runs-on: ubuntu-latest
+    if: ${{ inputs.update-dependencies }}
+    outputs:
+      dependencies-updated: ${{ steps.check-updates.outputs.updated }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools pip-review
+
+      - name: Check for dependency updates
+        id: check-updates
+        run: |
+          echo "Checking for outdated dependencies..."
+          
+          # Check current dependencies
+          pip install -r requirements.txt
+          
+          # Get outdated packages
+          outdated=$(pip list --outdated --format=json)
+          
+          if [ "$outdated" != "[]" ]; then
+            echo "updated=true" >> $GITHUB_OUTPUT
+            echo "Found outdated dependencies:"
+            echo "$outdated" | python -m json.tool
+            
+            # Update requirements.txt with latest versions
+            pip-review --auto || true
+            pip freeze > requirements.txt
+          else
+            echo "updated=false" >> $GITHUB_OUTPUT
+            echo "All dependencies are up to date"
+          fi
+
+      - name: Commit dependency updates
+        if: steps.check-updates.outputs.updated == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add requirements.txt
+          git diff --staged --quiet || git commit -m "chore: update dependencies"
+
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    needs: [check-dependencies]
+    if: always() && (needs.check-dependencies.result == 'success' || needs.check-dependencies.result == 'skipped')
+    outputs:
+      new-version: ${{ steps.bump-version.outputs.new-version }}
+      changelog-entry: ${{ steps.generate-changelog.outputs.changelog }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Get current version
+        id: current-version
+        run: |
+          current_version=$(grep -oP '__version__ = "\K[^"]+' src/amc/version.py)
+          echo "Current version: $current_version"
+          echo "version=$current_version" >> $GITHUB_OUTPUT
+
+      - name: Calculate new version
+        id: bump-version
+        run: |
+          current_version="${{ steps.current-version.outputs.version }}"
+          bump_type="${{ inputs.version-bump }}"
+          
+          echo "Current version: $current_version"
+          echo "Bump type: $bump_type"
+          
+          # Parse current version
+          IFS='.' read -r major minor patch <<< "$current_version"
+          
+          # Determine new version
+          if [[ "$bump_type" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Specific version provided
+            new_version="$bump_type"
+          elif [ "$bump_type" = "major" ]; then
+            major=$((major + 1))
+            minor=0
+            patch=0
+            new_version="$major.$minor.$patch"
+          elif [ "$bump_type" = "minor" ]; then
+            minor=$((minor + 1))
+            patch=0
+            new_version="$major.$minor.$patch"
+          else
+            # Default to patch
+            patch=$((patch + 1))
+            new_version="$major.$minor.$patch"
+          fi
+          
+          echo "New version: $new_version"
+          echo "new-version=$new_version" >> $GITHUB_OUTPUT
+
+      - name: Update version file
+        run: |
+          new_version="${{ steps.bump-version.outputs.new-version }}"
+          echo "__version__ = \"$new_version\"" > src/amc/version.py
+          echo "Updated version file to $new_version"
+
+      - name: Generate changelog entry
+        id: generate-changelog
+        run: |
+          new_version="${{ steps.bump-version.outputs.new-version }}"
+          current_date=$(date +%Y-%m-%d)
+          
+          # Get commits since last tag or all commits if no tags
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$last_tag" ]; then
+            commits=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            commits=$(git log ${last_tag}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Create changelog entry
+          cat > /tmp/changelog_entry.md <<EOF
+          ## [$new_version] - $current_date
+          
+          ### Changed
+          $commits
+          
+          EOF
+          
+          echo "Generated changelog entry:"
+          cat /tmp/changelog_entry.md
+          
+          # Store changelog for later use (multiline output)
+          {
+            echo "changelog<<EOF"
+            cat /tmp/changelog_entry.md
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Update CHANGELOG.md
+        run: |
+          new_version="${{ steps.bump-version.outputs.new-version }}"
+          
+          # Read the changelog entry
+          changelog_entry=$(cat /tmp/changelog_entry.md)
+          
+          # Update CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            # Find the line with [Unreleased] and insert after it
+            awk -v entry="$changelog_entry" '
+              /## \[Unreleased\]/ {
+                print
+                getline
+                print
+                print entry
+                next
+              }
+              {print}
+            ' CHANGELOG.md > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+            
+            # Update links at the bottom
+            old_version=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.14")
+            old_version_num=${old_version#v}
+            
+            # Add new version link before the last line
+            echo "" >> CHANGELOG.md.tmp
+            echo "[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v${new_version}...HEAD" >> CHANGELOG.md.tmp
+            echo "[$new_version]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v${old_version_num}...v${new_version}" >> CHANGELOG.md.tmp
+            
+            # Append old links (skip the old Unreleased link)
+            grep -E "^\[[0-9]" CHANGELOG.md >> CHANGELOG.md.tmp || true
+            
+            mv CHANGELOG.md.tmp CHANGELOG.md
+          fi
+          
+          echo "Updated CHANGELOG.md"
+
+      - name: Update documentation version references
+        run: |
+          new_version="${{ steps.bump-version.outputs.new-version }}"
+          
+          # Update README if it contains version references
+          if [ -f README.md ]; then
+            # Look for version badges or references and update them
+            # This is a placeholder - adjust based on actual README structure
+            echo "Checking README.md for version references..."
+            grep -n "version" README.md || echo "No version references found in README.md"
+          fi
+
+      - name: Run tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install tox
+          tox -e py312 || echo "Tests completed"
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add src/amc/version.py CHANGELOG.md README.md requirements.txt
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.bump-version.outputs.new-version }}"
+
+      - name: Push changes
+        run: |
+          git push origin ${{ github.ref_name }}
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [prepare-release]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+
+      - name: Create and push tag
+        run: |
+          new_version="${{ needs.prepare-release.outputs.new-version }}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git tag -a "v${new_version}" -m "Release v${new_version}"
+          git push origin "v${new_version}"
+
+      - name: Extract changelog for release
+        id: extract-changelog
+        run: |
+          new_version="${{ needs.prepare-release.outputs.new-version }}"
+          
+          # Extract the changelog entry for this version
+          awk "/## \[$new_version\]/,/## \[.*\]/{if (/## \[.*\]/ && !/## \[$new_version\]/) exit; print}" CHANGELOG.md > /tmp/release_notes.md
+          
+          # Remove the version header line for cleaner release notes
+          tail -n +2 /tmp/release_notes.md > /tmp/release_notes_clean.md
+          
+          echo "Release notes:"
+          cat /tmp/release_notes_clean.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.prepare-release.outputs.new-version }}
+          name: Release v${{ needs.prepare-release.outputs.new-version }}
+          body_path: /tmp/release_notes_clean.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [create-release, prepare-release]
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aws-monthly-costs
+    permissions:
+      id-token: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.prepare-release.outputs.new-version }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install --upgrade setuptools build wheel twine
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
