@@ -83,7 +83,7 @@ The workflow performs the following steps automatically:
 
 #### 3. Pull Request Creation
 - Creates a pull request with the version and changelog updates
-- The PR will automatically run through the pr-ci.yml workflow which includes comprehensive testing
+- The PR will automatically run through the PR CI workflow which includes comprehensive testing
 - Once the PR passes all required checks and is merged, the release is created automatically
 
 #### 4. Release Creation
@@ -158,7 +158,7 @@ The changelog is automatically updated during the release process, but can be ma
    - Ensure all PRs are merged to main
    - Review the current version number
    - Decide on the appropriate version bump
-   - Note: All code has already been tested via the required pr-ci.yml workflow before merge
+   - Note: All code has already been tested via the required PR CI workflow before merge
 
 2. **Version Bumping Guidelines**:
    - Use `patch` for bug fixes and minor updates
@@ -185,7 +185,7 @@ The changelog is automatically updated during the release process, but can be ma
 - Ensure the `pypi` environment exists in repository settings
 
 ### Release PR Fails CI Checks
-- Review the pr-ci.yml workflow logs for the release PR
+- Review the PR CI workflow logs for the release PR
 - Fix any failing tests or checks locally
 - Push fixes to the release branch
 - The PR will automatically re-run CI checks

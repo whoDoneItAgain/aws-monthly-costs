@@ -28,7 +28,7 @@ The workflow will:
 4. ✅ Generate changelog entry
 5. ✅ Update `CHANGELOG.md`
 6. ✅ Create a pull request for the release
-7. ✅ PR runs through pr-ci.yml workflow (tests, lint, format)
+7. ✅ PR runs through PR CI workflow (tests, lint, format)
 8. ✅ Once PR is merged, create git tag
 9. ✅ Create GitHub Release
 10. ✅ Publish to PyPI
@@ -42,7 +42,7 @@ The workflow will:
 ## Troubleshooting
 
 ### Release PR Fails CI Checks
-- Review pr-ci.yml workflow logs for the release PR
+- Review PR CI workflow logs for the release PR
 - Fix failing tests or checks
 - Push fixes to the release branch
 - PR will automatically re-run CI checks
