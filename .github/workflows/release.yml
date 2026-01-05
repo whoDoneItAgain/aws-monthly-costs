@@ -197,45 +197,28 @@ jobs:
       
       - name: Trigger PR CI Workflow
         if: steps.create-pr.outputs.pull-request-number != ''
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-          script: |
-            // Trigger the PR CI workflow by closing and reopening the PR
-            // This is a workaround since GITHUB_TOKEN doesn't trigger workflows on PR creation
-            const prNumber = parseInt('${{ steps.create-pr.outputs.pull-request-number }}', 10);
-            const REOPEN_DELAY_MS = 2000;
-            
-            // Close and reopen the PR to trigger workflows
-            try {
-              // First, close the PR
-              await github.rest.pulls.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                state: 'closed'
-              });
-              
-              console.log(`Closed PR #${prNumber}`);
-              
-              // Wait a moment
-              await new Promise(resolve => setTimeout(resolve, REOPEN_DELAY_MS));
-              
-              // Reopen the PR - this will trigger the 'reopened' event
-              await github.rest.pulls.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                state: 'open'
-              });
-              
-              console.log(`Reopened PR #${prNumber} - this should trigger PR CI workflow`);
-            } catch (error) {
-              console.error('Failed to close/reopen PR:', error);
-              console.error('This is expected if the PR was not created (no changes detected)');
-              // Note: We don't add a label as fallback since the PR already has the 'chore' label
-              // and the labeled event might not trigger workflows with GITHUB_TOKEN anyway
-            }
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.create-pr.outputs.pull-request-number }}
+        run: |
+          # Trigger the PR CI workflow by closing and reopening the PR
+          # This is a workaround since GITHUB_TOKEN doesn't trigger workflows on PR creation
+          echo "Closing PR #${PR_NUMBER} to trigger workflows..."
+          gh pr close "${PR_NUMBER}" || {
+            echo "Failed to close PR, it may not exist or already be closed"
+            exit 0
+          }
+          
+          echo "Waiting 2 seconds before reopening..."
+          sleep 2
+          
+          echo "Reopening PR #${PR_NUMBER}..."
+          gh pr reopen "${PR_NUMBER}" || {
+            echo "Failed to reopen PR"
+            exit 0
+          }
+          
+          echo "✓ PR #${PR_NUMBER} reopened - this should trigger the PR CI workflow"
 
   create-release:
     name: Create GitHub Release
