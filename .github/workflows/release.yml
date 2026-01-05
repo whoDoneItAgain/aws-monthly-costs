@@ -203,7 +203,7 @@ jobs:
           script: |
             // Trigger the PR CI workflow by closing and reopening the PR
             // This is a workaround since GITHUB_TOKEN doesn't trigger workflows on PR creation
-            const prNumber = ${{ steps.create-pr.outputs.pull-request-number }};
+            const prNumber = parseInt('${{ steps.create-pr.outputs.pull-request-number }}', 10);
             const REOPEN_DELAY_MS = 2000;
             
             // Close and reopen the PR to trigger workflows
@@ -232,18 +232,9 @@ jobs:
               console.log(`Reopened PR #${prNumber} - this should trigger PR CI workflow`);
             } catch (error) {
               console.error('Failed to close/reopen PR:', error);
-              // If close/reopen fails, try adding the 'chore' label to trigger workflows
-              try {
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: prNumber,
-                  labels: ['chore']
-                });
-                console.log('Added chore label as fallback to trigger workflow');
-              } catch (labelError) {
-                console.error('Failed to add label:', labelError);
-              }
+              console.error('This is expected if the PR was not created (no changes detected)');
+              // Note: We don't add a label as fallback since the PR already has the 'chore' label
+              // and the labeled event might not trigger workflows with GITHUB_TOKEN anyway
             }
 
   create-release:
