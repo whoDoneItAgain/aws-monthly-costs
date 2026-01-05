@@ -14,14 +14,13 @@ on:
   workflow_dispatch:
 
 # Cancel in-progress runs for the same PR
+# Note: GitHub Actions doesn't natively support canceling parallel jobs when one fails.
+# Jobs run independently in parallel. If any job fails, the workflow is marked as failed,
+# but other running jobs will complete. The fail-fast strategy in the test matrix will
+# stop other Python versions if one fails within that job.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
-
-# Cancel all jobs if any job fails
-defaults:
-  run:
-    shell: bash
 
 jobs:
   pr-info:
@@ -47,11 +46,9 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       pull-requests: write
-      actions: write
     
     steps:
       - uses: mheap/github-action-required-labels@v5.5.0
-        id: label-check
         with:
           mode: minimum
           count: 1
@@ -64,18 +61,10 @@ jobs:
             enhancement
             maintenance
           add_comment: true
-      
-      - name: Cancel workflow on failure
-        if: failure()
-        uses: styfle/cancel-workflow-action@0.12.1
-        with:
-          access_token: ${{ github.token }}
 
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
     strategy:
       fail-fast: true
       matrix:
@@ -114,18 +103,10 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      
-      - name: Cancel workflow on failure
-        if: failure()
-        uses: styfle/cancel-workflow-action@0.12.1
-        with:
-          access_token: ${{ github.token }}
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
 
     steps:
       - name: Checkout code
@@ -145,18 +126,10 @@ jobs:
       - name: Run linting with tox
         run: |
           tox -e lint
-      
-      - name: Cancel workflow on failure
-        if: failure()
-        uses: styfle/cancel-workflow-action@0.12.1
-        with:
-          access_token: ${{ github.token }}
 
   format:
     name: Format
     runs-on: ubuntu-latest
-    permissions:
-      actions: write
 
     steps:
       - name: Checkout code
@@ -176,12 +149,6 @@ jobs:
       - name: Run formatter check with tox
         run: |
           tox -e format
-      
-      - name: Cancel workflow on failure
-        if: failure()
-        uses: styfle/cancel-workflow-action@0.12.1
-        with:
-          access_token: ${{ github.token }}
 
   all-tests-passed:
     name: All Tests Passed
