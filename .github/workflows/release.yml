@@ -204,19 +204,22 @@ jobs:
           # Trigger the PR CI workflow by closing and reopening the PR
           # This is a workaround since GITHUB_TOKEN doesn't trigger workflows on PR creation
           echo "Closing PR #${PR_NUMBER} to trigger workflows..."
-          gh pr close "${PR_NUMBER}" || {
-            echo "Failed to close PR, it may not exist or already be closed"
+          if ! gh pr close "${PR_NUMBER}"; then
+            echo "Warning: Failed to close PR #${PR_NUMBER}. It may already be closed or merged."
+            echo "Skipping workflow trigger mechanism."
             exit 0
-          }
+          fi
           
           echo "Waiting 2 seconds before reopening..."
           sleep 2
           
           echo "Reopening PR #${PR_NUMBER}..."
-          gh pr reopen "${PR_NUMBER}" || {
-            echo "Failed to reopen PR"
+          if ! gh pr reopen "${PR_NUMBER}"; then
+            echo "Error: Failed to reopen PR #${PR_NUMBER}."
+            echo "The PR may have been merged or deleted during the close operation."
+            echo "If the PR still exists, you may need to manually reopen it."
             exit 0
-          }
+          fi
           
           echo "✓ PR #${PR_NUMBER} reopened - this should trigger the PR CI workflow"
 
