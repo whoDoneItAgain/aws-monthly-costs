@@ -25,7 +25,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     outputs:
       new-version: ${{ steps.bump-version.outputs.new-version }}
-      pr-number: ${{ steps.create-pr.outputs.pr-number }}
+      pr-number: ${{ steps.create-pr.outputs.pull-request-number }}
       
     steps:
       - name: Checkout code
@@ -176,53 +176,29 @@ jobs:
           # Run tests - fail the workflow if tests fail
           tox -e py312
 
-      - name: Create release branch
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          release_branch="release/v${{ steps.bump-version.outputs.new-version }}"
-          git checkout -b "$release_branch"
-          git add src/amc/version.py CHANGELOG.md
-          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.bump-version.outputs.new-version }}"
-          git push origin "$release_branch"
-
       - name: Create Pull Request
         id: create-pr
-        uses: actions/github-script@v7
+        uses: peter-evans/create-pull-request@v7
         with:
-          script: |
-            const newVersion = '${{ steps.bump-version.outputs.new-version }}';
-            const releaseBranch = `release/v${newVersion}`;
-            
-            // Create the pull request
-            const { data: pr } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Release v${newVersion}`,
-              head: releaseBranch,
-              base: '${{ github.ref_name }}',
-              body: `## Release v${newVersion}\n\nThis PR bumps the version to ${newVersion} and updates the changelog.\n\n### Changes\n- Updated version in \`src/amc/version.py\`\n- Updated \`CHANGELOG.md\` with release notes\n\n**Note:** This PR was automatically created by the release workflow. Once CI passes and the PR is merged, the release will be automatically created.`,
-            });
-            
-            // Add the 'chore' label to the PR
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              labels: ['chore']
-            });
-            
-            console.log(`Created PR #${pr.number}`);
-            core.setOutput('pr-number', pr.number);
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump version to ${{ steps.bump-version.outputs.new-version }}"
+          branch: "release/v${{ steps.bump-version.outputs.new-version }}"
+          delete-branch: true
+          title: "Release v${{ steps.bump-version.outputs.new-version }}"
+          body: |
+            ## Release v${{ steps.bump-version.outputs.new-version }}
 
-      - name: Trigger PR CI Workflow
-        run: |
-          # This step triggers the pr-ci.yml workflow by making an empty commit
-          # This is needed because PRs created by GitHub Actions don't automatically trigger pull_request workflows
-          release_branch="release/v${{ steps.bump-version.outputs.new-version }}"
-          git checkout "$release_branch"
-          git commit --allow-empty -m "chore: trigger CI for release PR"
-          git push origin "$release_branch"
+            This PR bumps the version to ${{ steps.bump-version.outputs.new-version }} and updates the changelog.
+
+            ### Changes
+            - Updated version in `src/amc/version.py`
+            - Updated `CHANGELOG.md` with release notes
+
+            **Note:** This PR was automatically created by the release workflow. Once CI passes and the PR is merged, the release will be automatically created.
+          labels: chore
+          add-paths: |
+            src/amc/version.py
+            CHANGELOG.md
 
   create-release:
     name: Create GitHub Release
