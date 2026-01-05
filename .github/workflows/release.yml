@@ -173,7 +173,7 @@ jobs:
         id: create-pr
         uses: peter-evans/create-pull-request@v7.0.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           commit-message: "chore: bump version to ${{ steps.bump-version.outputs.new-version }}"
           branch: "release/v${{ steps.bump-version.outputs.new-version }}"
           delete-branch: true
@@ -188,10 +188,62 @@ jobs:
             - Updated `CHANGELOG.md` with release notes
 
             **Note:** This PR was automatically created by the release workflow. Once CI passes and the PR is merged, the release will be automatically created.
+            
+            ⚠️ **Note**: If using GITHUB_TOKEN (no PAT configured), PR checks must be manually triggered. See `.github/WORKFLOW_AUTOMATION.md` for details.
           labels: chore
           add-paths: |
             src/amc/version.py
             CHANGELOG.md
+      
+      - name: Trigger PR CI Workflow
+        if: steps.create-pr.outputs.pull-request-number != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Trigger the PR CI workflow by adding a comment
+            // This is a workaround since GITHUB_TOKEN doesn't trigger workflows on PR creation
+            const prNumber = ${{ steps.create-pr.outputs.pull-request-number }};
+            
+            // Close and reopen the PR to trigger workflows
+            try {
+              // First, close the PR
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                state: 'closed'
+              });
+              
+              console.log(`Closed PR #${prNumber}`);
+              
+              // Wait a moment
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Reopen the PR - this will trigger the 'reopened' event
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                state: 'open'
+              });
+              
+              console.log(`Reopened PR #${prNumber} - this should trigger PR CI workflow`);
+            } catch (error) {
+              console.error('Failed to close/reopen PR:', error);
+              // If close/reopen fails, try adding a label to trigger workflows
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  labels: ['automated-release']
+                });
+                console.log('Added label to trigger workflow');
+              } catch (labelError) {
+                console.error('Failed to add label:', labelError);
+              }
+            }
 
   create-release:
     name: Create GitHub Release
