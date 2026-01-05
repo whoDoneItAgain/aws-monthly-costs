@@ -11,10 +11,12 @@ This PR consolidates the GitHub Actions workflows to follow a cleaner pattern wi
    - Includes a summary job (`All Tests Passed`) that aggregates all checks
    - Auto-cancels outdated runs when new commits are pushed
    - Provides nice summaries in the GitHub Actions UI
+   - Supports manual triggering via workflow_dispatch
 
-2. **Updated: `test.yaml`** - Now only runs on push to main
-   - No longer runs on pull requests (handled by `pr-ci.yml`)
-   - Still runs on workflow dispatch for manual testing
+2. **Removed: `test.yaml`** - No longer needed
+   - All testing now happens in `pr-ci.yml` before merge
+   - With proper branch protection, main branch is always tested via PR checks
+   - Manual testing can be done via workflow_dispatch on `pr-ci.yml`
 
 3. **Removed: `pr-require-label.yaml`** - Functionality moved to `pr-ci.yml`
    - Label requirement is now part of the consolidated PR CI workflow
@@ -45,7 +47,7 @@ After this PR is merged, update your branch protection rules:
 | Event | Workflows |
 |-------|-----------|
 | Pull Request | `pr-ci.yml` (all CI checks) |
-| Push to main | `test.yaml` (full test suite) |
+| Manual Trigger | `pr-ci.yml` (via workflow_dispatch) |
 | Schedule (every 2 hours) | `maintenance-pre-commit.yaml` |
 | Push to main (if labels.yml changes) | `maintenance-label-sync.yaml` |
 | Release published | `pypi.yaml` |
