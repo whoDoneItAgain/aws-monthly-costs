@@ -195,7 +195,8 @@ jobs:
             - Updated `CHANGELOG.md` with release notes
 
             **Note:** This PR was automatically created by the release workflow. Once CI passes and the PR is merged, the release will be automatically created.
-          labels: chore
+          labels: |
+            chore
           add-paths: |
             src/amc/version.py
             CHANGELOG.md
