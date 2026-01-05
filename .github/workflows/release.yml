@@ -38,30 +38,24 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install pip-tools
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pip-tools pip-review
+          pip install -r requirements.txt
 
       - name: Check for dependency updates
         id: check-updates
         run: |
           echo "Checking for outdated dependencies..."
-          
-          # Check current dependencies
-          pip install -r requirements.txt
-          
-          # Get outdated packages
           outdated=$(pip list --outdated --format=json)
           
           if [ "$outdated" != "[]" ]; then
             echo "updated=true" >> $GITHUB_OUTPUT
             echo "Found outdated dependencies:"
             echo "$outdated" | python -m json.tool
-            
-            # Update requirements.txt with latest versions
-            pip-review --auto || true
-            pip freeze > requirements.txt
+            echo "$outdated" > /tmp/outdated.json
+            python3 .github/scripts/update_dependencies.py
+            pip freeze | grep -E "^(boto3|pyyaml|openpyxl)==" > requirements.txt
           else
             echo "updated=false" >> $GITHUB_OUTPUT
             echo "All dependencies are up to date"
@@ -74,6 +68,7 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add requirements.txt
           git diff --staged --quiet || git commit -m "chore: update dependencies"
+          git push origin ${{ github.ref_name }}
 
   prepare-release:
     name: Prepare Release
@@ -82,7 +77,6 @@ jobs:
     if: always() && (needs.check-dependencies.result == 'success' || needs.check-dependencies.result == 'skipped')
     outputs:
       new-version: ${{ steps.bump-version.outputs.new-version }}
-      changelog-entry: ${{ steps.generate-changelog.outputs.changelog }}
       
     steps:
       - name: Checkout code
@@ -90,6 +84,10 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref_name }}
+
+      - name: Pull latest changes
+        run: git pull origin ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -108,16 +106,11 @@ jobs:
         run: |
           current_version="${{ steps.current-version.outputs.version }}"
           bump_type="${{ inputs.version-bump }}"
-          
           echo "Current version: $current_version"
           echo "Bump type: $bump_type"
-          
-          # Parse current version
           IFS='.' read -r major minor patch <<< "$current_version"
           
-          # Determine new version
           if [[ "$bump_type" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # Specific version provided
             new_version="$bump_type"
           elif [ "$bump_type" = "major" ]; then
             major=$((major + 1))
@@ -129,7 +122,6 @@ jobs:
             patch=0
             new_version="$major.$minor.$patch"
           else
-            # Default to patch
             patch=$((patch + 1))
             new_version="$major.$minor.$patch"
           fi
@@ -144,12 +136,9 @@ jobs:
           echo "Updated version file to $new_version"
 
       - name: Generate changelog entry
-        id: generate-changelog
         run: |
           new_version="${{ steps.bump-version.outputs.new-version }}"
           current_date=$(date +%Y-%m-%d)
-          
-          # Get commits since last tag or all commits if no tags
           last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
           if [ -z "$last_tag" ]; then
@@ -158,75 +147,18 @@ jobs:
             commits=$(git log ${last_tag}..HEAD --pretty=format:"- %s (%h)" --no-merges)
           fi
           
-          # Create changelog entry
-          cat > /tmp/changelog_entry.md <<EOF
-          ## [$new_version] - $current_date
-          
-          ### Changed
-          $commits
-          
-          EOF
-          
-          echo "Generated changelog entry:"
-          cat /tmp/changelog_entry.md
-          
-          # Store changelog for later use (multiline output)
-          {
-            echo "changelog<<EOF"
-            cat /tmp/changelog_entry.md
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          echo "## [$new_version] - $current_date" > /tmp/changelog_entry.md
+          echo "" >> /tmp/changelog_entry.md
+          echo "### Changed" >> /tmp/changelog_entry.md
+          echo "$commits" >> /tmp/changelog_entry.md
+          echo "" >> /tmp/changelog_entry.md
 
       - name: Update CHANGELOG.md
         run: |
           new_version="${{ steps.bump-version.outputs.new-version }}"
-          
-          # Read the changelog entry
-          changelog_entry=$(cat /tmp/changelog_entry.md)
-          
-          # Update CHANGELOG.md
-          if [ -f CHANGELOG.md ]; then
-            # Find the line with [Unreleased] and insert after it
-            awk -v entry="$changelog_entry" '
-              /## \[Unreleased\]/ {
-                print
-                getline
-                print
-                print entry
-                next
-              }
-              {print}
-            ' CHANGELOG.md > CHANGELOG.md.tmp
-            mv CHANGELOG.md.tmp CHANGELOG.md
-            
-            # Update links at the bottom
-            old_version=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.14")
-            old_version_num=${old_version#v}
-            
-            # Add new version link before the last line
-            echo "" >> CHANGELOG.md.tmp
-            echo "[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v${new_version}...HEAD" >> CHANGELOG.md.tmp
-            echo "[$new_version]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v${old_version_num}...v${new_version}" >> CHANGELOG.md.tmp
-            
-            # Append old links (skip the old Unreleased link)
-            grep -E "^\[[0-9]" CHANGELOG.md >> CHANGELOG.md.tmp || true
-            
-            mv CHANGELOG.md.tmp CHANGELOG.md
-          fi
-          
-          echo "Updated CHANGELOG.md"
-
-      - name: Update documentation version references
-        run: |
-          new_version="${{ steps.bump-version.outputs.new-version }}"
-          
-          # Update README if it contains version references
-          if [ -f README.md ]; then
-            # Look for version badges or references and update them
-            # This is a placeholder - adjust based on actual README structure
-            echo "Checking README.md for version references..."
-            grep -n "version" README.md || echo "No version references found in README.md"
-          fi
+          old_version=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.14")
+          old_version_num=${old_version#v}
+          python3 .github/scripts/update_changelog.py "$new_version" "$old_version_num"
 
       - name: Run tests
         run: |
@@ -238,13 +170,11 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
-          git add src/amc/version.py CHANGELOG.md README.md requirements.txt
+          git add src/amc/version.py CHANGELOG.md
           git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.bump-version.outputs.new-version }}"
 
       - name: Push changes
-        run: |
-          git push origin ${{ github.ref_name }}
+        run: git push origin ${{ github.ref_name }}
 
   create-release:
     name: Create GitHub Release
@@ -258,28 +188,22 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref_name }}
 
+      - name: Pull latest changes
+        run: git pull origin ${{ github.ref_name }}
+
       - name: Create and push tag
         run: |
           new_version="${{ needs.prepare-release.outputs.new-version }}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
           git tag -a "v${new_version}" -m "Release v${new_version}"
           git push origin "v${new_version}"
 
       - name: Extract changelog for release
-        id: extract-changelog
         run: |
           new_version="${{ needs.prepare-release.outputs.new-version }}"
-          
-          # Extract the changelog entry for this version
           awk "/## \[$new_version\]/,/## \[.*\]/{if (/## \[.*\]/ && !/## \[$new_version\]/) exit; print}" CHANGELOG.md > /tmp/release_notes.md
-          
-          # Remove the version header line for cleaner release notes
           tail -n +2 /tmp/release_notes.md > /tmp/release_notes_clean.md
-          
-          echo "Release notes:"
-          cat /tmp/release_notes_clean.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -320,8 +244,7 @@ jobs:
           pip install --upgrade setuptools build wheel twine
 
       - name: Build package
-        run: |
-          python -m build
+        run: python -m build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
