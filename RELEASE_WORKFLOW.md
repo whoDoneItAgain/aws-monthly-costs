@@ -81,9 +81,10 @@ The workflow performs the following steps automatically:
 - Generates a changelog entry in `CHANGELOG.md`
 - Follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format
 
-#### 3. Testing
-- Runs the test suite to ensure everything works
-- **Fails the release if tests fail**
+#### 3. Pull Request Creation
+- Creates a pull request with the version and changelog updates
+- The PR will automatically run through the pr-ci.yml workflow which includes comprehensive testing
+- Once the PR passes all required checks and is merged, the release is created automatically
 
 #### 4. Release Creation
 - Creates a git tag with the new version
@@ -157,7 +158,7 @@ The changelog is automatically updated during the release process, but can be ma
    - Ensure all PRs are merged to main
    - Review the current version number
    - Decide on the appropriate version bump
-   - Note: Tests will run automatically in the release workflow
+   - Note: All code has already been tested via the required pr-ci.yml workflow before merge
 
 2. **Version Bumping Guidelines**:
    - Use `patch` for bug fixes and minor updates
@@ -183,11 +184,11 @@ The changelog is automatically updated during the release process, but can be ma
 - Check that the version number is unique (not already published)
 - Ensure the `pypi` environment exists in repository settings
 
-### Tests Fail During Release
-- Review test logs in the workflow run
-- Fix failing tests locally
-- Commit and push fixes
-- Re-run the release workflow
+### Release PR Fails CI Checks
+- Review the pr-ci.yml workflow logs for the release PR
+- Fix any failing tests or checks locally
+- Push fixes to the release branch
+- The PR will automatically re-run CI checks
 
 ## Manual Release Process
 
