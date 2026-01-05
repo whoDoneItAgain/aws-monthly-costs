@@ -9,21 +9,28 @@ Go to your repository → Actions tab → Select "Automated Release" workflow
 Click "Run workflow" button and configure:
 
 **Version Bump Type:**
+- `auto` - Auto-detect from commits (recommended, default)
 - `patch` - Bug fixes (e.g., 0.0.14 → 0.0.15)
 - `minor` - New features (e.g., 0.0.14 → 0.1.0)
 - `major` - Breaking changes (e.g., 0.0.14 → 1.0.0)
 - Or specify exact version (e.g., `1.2.3`)
 
+**Auto-Detection Keywords:**
+- Major: `BREAKING CHANGE:`, `breaking:`, `major:`, `!:`
+- Minor: `feat:`, `feature:`, `add:`, `new:`
+- Patch: `fix:`, `bugfix:`, `patch:`, `repair:`
+
 ### Step 3: Monitor Progress
 The workflow will:
-1. ✅ Calculate new version number
-2. ✅ Update `src/amc/version.py`
-3. ✅ Generate changelog entry
-4. ✅ Update `CHANGELOG.md`
-5. ✅ Run tests (fails if tests fail)
-6. ✅ Create git tag
-7. ✅ Create GitHub Release
-8. ✅ Publish to PyPI
+1. ✅ Auto-detect or use selected version bump
+2. ✅ Calculate new version number
+3. ✅ Update `src/amc/version.py`
+4. ✅ Generate changelog entry
+5. ✅ Update `CHANGELOG.md`
+6. ✅ Run tests (fails if tests fail)
+7. ✅ Create git tag
+8. ✅ Create GitHub Release
+9. ✅ Publish to PyPI
 
 ### Expected Results
 - ✅ New version tag in repository

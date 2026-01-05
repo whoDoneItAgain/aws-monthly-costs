@@ -8,18 +8,23 @@ This PR implements an automated release workflow for the aws-monthly-costs proje
 ### 1. Automated Release Workflow (`.github/workflows/release.yml`)
 A comprehensive workflow that automates the entire release process:
 - **Trigger**: Manual via GitHub Actions UI (workflow_dispatch)
-- **Input**: Version bump type (major/minor/patch or specific version like "1.2.3")
+- **Input**: Version bump type (auto/major/minor/patch or specific version like "1.2.3")
+- **Auto-Detection**: Analyzes commit messages to determine appropriate version bump
+  - Major: `BREAKING CHANGE:`, `breaking:`, `major:`, `!:`
+  - Minor: `feat:`, `feature:`, `add:`, `new:`
+  - Patch: `fix:`, `bugfix:`, `patch:`, `repair:`
 - **Process**:
-  1. Extracts current version from `src/amc/version.py`
-  2. Calculates new version based on semantic versioning rules
-  3. Updates version file
-  4. Generates changelog entry from commits since last release
-  5. Updates `CHANGELOG.md` with new entry and version links
-  6. Runs tests (py312) - **fails workflow if tests fail**
-  7. Commits changes to main branch
-  8. Creates and pushes git tag
-  9. Creates GitHub Release with auto-generated notes
-  10. Existing `pypi.yaml` workflow automatically publishes to PyPI
+  1. Auto-detects version bump from commits (if 'auto' selected)
+  2. Extracts current version from `src/amc/version.py`
+  3. Calculates new version based on semantic versioning rules
+  4. Updates version file
+  5. Generates changelog entry from commits since last release
+  6. Updates `CHANGELOG.md` with new entry and version links
+  7. Runs tests (py312) - **fails workflow if tests fail**
+  8. Commits changes to main branch
+  9. Creates and pushes git tag
+  10. Creates GitHub Release with auto-generated notes
+  11. Existing `pypi.yaml` workflow automatically publishes to PyPI
 
 ### 2. Changelog Management (`CHANGELOG.md`)
 - Initial changelog file created following [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format

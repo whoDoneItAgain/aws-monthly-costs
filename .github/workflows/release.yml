@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version-bump:
-        description: 'Version bump type (major, minor, patch, or specific version like 1.2.3)'
+        description: 'Version bump type (auto, major, minor, patch, or specific version like 1.2.3)'
         required: true
-        default: 'patch'
+        default: 'auto'
         type: string
 
 permissions:
@@ -40,11 +40,74 @@ jobs:
           echo "Current version: $current_version"
           echo "version=$current_version" >> $GITHUB_OUTPUT
 
+      - name: Auto-detect version bump type
+        id: auto-detect
+        if: ${{ inputs.version-bump == 'auto' }}
+        run: |
+          echo "Auto-detecting version bump type from commits..."
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$last_tag" ]; then
+            echo "No previous tag found, defaulting to minor bump"
+            echo "detected-bump=minor" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Get commits since last tag
+          commits=$(git log ${last_tag}..HEAD --pretty=format:"%s" --no-merges)
+          
+          # Analyze commits for keywords
+          has_breaking=false
+          has_feature=false
+          has_fix=false
+          
+          while IFS= read -r commit; do
+            commit_lower=$(echo "$commit" | tr '[:upper:]' '[:lower:]')
+            
+            # Check for breaking changes
+            if echo "$commit_lower" | grep -qE "(breaking change|breaking:|major:|\!:)"; then
+              has_breaking=true
+              break
+            fi
+            
+            # Check for features
+            if echo "$commit_lower" | grep -qE "(feat:|feature:|add:|new:)"; then
+              has_feature=true
+            fi
+            
+            # Check for fixes
+            if echo "$commit_lower" | grep -qE "(fix:|bugfix:|patch:|repair:)"; then
+              has_fix=true
+            fi
+          done <<< "$commits"
+          
+          # Determine bump type
+          if [ "$has_breaking" = true ]; then
+            detected_bump="major"
+          elif [ "$has_feature" = true ]; then
+            detected_bump="minor"
+          elif [ "$has_fix" = true ]; then
+            detected_bump="patch"
+          else
+            # Default to patch if no clear indicators
+            detected_bump="patch"
+          fi
+          
+          echo "Detected bump type: $detected_bump"
+          echo "detected-bump=$detected_bump" >> $GITHUB_OUTPUT
+
       - name: Calculate new version
         id: bump-version
         run: |
           current_version="${{ steps.current-version.outputs.version }}"
           bump_type="${{ inputs.version-bump }}"
+          
+          # Use auto-detected bump if 'auto' was selected
+          if [ "$bump_type" = "auto" ]; then
+            bump_type="${{ steps.auto-detect.outputs.detected-bump }}"
+            echo "Using auto-detected bump type: $bump_type"
+          fi
+          
           echo "Current version: $current_version"
           echo "Bump type: $bump_type"
           IFS='.' read -r major minor patch <<< "$current_version"

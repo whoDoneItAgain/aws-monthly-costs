@@ -33,11 +33,38 @@ The primary way to create a release is through the **Automated Release** workflo
 2. Click **Run workflow**
 3. Select the branch (usually `main`)
 4. Choose the version bump type:
+   - `auto` - Automatically detects based on commit messages (default)
    - `patch` - For bug fixes (0.0.X)
    - `minor` - For new features (0.X.0)
    - `major` - For breaking changes (X.0.0)
    - Or specify an exact version like `1.2.3`
 5. Click **Run workflow**
+
+#### Auto-Detection Logic
+
+When `auto` is selected, the workflow analyzes commit messages since the last release:
+
+- **Major bump** if commits contain:
+  - `BREAKING CHANGE:`
+  - `breaking:`
+  - `major:`
+  - `!:` (indicating breaking change)
+
+- **Minor bump** if commits contain:
+  - `feat:`
+  - `feature:`
+  - `add:`
+  - `new:`
+
+- **Patch bump** if commits contain:
+  - `fix:`
+  - `bugfix:`
+  - `patch:`
+  - `repair:`
+
+If no keywords are detected, defaults to `patch`.
+
+**Note:** You can always override auto-detection by manually selecting a specific bump type.
 
 ### What the Automated Release Workflow Does
 
@@ -45,7 +72,8 @@ The workflow performs the following steps automatically:
 
 #### 1. Version Bump
 - Reads the current version from `src/amc/version.py`
-- Calculates the new version based on your input
+- Auto-detects or uses manual selection for version bump
+- Calculates the new version based on semantic versioning rules
 - Updates the version file
 
 #### 2. Changelog Generation
