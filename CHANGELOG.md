@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-01-05
+
+### Changed
+- Add Pull requests permission to fine-grained token requirements (0779a17)
+- Update PAT token instructions to use fine-grained tokens (3232358)
+- Improve PAT_TOKEN documentation with clear setup instructions (c436f23)
+- Fix Upload Python Package Action not triggering on release (c54b13a)
+- Initial plan (ea07a94)
+
+
 ## [0.1.1] - 2026-01-05
 
 ### Changed
@@ -400,6 +410,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Current version baseline
 
-[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.0.13...v0.1.1
-[0.0.13]: https://github.com/whoDoneItAgain/aws-monthly-costs/releases/tag/v0.0.13
+[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/whoDoneItAgain/aws-monthly-costs/releases/tag/v0.1.1
