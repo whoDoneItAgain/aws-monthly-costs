@@ -113,8 +113,8 @@ The PyPI publishing uses **Trusted Publishers**, which requires:
 - The workflow must run from the main branch or a release tag
 - The GitHub Actions environment `pypi` must exist
 - A `PAT_TOKEN` (Personal Access Token) secret must be configured in repository settings as a fine-grained token
-  - Required permissions: `Contents: Read and write`, `Metadata: Read-only`, `Workflows: Read and write`
-  - This enables the release workflow to trigger the PyPI workflow automatically
+  - Required permissions: `Contents: Read and write`, `Pull requests: Read and write`, `Metadata: Read-only`, `Workflows: Read and write`
+  - This enables the release workflow to create PRs, push tags, create releases, and trigger the PyPI workflow automatically
   - Without it, the workflow falls back to `GITHUB_TOKEN`, which cannot trigger dependent workflows (GitHub security feature)
 
 ## Changelog Management
@@ -196,6 +196,7 @@ The changelog is automatically updated during the release process, but can be ma
   4. Under "Repository access", select "Only select repositories" and choose this repository
   5. Under "Repository permissions", set:
      - Contents: Read and write
+     - Pull requests: Read and write
      - Metadata: Read-only (automatically set)
      - Workflows: Read and write
   6. Click "Generate token" and copy it (you won't be able to see it again)
