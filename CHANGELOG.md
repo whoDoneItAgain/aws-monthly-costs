@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Automated release workflow with changelog generation
-- Dependency update checking in release process
 
 ## [0.0.14] - 2026-01-05
 

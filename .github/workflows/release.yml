@@ -8,78 +8,15 @@ on:
         required: true
         default: 'patch'
         type: string
-      update-dependencies:
-        description: 'Update dependencies before release'
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  check-dependencies:
-    name: Check and Update Dependencies
-    runs-on: ubuntu-latest
-    if: ${{ inputs.update-dependencies }}
-    outputs:
-      dependencies-updated: ${{ steps.check-updates.outputs.updated }}
-      
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Check for dependency updates
-        id: check-updates
-        run: |
-          echo "Checking for outdated dependencies..."
-          outdated=$(pip list --outdated --format=json)
-          
-          if [ "$outdated" != "[]" ]; then
-            echo "updated=true" >> $GITHUB_OUTPUT
-            echo "Found outdated dependencies:"
-            echo "$outdated" | python -m json.tool
-            echo "$outdated" > /tmp/outdated.json
-            python3 .github/scripts/update_dependencies.py
-            # Update requirements.txt with all current package versions
-            pip freeze > /tmp/all_requirements.txt
-            # Extract only our direct dependencies (those listed in pyproject.toml)
-            for pkg in boto3 pyyaml openpyxl; do
-              grep -i "^${pkg}==" /tmp/all_requirements.txt >> requirements.txt || true
-            done
-          else
-            echo "updated=false" >> $GITHUB_OUTPUT
-            echo "All dependencies are up to date"
-          fi
-
-      - name: Commit dependency updates
-        if: steps.check-updates.outputs.updated == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add requirements.txt
-          git diff --staged --quiet || git commit -m "chore: update dependencies"
-          git push origin ${{ github.ref_name }}
-
   prepare-release:
     name: Prepare Release
     runs-on: ubuntu-latest
-    needs: [check-dependencies]
-    if: always() && (needs.check-dependencies.result == 'success' || needs.check-dependencies.result == 'skipped')
     outputs:
       new-version: ${{ steps.bump-version.outputs.new-version }}
       
@@ -89,10 +26,6 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: ${{ github.ref_name }}
-
-      - name: Pull latest changes
-        run: git pull origin ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
