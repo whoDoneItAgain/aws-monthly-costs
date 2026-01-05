@@ -62,7 +62,12 @@ jobs:
         if: steps.check.outputs.has-updates == 'true'
         run: |
           python3 .github/scripts/update_dependencies.py
-          pip freeze | grep -E "^(boto3|pyyaml|openpyxl)==" > requirements.txt
+          # Update requirements.txt with all current package versions
+          pip freeze > /tmp/all_requirements.txt
+          # Extract only our direct dependencies (those listed in pyproject.toml)
+          for pkg in boto3 pyyaml openpyxl; do
+            grep -i "^${pkg}==" /tmp/all_requirements.txt >> requirements.txt || true
+          done
 
       - name: Create Pull Request
         if: steps.check.outputs.has-updates == 'true'

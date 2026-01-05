@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
 """Update CHANGELOG.md with new version"""
+import os
 import re
+import subprocess
 import sys
+
+def get_repo_url():
+    """Get GitHub repository URL from git remote"""
+    try:
+        result = subprocess.run(
+            ['git', 'remote', 'get-url', 'origin'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        url = result.stdout.strip()
+        # Convert SSH URL to HTTPS if needed
+        if url.startswith('git@github.com:'):
+            url = url.replace('git@github.com:', 'https://github.com/')
+        # Remove .git suffix if present
+        url = url.rstrip('.git')
+        return url
+    except subprocess.CalledProcessError:
+        # Fallback to environment variable or hardcoded value
+        return os.environ.get('GITHUB_SERVER_URL', 'https://github.com') + '/' + \
+               os.environ.get('GITHUB_REPOSITORY', 'whoDoneItAgain/aws-monthly-costs')
 
 def main():
     if len(sys.argv) != 3:
@@ -10,6 +33,7 @@ def main():
     
     new_version = sys.argv[1]
     old_version = sys.argv[2]
+    repo_url = get_repo_url()
     
     with open('CHANGELOG.md', 'r') as f:
         content = f.read()
@@ -29,9 +53,9 @@ def main():
     
     # Add updated links
     new_links = f"""
-[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v{new_version}...HEAD
-[{new_version}]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v{old_version}...v{new_version}
-[{old_version}]: https://github.com/whoDoneItAgain/aws-monthly-costs/releases/tag/v{old_version}
+[Unreleased]: {repo_url}/compare/v{new_version}...HEAD
+[{new_version}]: {repo_url}/compare/v{old_version}...v{new_version}
+[{old_version}]: {repo_url}/releases/tag/v{old_version}
 """
     
     content = content.rstrip() + '\n' + new_links
