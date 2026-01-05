@@ -199,11 +199,12 @@ jobs:
         if: steps.create-pr.outputs.pull-request-number != ''
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
-            // Trigger the PR CI workflow by adding a comment
+            // Trigger the PR CI workflow by closing and reopening the PR
             // This is a workaround since GITHUB_TOKEN doesn't trigger workflows on PR creation
             const prNumber = ${{ steps.create-pr.outputs.pull-request-number }};
+            const REOPEN_DELAY_MS = 2000;
             
             // Close and reopen the PR to trigger workflows
             try {
@@ -218,7 +219,7 @@ jobs:
               console.log(`Closed PR #${prNumber}`);
               
               // Wait a moment
-              await new Promise(resolve => setTimeout(resolve, 2000));
+              await new Promise(resolve => setTimeout(resolve, REOPEN_DELAY_MS));
               
               // Reopen the PR - this will trigger the 'reopened' event
               await github.rest.pulls.update({
@@ -231,15 +232,15 @@ jobs:
               console.log(`Reopened PR #${prNumber} - this should trigger PR CI workflow`);
             } catch (error) {
               console.error('Failed to close/reopen PR:', error);
-              // If close/reopen fails, try adding a label to trigger workflows
+              // If close/reopen fails, try adding the 'chore' label to trigger workflows
               try {
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: prNumber,
-                  labels: ['automated-release']
+                  labels: ['chore']
                 });
-                console.log('Added label to trigger workflow');
+                console.log('Added chore label as fallback to trigger workflow');
               } catch (labelError) {
                 console.error('Failed to add label:', labelError);
               }
