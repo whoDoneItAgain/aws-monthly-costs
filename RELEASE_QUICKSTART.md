@@ -27,10 +27,11 @@ The workflow will:
 3. ✅ Update `src/amc/version.py`
 4. ✅ Generate changelog entry
 5. ✅ Update `CHANGELOG.md`
-6. ✅ Run tests (fails if tests fail)
-7. ✅ Create git tag
-8. ✅ Create GitHub Release
-9. ✅ Publish to PyPI
+6. ✅ Create a pull request for the release
+7. ✅ PR runs through PR CI workflow (tests, lint, format)
+8. ✅ Once PR is merged, create git tag
+9. ✅ Create GitHub Release
+10. ✅ Publish to PyPI
 
 ### Expected Results
 - ✅ New version tag in repository
@@ -40,11 +41,12 @@ The workflow will:
 
 ## Troubleshooting
 
-### Workflow Fails During Tests
-- Review test logs in the workflow run
-- Fix failing tests
-- Push fixes to main
-- Re-run the workflow
+### Release PR Fails CI Checks
+- Review PR CI workflow logs for the release PR
+- Fix failing tests or checks
+- Push fixes to the release branch
+- PR will automatically re-run CI checks
+- Once checks pass, merge the PR to complete the release
 
 ### Version Already Exists
 - Choose a different version number
