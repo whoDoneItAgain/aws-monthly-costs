@@ -8,6 +8,11 @@ on:
         required: true
         default: 'auto'
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/amc/version.py'
 
 permissions:
   contents: write
@@ -15,10 +20,12 @@ permissions:
 
 jobs:
   prepare-release:
-    name: Prepare Release
+    name: Prepare Release PR
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     outputs:
       new-version: ${{ steps.bump-version.outputs.new-version }}
+      pr-number: ${{ steps.create-pr.outputs.pr-number }}
       
     steps:
       - name: Checkout code
@@ -169,85 +176,107 @@ jobs:
           # Run tests - fail the workflow if tests fail
           tox -e py312
 
-      - name: Commit changes
+      - name: Create release branch
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          release_branch="release/v${{ steps.bump-version.outputs.new-version }}"
+          git checkout -b "$release_branch"
           git add src/amc/version.py CHANGELOG.md
           git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.bump-version.outputs.new-version }}"
+          git push origin "$release_branch"
 
-      - name: Push changes
-        run: git push origin ${{ github.ref_name }}
+      - name: Create Pull Request
+        id: create-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.bump-version.outputs.new-version }}';
+            const releaseBranch = `release/v${newVersion}`;
+            
+            // Create the pull request
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release v${newVersion}`,
+              head: releaseBranch,
+              base: '${{ github.ref_name }}',
+              body: `## Release v${newVersion}\n\nThis PR bumps the version to ${newVersion} and updates the changelog.\n\n### Changes\n- Updated version in \`src/amc/version.py\`\n- Updated \`CHANGELOG.md\` with release notes\n\n**Note:** This PR was automatically created by the release workflow. Once CI passes and the PR is merged, the release will be automatically created.`,
+            });
+            
+            // Add the 'chore' label to the PR
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['chore']
+            });
+            
+            console.log(`Created PR #${pr.number}`);
+            core.setOutput('pr-number', pr.number);
 
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [prepare-release]
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, 'chore: bump version to')
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref_name }}
 
-      - name: Pull latest changes
-        run: git pull origin ${{ github.ref_name }}
+      - name: Extract version from commit
+        id: extract-version
+        run: |
+          # Extract version from commit message like "chore: bump version to X.Y.Z"
+          commit_msg="${{ github.event.head_commit.message }}"
+          version=$(echo "$commit_msg" | grep -oP 'bump version to \K[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          
+          if [ -z "$version" ]; then
+            echo "Could not extract version from commit message"
+            exit 1
+          fi
+          
+          echo "Extracted version: $version"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: check-tag
+        run: |
+          version="${{ steps.extract-version.outputs.version }}"
+          if git rev-parse "v${version}" >/dev/null 2>&1; then
+            echo "Tag v${version} already exists, skipping release creation"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create and push tag
+        if: steps.check-tag.outputs.exists == 'false'
         run: |
-          new_version="${{ needs.prepare-release.outputs.new-version }}"
+          version="${{ steps.extract-version.outputs.version }}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git tag -a "v${new_version}" -m "Release v${new_version}"
-          git push origin "v${new_version}"
+          git tag -a "v${version}" -m "Release v${version}"
+          git push origin "v${version}"
 
       - name: Extract changelog for release
+        if: steps.check-tag.outputs.exists == 'false'
         run: |
-          new_version="${{ needs.prepare-release.outputs.new-version }}"
-          awk "/## \[$new_version\]/,/## \[.*\]/{if (/## \[.*\]/ && !/## \[$new_version\]/) exit; print}" CHANGELOG.md > /tmp/release_notes.md
+          version="${{ steps.extract-version.outputs.version }}"
+          awk "/## \[$version\]/,/## \[.*\]/{if (/## \[.*\]/ && !/## \[$version\]/) exit; print}" CHANGELOG.md > /tmp/release_notes.md
           tail -n +2 /tmp/release_notes.md > /tmp/release_notes_clean.md
 
       - name: Create GitHub Release
+        if: steps.check-tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ needs.prepare-release.outputs.new-version }}
-          name: Release v${{ needs.prepare-release.outputs.new-version }}
+          tag_name: v${{ steps.extract-version.outputs.version }}
+          name: Release v${{ steps.extract-version.outputs.version }}
           body_path: /tmp/release_notes_clean.md
           draft: false
           prerelease: false
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-to-pypi:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    needs: [create-release, prepare-release]
-    environment:
-      name: pypi
-      url: https://pypi.org/p/aws-monthly-costs
-    permissions:
-      id-token: write
-      
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: v${{ needs.prepare-release.outputs.new-version }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install --upgrade setuptools build wheel twine
-
-      - name: Build package
-        run: python -m build
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
