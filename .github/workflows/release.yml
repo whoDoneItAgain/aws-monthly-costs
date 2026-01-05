@@ -215,6 +215,15 @@ jobs:
             console.log(`Created PR #${pr.number}`);
             core.setOutput('pr-number', pr.number);
 
+      - name: Trigger PR CI Workflow
+        run: |
+          # This step triggers the pr-ci.yml workflow by making an empty commit
+          # This is needed because PRs created by GitHub Actions don't automatically trigger pull_request workflows
+          release_branch="release/v${{ steps.bump-version.outputs.new-version }}"
+          git checkout "$release_branch"
+          git commit --allow-empty -m "chore: trigger CI for release PR"
+          git push origin "$release_branch"
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
