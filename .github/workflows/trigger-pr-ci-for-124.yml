@@ -1,0 +1,27 @@
+name: Trigger PR CI for PR #124
+
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger-ci:
+    name: Trigger PR CI Workflow for PR #124
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+      
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v0.1.0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Make empty commit to trigger CI
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit --allow-empty -m "chore: trigger CI for release PR #124"
+          git push origin release/v0.1.0
