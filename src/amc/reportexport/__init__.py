@@ -1,6 +1,6 @@
 import csv
 import logging
-from calendar import monthrange
+from calendar import month_abbr, monthrange
 from datetime import datetime
 
 from openpyxl import Workbook
@@ -1122,8 +1122,6 @@ def _calculate_year_daily_average(cost_matrix: dict, year_months: list[str]) -> 
     Returns:
         Dictionary of daily average costs {group: daily_avg_cost}
     """
-    from calendar import month_abbr
-    
     month_to_num = {month_abbr[i]: i for i in range(1, 13)}
     
     # Calculate total days in the year period
@@ -1368,8 +1366,8 @@ def _create_year_comparison_sheet(
         worksheet.cell(row, 1, group)
         worksheet.cell(row, 2, val1).number_format = '"$"#,##0.00'
         worksheet.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        worksheet.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        worksheet.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        worksheet.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        worksheet.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
 

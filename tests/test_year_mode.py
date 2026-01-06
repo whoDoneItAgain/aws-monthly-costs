@@ -36,7 +36,7 @@ class TestValidateYearData:
 
     def test_validate_year_data_insufficient_months(self):
         """Test validation fails with insufficient months."""
-        # Only 12 months of data
+        # Only 2 months of data (need 24)
         cost_matrix = {f"Jan": {"bu1": 100}, f"Feb": {"bu1": 100}}
         
         with pytest.raises(ValueError) as exc_info:

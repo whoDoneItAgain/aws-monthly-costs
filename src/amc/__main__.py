@@ -227,8 +227,14 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
         # For year mode, calculate 24 months back from first day of current month
         end_date = date.today().replace(day=1)
         # Go back 24 months for start date
-        year_offset = 2 if end_date.month <= 12 else 1
-        start_date = end_date.replace(year=end_date.year - year_offset, month=end_date.month)
+        start_month = end_date.month - 24
+        if start_month <= 0:
+            # Need to go back years
+            years_back = (-start_month // 12) + 1
+            new_month = start_month + (years_back * 12)
+            start_date = end_date.replace(year=end_date.year - years_back, month=new_month)
+        else:
+            start_date = end_date.replace(month=start_month)
     else:
         try:
             time_parts = time_period_str.split("_")
