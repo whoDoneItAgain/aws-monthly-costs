@@ -300,7 +300,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws.cell(row, 5, pct_diff).number_format = "0.00%"
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
-    data_end_row = pie_chart_end_row
+    data_end_row = row
 
     # Add conditional formatting to difference and % difference columns
     _add_conditional_formatting(
@@ -309,34 +309,36 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
     # Add pie chart (using column C data, which is the latest month)
     # Note: Exclude the total row from the pie chart as specified
-    chart = PieChart()
-    chart.title = "BU Costs Distribution"
-    chart.style = 10
-    chart.height = 15  # Increase height to show all labels
-    chart.width = 20  # Increase width to show all labels
+    # Only add pie chart if there's BU data to display
+    if pie_chart_end_row >= pie_chart_start_row:
+        chart = PieChart()
+        chart.title = "BU Costs Distribution"
+        chart.style = 10
+        chart.height = 15  # Increase height to show all labels
+        chart.width = 20  # Increase width to show all labels
 
-    # Use data from monthly totals excluding total row
-    labels = Reference(
-        ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
-    )
-    data = Reference(
-        ws, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
-    )
+        # Use data from monthly totals excluding total row
+        labels = Reference(
+            ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+        )
+        data = Reference(
+            ws, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+        )
 
-    chart.add_data(data, titles_from_data=False)
-    chart.set_categories(labels)
+        chart.add_data(data, titles_from_data=False)
+        chart.set_categories(labels)
 
-    # Configure data labels to show category name and percentage only on the pie slices
-    chart.dataLabels = DataLabelList()
-    chart.dataLabels.showCatName = True
-    chart.dataLabels.showVal = False  # Don't show value
-    chart.dataLabels.showPercent = True
-    chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
+        # Configure data labels to show category name and percentage only on the pie slices
+        chart.dataLabels = DataLabelList()
+        chart.dataLabels.showCatName = True
+        chart.dataLabels.showVal = False  # Don't show value
+        chart.dataLabels.showPercent = True
+        chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
 
-    # Remove the legend - labels are shown on pie slices
-    chart.legend = None
+        # Remove the legend - labels are shown on pie slices
+        chart.legend = None
 
-    ws.add_chart(chart, "H3")
+        ws.add_chart(chart, "H3")
 
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
