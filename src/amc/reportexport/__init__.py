@@ -1117,7 +1117,7 @@ def _calculate_year_daily_average(cost_matrix: dict, year_months: list[str]) -> 
     
     Args:
         cost_matrix: Dictionary of monthly cost data {month: {group: cost}}
-        year_months: List of month names in the year (e.g., ['Jan', 'Feb', ...])
+        year_months: List of month names in the year (e.g., ['2023-Jan', '2023-Feb', ...])
     
     Returns:
         Dictionary of daily average costs {group: daily_avg_cost}
@@ -1127,12 +1127,20 @@ def _calculate_year_daily_average(cost_matrix: dict, year_months: list[str]) -> 
     month_to_num = {month_abbr[i]: i for i in range(1, 13)}
     
     # Calculate total days in the year period
-    current_year = datetime.now().year
     total_days = 0
     
-    for month in year_months:
-        month_num = month_to_num.get(month, 1)
-        days_in_month = monthrange(current_year, month_num)[1]
+    for month_key in year_months:
+        # Extract month name from key (e.g., "2023-Jan" -> "Jan")
+        if "-" in month_key:
+            year_str, month_name = month_key.split("-", 1)
+            year = int(year_str)
+        else:
+            # Fallback for month names without year
+            month_name = month_key
+            year = datetime.now().year
+        
+        month_num = month_to_num.get(month_name, 1)
+        days_in_month = monthrange(year, month_num)[1]
         total_days += days_in_month
     
     # Get year totals

@@ -253,7 +253,7 @@ def validate_year_data(cost_matrix: dict) -> tuple[list[str], list[str]]:
     3. Identifies the two most recent complete 12-month periods
 
     Args:
-        cost_matrix: Dictionary of monthly cost data with month names as keys (e.g., 'Jan', 'Feb')
+        cost_matrix: Dictionary of monthly cost data with month names as keys (e.g., '2023-Jan', '2023-Feb')
 
     Returns:
         Tuple of (year1_months, year2_months) - Lists of month names for each year period
@@ -261,14 +261,12 @@ def validate_year_data(cost_matrix: dict) -> tuple[list[str], list[str]]:
     Raises:
         ValueError: If data is insufficient, has gaps, or doesn't meet requirements
     """
-    from calendar import month_abbr
-    
     if not cost_matrix:
         raise ValueError(
             "No cost data available. Please provide cost data for year analysis."
         )
 
-    # Get list of months from data
+    # Get list of months from data (in order)
     available_months = list(cost_matrix.keys())
     
     # Check minimum data requirement
@@ -279,36 +277,17 @@ def validate_year_data(cost_matrix: dict) -> tuple[list[str], list[str]]:
             f"for two-year comparison. Currently have {len(available_months)} months."
         )
 
-    # Create a mapping of month abbreviations to numbers
-    month_to_num = {month_abbr[i]: i for i in range(1, 13)}
-    
-    # Convert month names to numbers for validation
-    try:
-        month_numbers = [month_to_num[m] for m in available_months]
-    except KeyError as e:
-        raise ValueError(f"Invalid month name in cost data: {e}")
-
-    # Check for consecutive months (allowing for year wraparound)
-    # For simplicity, we'll assume months are in chronological order as returned by AWS API
-    # and check that we have at least 24 consecutive months
-    
     # Take the last 24 months as our data set for year analysis
-    if len(available_months) >= MIN_MONTHS_FOR_YEAR_ANALYSIS:
-        last_24_months = available_months[-MIN_MONTHS_FOR_YEAR_ANALYSIS:]
-        
-        # Split into two 12-month periods (most recent complete years)
-        year2_months = last_24_months[12:]  # Most recent year (months 13-24)
-        year1_months = last_24_months[:12]   # Previous year (months 1-12)
-        
-        LOGGER.debug(f"Year 1 months: {year1_months}")
-        LOGGER.debug(f"Year 2 months: {year2_months}")
-        
-        return year1_months, year2_months
+    last_24_months = available_months[-MIN_MONTHS_FOR_YEAR_ANALYSIS:]
     
-    raise ValueError(
-        f"Unable to identify two complete 12-month periods. "
-        f"Ensure you have at least {MIN_MONTHS_FOR_YEAR_ANALYSIS} consecutive months of data."
-    )
+    # Split into two 12-month periods (most recent complete years)
+    year1_months = last_24_months[:12]   # First 12 months
+    year2_months = last_24_months[12:]   # Last 12 months (most recent)
+    
+    LOGGER.debug(f"Year 1 months: {year1_months}")
+    LOGGER.debug(f"Year 2 months: {year2_months}")
+    
+    return year1_months, year2_months
 
 
 def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Session:

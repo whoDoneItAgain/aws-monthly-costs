@@ -5,12 +5,16 @@ from datetime import datetime
 LOGGER = logging.getLogger(__name__)
 
 
-def _build_costs(cost_and_usage, daily_average=False):
+def _build_costs(cost_and_usage, daily_average=False, include_year=False):
     account_costs: dict = {}
 
     for period in cost_and_usage["ResultsByTime"]:
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
-        cost_month_name = cost_month.strftime("%b")
+        # Include year in key for multi-year analysis
+        if include_year:
+            cost_month_name = cost_month.strftime("%Y-%b")
+        else:
+            cost_month_name = cost_month.strftime("%b")
 
         if daily_average:
             # Use the actual year from the cost data, not today's year
@@ -85,6 +89,10 @@ def calculate_business_unit_costs(
     Returns:
         Dictionary of cost data organized by month and business unit
     """
+    # Determine if we need to include year in month keys (for multi-year queries)
+    months_span = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+    include_year = months_span > 12
+    
     # Make single API call for all accounts (optimization: reduced from 2 calls to 1)
     all_costs_response = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
@@ -102,6 +110,7 @@ def calculate_business_unit_costs(
     all_account_costs = _build_costs(
         all_costs_response,
         daily_average,
+        include_year=include_year,
     )
 
     # Separate SS accounts from BU accounts using set for O(1) lookup
