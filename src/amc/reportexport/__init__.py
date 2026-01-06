@@ -208,7 +208,9 @@ def export_analysis_excel(
     LOGGER.info(f"Analysis Excel file saved: {output_file}")
 
 
-def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list, last_2_months):
+def _create_bu_analysis_tables(
+    ws, ws_daily, ws_helper, cost_matrix, group_list, last_2_months
+):
     """Create BU analysis tables with monthly totals on one sheet, daily average on another, and pie chart with helper table in hidden sheet."""
     # Header formatting
     header_font = Font(bold=True, size=14, color="FF000000")
@@ -249,11 +251,11 @@ def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list,
     # Data rows for monthly totals
     row += 1
     data_start_row = row
-    
+
     # Sort BUs by most recent month's cost in descending order
     bus = list(group_list.keys())
     bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
-    
+
     # Display all BUs in the table
     for bu in bus:
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
@@ -314,44 +316,44 @@ def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list,
     # Create helper table for pie chart in hidden sheet (groups BUs < 1% into "Other")
     helper_row = 1
     helper_col = 1  # Column A in helper sheet
-    
+
     total_for_pct = cost_matrix[last_2_months[1]].get("total", 1)
     pie_chart_start_row = helper_row
-    
+
     # Add BUs with >= 1% spend
     for bu in bus:
         val2 = cost_matrix[last_2_months[1]].get(bu, 0)
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
-        
+
         # Skip if zero
         if val1 == 0 and val2 == 0:
             continue
-            
+
         pct_spend = val2 / total_for_pct
         if pct_spend >= 0.01:  # >= 1%
             ws_helper.cell(helper_row, helper_col, bu)
             ws_helper.cell(helper_row, helper_col + 1, val2)
             helper_row += 1
-    
+
     # Calculate and add "Other" if there are BUs with < 1% spend
     other_total = 0
     for bu in bus:
         val2 = cost_matrix[last_2_months[1]].get(bu, 0)
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
-        
+
         # Skip if zero
         if val1 == 0 and val2 == 0:
             continue
-            
+
         pct_spend = val2 / total_for_pct
         if pct_spend < 0.01:  # < 1%
             other_total += val2
-    
+
     if other_total > 0:
         ws_helper.cell(helper_row, helper_col, "Other")
         ws_helper.cell(helper_row, helper_col + 1, other_total)
         helper_row += 1
-    
+
     pie_chart_end_row = helper_row - 1
 
     # Add pie chart using helper table data from hidden sheet
@@ -365,10 +367,16 @@ def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list,
 
         # Use data from helper sheet
         labels = Reference(
-            ws_helper, min_col=helper_col, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+            ws_helper,
+            min_col=helper_col,
+            min_row=pie_chart_start_row,
+            max_row=pie_chart_end_row,
         )
         data = Reference(
-            ws_helper, min_col=helper_col + 1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+            ws_helper,
+            min_col=helper_col + 1,
+            min_row=pie_chart_start_row,
+            max_row=pie_chart_end_row,
         )
 
         chart.add_data(data, titles_from_data=False)
@@ -471,15 +479,9 @@ def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list,
         else:
             pct_diff = 0
 
-        ws_daily.cell(
-            row, 2, val1
-        ).number_format = '"$"#,##0.00'
-        ws_daily.cell(
-            row, 3, val2
-        ).number_format = '"$"#,##0.00'
-        ws_daily.cell(
-            row, 4, abs(diff)
-        ).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
@@ -497,12 +499,8 @@ def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list,
         pct_diff = 0
 
     ws_daily.cell(row, 1, "total")
-    ws_daily.cell(
-        row, 2, total1_daily
-    ).number_format = '"$"#,##0.00'
-    ws_daily.cell(
-        row, 3, total2_daily
-    ).number_format = '"$"#,##0.00'
+    ws_daily.cell(row, 2, total1_daily).number_format = '"$"#,##0.00'
+    ws_daily.cell(row, 3, total2_daily).number_format = '"$"#,##0.00'
     ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
     ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
@@ -697,12 +695,8 @@ def _create_service_analysis_tables(
             pct_diff = 0
         pct_spend = other_amount / bu_total
 
-        ws.cell(
-            row, 2, other_amount_prev
-        ).number_format = '"$"#,##0.00'
-        ws.cell(
-            row, 3, other_amount
-        ).number_format = '"$"#,##0.00'
+        ws.cell(row, 2, other_amount_prev).number_format = '"$"#,##0.00'
+        ws.cell(row, 3, other_amount).number_format = '"$"#,##0.00'
         ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
@@ -825,15 +819,9 @@ def _create_service_analysis_tables(
         else:
             pct_diff = 0
 
-        ws_daily.cell(
-            row, 2, val1
-        ).number_format = '"$"#,##0.00'
-        ws_daily.cell(
-            row, 3, val2
-        ).number_format = '"$"#,##0.00'
-        ws_daily.cell(
-            row, 4, abs(diff)
-        ).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
@@ -958,12 +946,8 @@ def _create_account_analysis_tables(
             pct_diff = 0
         pct_spend = other_amount / bu_total
 
-        ws.cell(
-            row, 2, other_amount_prev
-        ).number_format = '"$"#,##0.00'
-        ws.cell(
-            row, 3, other_amount
-        ).number_format = '"$"#,##0.00'
+        ws.cell(row, 2, other_amount_prev).number_format = '"$"#,##0.00'
+        ws.cell(row, 3, other_amount).number_format = '"$"#,##0.00'
         ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
@@ -1086,15 +1070,9 @@ def _create_account_analysis_tables(
         else:
             pct_diff = 0
 
-        ws_daily.cell(
-            row, 2, val1
-        ).number_format = '"$"#,##0.00'
-        ws_daily.cell(
-            row, 3, val2
-        ).number_format = '"$"#,##0.00'
-        ws_daily.cell(
-            row, 4, abs(diff)
-        ).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
