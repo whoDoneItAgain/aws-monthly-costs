@@ -92,6 +92,32 @@ The profile should have the required IAM permissions listed in the [Requirements
 ```bash
 # Use a specific date range
 amc --profile your-aws-profile --time-period 2024-01-01_2024-12-31
+
+# Use year mode for two-year comparison (requires 24+ months of data)
+amc --profile your-aws-profile --time-period year
+```
+
+**Year Mode**: When you use `--time-period year`, the tool will:
+1. Fetch the last 24 months of AWS cost data
+2. Split the data into two complete 12-month periods for comparison
+3. Generate a separate `year-analysis.xlsx` file with:
+   - Yearly cost totals comparison
+   - Daily average costs for each year period
+   - Monthly average costs for each year period
+   - Comparative charts and formatted tables
+
+**Requirements for Year Mode**:
+- At least 24 consecutive months of AWS cost data
+- Data should be non-overlapping and complete
+- If insufficient data exists, you'll receive an actionable error message
+
+**Example Error Messages**:
+```
+Error: Insufficient data for year analysis. Provide at least 24 consecutive, 
+non-overlapping months for two-year comparison. Currently have 18 months.
+
+To generate year analysis, provide at least 24 consecutive months of data.
+Use a custom date range like: --time-period YYYY-MM-DD_YYYY-MM-DD with 24+ months
 ```
 
 #### Generate Individual Report Files
@@ -146,7 +172,7 @@ amc --profile your-aws-profile --debug-logging
 
 **Security Note**: Debug logs may contain AWS account IDs and cost data. Use with caution in sensitive environments.
 
-#### Complete Example
+#### Complete Examples
 
 ```bash
 # Full command with all options
@@ -157,6 +183,17 @@ amc --profile production-readonly \
     --include-shared-services \
     --run-modes account bu service account-daily bu-daily service-daily \
     --debug-logging
+
+# Year-level analysis with 24 months of data
+amc --profile production-readonly \
+    --time-period 2023-01-01_2024-12-31 \
+    --include-shared-services \
+    --debug-logging
+
+# Year mode (automatically fetches last 24 months)
+amc --profile production-readonly \
+    --time-period year \
+    --include-shared-services
 ```
 
 ### Command-Line Options
@@ -174,7 +211,7 @@ amc --help
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |
-| `--time-period` | No | `previous` | Time period: `previous` for last month or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
+| `--time-period` | No | `previous` | Time period: `previous` for last month, `year` for year-level analysis (24+ months), or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
 | `--output-format` | No | None | Individual report format: `csv`, `excel`, or `both` (omit for analysis file only) |
 | `--debug-logging` | No | False | Enable debug-level logging |
 
@@ -297,7 +334,63 @@ amc --profile prod --output-format csv
 #          ./outputs/aws-monthly-costs-account.csv
 #          ./outputs/aws-monthly-costs-bu.csv
 #          ./outputs/aws-monthly-costs-service.csv
+
+# Year analysis file (when using --time-period year)
+amc --profile prod --time-period year
+# Creates: ./outputs/aws-monthly-costs-analysis.xlsx
+#          ./outputs/aws-monthly-costs-year-analysis.xlsx
 ```
+
+### Year Analysis Excel File (Year Mode)
+
+**File**: `aws-monthly-costs-year-analysis.xlsx`
+
+Generated when using `--time-period year` option. Requires at least 24 consecutive months of data. This file contains:
+
+#### Worksheets
+
+1. **BU Costs - Yearly** - Business unit yearly totals comparison
+   - Two most recent complete 12-month periods side-by-side
+   - Difference and % Difference columns
+   - Pie chart showing BU cost distribution for most recent year
+   - Conditional formatting (green for savings, red for increases)
+
+2. **BU Costs - Daily Avg** - Business unit daily average comparison
+   - Accounts for different month lengths and leap years
+   - Same comparison format as yearly totals
+
+3. **BU Costs - Monthly Avg** - Business unit monthly average comparison
+   - Average cost per month across each 12-month period
+   - Useful for normalized comparisons
+
+4. **Top Services - Yearly** - Top 10 services yearly totals + "Other"
+   - Yearly totals with pie chart
+   - Aggregated based on configuration rules
+
+5. **Top Services - Daily Avg** - Daily average for top services
+
+6. **Top Services - Monthly Avg** - Monthly average for top services
+
+7. **Top Accounts - Yearly** - Top 10 accounts yearly totals + "Other"
+   - Yearly totals with pie chart
+   - Account names from AWS Organizations
+
+8. **Top Accounts - Daily Avg** - Daily average for top accounts
+
+9. **Top Accounts - Monthly Avg** - Monthly average for top accounts
+
+#### Features
+
+- **Formatted Tables**: Bold headers, blue background (#4472C4)
+- **Conditional Formatting**: 
+  - 🟢 Green for cost decreases (savings)
+  - 🔴 Red for cost increases
+- **Pie Charts**: Large, easy-to-read with data labels on slices
+- **Number Formatting**: 
+  - Currency format with 2 decimal places
+  - Percentage format for differences
+- **Auto-adjusted Columns**: Proper width for immediate readability
+- **Year Labels**: Clear identification of time periods (e.g., "Year 1 (2023-Jan - 2023-Dec)")
 
 ## Architecture Overview
 
