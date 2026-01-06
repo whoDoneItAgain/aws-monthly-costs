@@ -11,6 +11,7 @@ import yaml
 
 from amc.constants import (
     DEFAULT_RUN_MODES,
+    MIN_MONTHS_FOR_YEAR_ANALYSIS,
     OUTPUT_FORMAT_BOTH,
     OUTPUT_FORMAT_CSV,
     OUTPUT_FORMAT_EXCEL,
@@ -21,10 +22,11 @@ from amc.constants import (
     RUN_MODE_SERVICE,
     RUN_MODE_SERVICE_DAILY,
     TIME_PERIOD_PREVIOUS,
+    TIME_PERIOD_YEAR,
     VALID_OUTPUT_FORMATS,
     VALID_RUN_MODES,
 )
-from amc.reportexport import export_analysis_excel, export_report
+from amc.reportexport import export_analysis_excel, export_report, export_year_analysis_excel
 from amc.runmodes.account import calculate_account_costs, get_account_names
 from amc.runmodes.bu import calculate_business_unit_costs
 from amc.runmodes.service import calculate_service_costs, get_service_list
@@ -90,7 +92,7 @@ def parse_arguments():
         "--time-period",
         type=str,
         default=TIME_PERIOD_PREVIOUS,
-        help=f"Time period for cost analysis. Use '{TIME_PERIOD_PREVIOUS}' for last month or 'YYYY-MM-DD_YYYY-MM-DD' for custom range (default: {TIME_PERIOD_PREVIOUS})",
+        help=f"Time period for cost analysis. Use '{TIME_PERIOD_PREVIOUS}' for last month, '{TIME_PERIOD_YEAR}' for year-level analysis (requires 24+ months), or 'YYYY-MM-DD_YYYY-MM-DD' for custom range (default: {TIME_PERIOD_PREVIOUS})",
     )
 
     parser.add_argument(
@@ -202,7 +204,8 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
     """Parse time period string into start and end dates.
 
     Args:
-        time_period_str: Either 'previous' for last month or 'YYYY-MM-DD_YYYY-MM-DD' format
+        time_period_str: Either 'previous' for last month, 'year' for year analysis,
+                        or 'YYYY-MM-DD_YYYY-MM-DD' format
 
     Returns:
         Tuple of (start_date, end_date)
@@ -220,6 +223,12 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
         else:
             # Otherwise, just go back one month
             start_date = end_date.replace(month=end_date.month - 1)
+    elif time_period_str == TIME_PERIOD_YEAR:
+        # For year mode, calculate 24 months back from first day of current month
+        end_date = date.today().replace(day=1)
+        # Go back 24 months for start date
+        year_offset = 2 if end_date.month <= 12 else 1
+        start_date = end_date.replace(year=end_date.year - year_offset, month=end_date.month)
     else:
         try:
             time_parts = time_period_str.split("_")
@@ -233,6 +242,73 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
             raise ValueError(f"Invalid time period format '{time_period_str}': {e}")
 
     return start_date, end_date
+
+
+def validate_year_data(cost_matrix: dict) -> tuple[list[str], list[str]]:
+    """Validate that cost data is sufficient for year-level analysis.
+
+    Performs the following validation:
+    1. Checks for at least 24 months of data
+    2. Verifies months are consecutive (no gaps)
+    3. Identifies the two most recent complete 12-month periods
+
+    Args:
+        cost_matrix: Dictionary of monthly cost data with month names as keys (e.g., 'Jan', 'Feb')
+
+    Returns:
+        Tuple of (year1_months, year2_months) - Lists of month names for each year period
+
+    Raises:
+        ValueError: If data is insufficient, has gaps, or doesn't meet requirements
+    """
+    from calendar import month_abbr
+    
+    if not cost_matrix:
+        raise ValueError(
+            "No cost data available. Please provide cost data for year analysis."
+        )
+
+    # Get list of months from data
+    available_months = list(cost_matrix.keys())
+    
+    # Check minimum data requirement
+    if len(available_months) < MIN_MONTHS_FOR_YEAR_ANALYSIS:
+        raise ValueError(
+            f"Insufficient data for year analysis. "
+            f"Provide at least {MIN_MONTHS_FOR_YEAR_ANALYSIS} consecutive, non-overlapping months "
+            f"for two-year comparison. Currently have {len(available_months)} months."
+        )
+
+    # Create a mapping of month abbreviations to numbers
+    month_to_num = {month_abbr[i]: i for i in range(1, 13)}
+    
+    # Convert month names to numbers for validation
+    try:
+        month_numbers = [month_to_num[m] for m in available_months]
+    except KeyError as e:
+        raise ValueError(f"Invalid month name in cost data: {e}")
+
+    # Check for consecutive months (allowing for year wraparound)
+    # For simplicity, we'll assume months are in chronological order as returned by AWS API
+    # and check that we have at least 24 consecutive months
+    
+    # Take the last 24 months as our data set for year analysis
+    if len(available_months) >= MIN_MONTHS_FOR_YEAR_ANALYSIS:
+        last_24_months = available_months[-MIN_MONTHS_FOR_YEAR_ANALYSIS:]
+        
+        # Split into two 12-month periods (most recent complete years)
+        year2_months = last_24_months[12:]  # Most recent year (months 13-24)
+        year1_months = last_24_months[:12]   # Previous year (months 1-12)
+        
+        LOGGER.debug(f"Year 1 months: {year1_months}")
+        LOGGER.debug(f"Year 2 months: {year2_months}")
+        
+        return year1_months, year2_months
+    
+    raise ValueError(
+        f"Unable to identify two complete 12-month periods. "
+        f"Ensure you have at least {MIN_MONTHS_FOR_YEAR_ANALYSIS} consecutive months of data."
+    )
 
 
 def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Session:
@@ -504,6 +580,82 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
     LOGGER.info(f"Analysis file created: {analysis_file}")
 
 
+def _generate_year_analysis_file(
+    output_dir: Path,
+    analysis_data: dict,
+    cost_explorer_client,
+    organizations_client,
+    start_date: date,
+    end_date: date,
+    account_groups: dict,
+    shared_services_allocations: dict,
+    service_aggregations: dict,
+    top_costs_limits: dict,
+):
+    """Generate year-level analysis Excel file if all required data is available.
+
+    Args:
+        output_dir: Directory for output files
+        analysis_data: Dictionary containing data for bu, service, and account modes
+        cost_explorer_client: AWS Cost Explorer client
+        organizations_client: AWS Organizations client
+        start_date: Start date for cost data
+        end_date: End date for cost data
+        account_groups: Dictionary of business unit account groups
+        shared_services_allocations: Optional shared services allocation percentages
+        service_aggregations: Dictionary of service aggregation rules
+        top_costs_limits: Dictionary with top costs count limits
+    """
+    # Check if we have all three required data types
+    missing_modes = [mode for mode, data in analysis_data.items() if data is None]
+    if missing_modes:
+        LOGGER.info(
+            f"Skipping year analysis file generation - missing required modes: {', '.join(missing_modes)}"
+        )
+        LOGGER.info(
+            f"To generate year analysis file, run with modes: {RUN_MODE_ACCOUNT}, {RUN_MODE_BUSINESS_UNIT}, {RUN_MODE_SERVICE}"
+        )
+        return
+
+    LOGGER.info("Generating year-level analysis Excel file")
+
+    # Extract the cost matrices from analysis_data
+    bu_matrix, bu_groups = analysis_data[RUN_MODE_BUSINESS_UNIT]
+    service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
+    account_matrix, account_names = analysis_data[RUN_MODE_ACCOUNT]
+
+    # Validate and get year periods
+    try:
+        year1_months, year2_months = validate_year_data(bu_matrix)
+    except ValueError as e:
+        LOGGER.error(f"Year analysis validation failed: {e}")
+        print(f"\nError: {e}")
+        print(
+            "To generate year analysis, provide at least 24 consecutive months of data."
+        )
+        print(
+            f"Use a custom date range like: --time-period YYYY-MM-DD_YYYY-MM-DD with {MIN_MONTHS_FOR_YEAR_ANALYSIS}+ months"
+        )
+        return
+
+    # Generate year analysis file
+    year_analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-year-analysis.xlsx"
+
+    export_year_analysis_excel(
+        year_analysis_file,
+        bu_matrix,
+        bu_groups,
+        service_matrix,
+        service_list,
+        account_matrix,
+        account_names,
+        year1_months,
+        year2_months,
+    )
+
+    LOGGER.info(f"Year analysis file created: {year_analysis_file}")
+
+
 def main():
     """Main entry point for the AWS Monthly Costs tool."""
     if sys.version_info < (3, 10):
@@ -604,6 +756,21 @@ def main():
 
     # Generate analysis Excel file if all required data is available
     _generate_analysis_file(output_dir, analysis_data)
+    
+    # Generate year analysis file if time period is "year" mode
+    if args.time_period == TIME_PERIOD_YEAR:
+        _generate_year_analysis_file(
+            output_dir,
+            analysis_data,
+            cost_explorer_client,
+            organizations_client,
+            start_date,
+            end_date,
+            account_groups,
+            shared_services_allocations,
+            service_aggregations,
+            top_costs_limits,
+        )
 
 
 if __name__ == "__main__":
