@@ -21,7 +21,7 @@ from amc.constants import (
     RUN_MODE_BUSINESS_UNIT_DAILY,
     RUN_MODE_SERVICE,
     RUN_MODE_SERVICE_DAILY,
-    TIME_PERIOD_PREVIOUS,
+    TIME_PERIOD_MONTH,
     TIME_PERIOD_YEAR,
     VALID_OUTPUT_FORMATS,
     VALID_RUN_MODES,
@@ -91,8 +91,8 @@ def parse_arguments():
     parser.add_argument(
         "--time-period",
         type=str,
-        default=TIME_PERIOD_PREVIOUS,
-        help=f"Time period for cost analysis. Use '{TIME_PERIOD_PREVIOUS}' for last month, '{TIME_PERIOD_YEAR}' for year-level analysis (requires 24+ months), or 'YYYY-MM-DD_YYYY-MM-DD' for custom range (default: {TIME_PERIOD_PREVIOUS})",
+        default=TIME_PERIOD_MONTH,
+        help=f"Time period for cost analysis. Use '{TIME_PERIOD_MONTH}' for last 2 months, '{TIME_PERIOD_YEAR}' for year-level analysis (requires 24+ months), or 'YYYY-MM-DD_YYYY-MM-DD' for custom range (default: {TIME_PERIOD_MONTH})",
     )
 
     parser.add_argument(
@@ -204,7 +204,7 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
     """Parse time period string into start and end dates.
 
     Args:
-        time_period_str: Either 'previous' for last month, 'year' for year analysis,
+        time_period_str: Either 'month' for last 2 months, 'year' for year analysis,
                         or 'YYYY-MM-DD_YYYY-MM-DD' format
 
     Returns:
@@ -213,16 +213,16 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
     Raises:
         ValueError: If time_period_str is not in valid format
     """
-    if time_period_str == TIME_PERIOD_PREVIOUS:
+    if time_period_str == TIME_PERIOD_MONTH:
         # Get the first day of current month, which is the end_date for the query
         end_date = date.today().replace(day=1)
-        # Calculate the first day of the previous month (handles year boundaries)
-        if end_date.month == 1:
-            # If current month is January, go back to January of previous year
-            start_date = end_date.replace(year=end_date.year - 1, month=1)
+        # Go back 2 months for start date to get 2 full months of data
+        start_month = end_date.month - 2
+        if start_month <= 0:
+            # Need to go back to previous year
+            start_date = end_date.replace(year=end_date.year - 1, month=start_month + 12)
         else:
-            # Otherwise, just go back one month
-            start_date = end_date.replace(month=end_date.month - 1)
+            start_date = end_date.replace(month=start_month)
     elif time_period_str == TIME_PERIOD_YEAR:
         # For year mode, calculate 24 months back from first day of current month
         end_date = date.today().replace(day=1)

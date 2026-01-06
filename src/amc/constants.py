@@ -35,7 +35,7 @@ VALID_OUTPUT_FORMATS = [
 ]
 
 # Time period constants
-TIME_PERIOD_PREVIOUS = "previous"
+TIME_PERIOD_MONTH = "month"
 TIME_PERIOD_YEAR = "year"
 
 # Year analysis requirements

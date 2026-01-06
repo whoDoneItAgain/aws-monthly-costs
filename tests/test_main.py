@@ -20,7 +20,7 @@ from amc.constants import (
     OUTPUT_FORMAT_BOTH,
     OUTPUT_FORMAT_CSV,
     OUTPUT_FORMAT_EXCEL,
-    TIME_PERIOD_PREVIOUS,
+    TIME_PERIOD_MONTH,
 )
 
 
@@ -63,7 +63,7 @@ class TestParseArguments:
             assert args.include_shared_services is False
             assert args.debug_logging is False
             assert args.info_logging is False
-            assert args.time_period == TIME_PERIOD_PREVIOUS
+            assert args.time_period == TIME_PERIOD_MONTH
 
     def test_parse_arguments_with_run_modes(self):
         """Test parsing arguments with custom run modes."""
@@ -183,20 +183,21 @@ class TestLoadConfiguration:
 class TestParseTimePeriod:
     """Tests for parse_time_period function."""
 
-    def test_parse_time_period_previous(self):
-        """Test parsing 'previous' time period."""
-        start_date, end_date = parse_time_period(TIME_PERIOD_PREVIOUS)
+    def test_parse_time_period_month(self):
+        """Test parsing 'month' time period (2 full months)."""
+        start_date, end_date = parse_time_period(TIME_PERIOD_MONTH)
 
         # End date should be first day of current month
         today = date.today()
         expected_end = today.replace(day=1)
         assert end_date == expected_end
 
-        # Start date should be first day of previous month
-        if expected_end.month == 1:
-            expected_start = expected_end.replace(year=expected_end.year - 1, month=1)
+        # Start date should be first day of 2 months ago
+        start_month = expected_end.month - 2
+        if start_month <= 0:
+            expected_start = expected_end.replace(year=expected_end.year - 1, month=start_month + 12)
         else:
-            expected_start = expected_end.replace(month=expected_end.month - 1)
+            expected_start = expected_end.replace(month=start_month)
         assert start_date == expected_start
 
     def test_parse_time_period_custom_range(self):

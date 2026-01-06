@@ -90,12 +90,19 @@ The profile should have the required IAM permissions listed in the [Requirements
 #### Custom Time Periods
 
 ```bash
+# Use month mode for last 2 full months (default)
+amc --profile your-aws-profile --time-period month
+
 # Use a specific date range
 amc --profile your-aws-profile --time-period 2024-01-01_2024-12-31
 
 # Use year mode for two-year comparison (requires 24+ months of data)
 amc --profile your-aws-profile --time-period year
 ```
+
+**Month Mode** (default): When you use `--time-period month`, the tool will:
+1. Fetch the last 2 complete months of AWS cost data
+2. Generate comparison tables and charts for these 2 months
 
 **Year Mode**: When you use `--time-period year`, the tool will:
 1. Fetch the last 24 months of AWS cost data
@@ -211,7 +218,7 @@ amc --help
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |
-| `--time-period` | No | `previous` | Time period: `previous` for last month, `year` for year-level analysis (24+ months), or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
+| `--time-period` | No | `month` | Time period: `month` for last 2 months, `year` for year-level analysis (24+ months), or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
 | `--output-format` | No | None | Individual report format: `csv`, `excel`, or `both` (omit for analysis file only) |
 | `--debug-logging` | No | False | Enable debug-level logging |
 
@@ -574,8 +581,8 @@ cp src/amc/data/config/aws-monthly-costs-config.yaml my-config.yaml
 
 **Solution**:
 ```bash
-# Use 'previous' for last month (default)
-amc --profile your-profile-name --time-period previous
+# Use 'month' for last 2 months (default)
+amc --profile your-profile-name --time-period month
 
 # Or use correct date format: YYYY-MM-DD_YYYY-MM-DD
 amc --profile your-profile-name --time-period 2024-01-01_2024-12-31

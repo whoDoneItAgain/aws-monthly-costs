@@ -17,7 +17,7 @@ from amc.constants import (
     RUN_MODE_BUSINESS_UNIT_DAILY,
     RUN_MODE_SERVICE,
     RUN_MODE_SERVICE_DAILY,
-    TIME_PERIOD_PREVIOUS,
+    TIME_PERIOD_MONTH,
     VALID_OUTPUT_FORMATS,
     VALID_RUN_MODES,
 )
@@ -67,7 +67,7 @@ class TestConstants:
 
     def test_time_period_constant(self):
         """Test time period constant."""
-        assert TIME_PERIOD_PREVIOUS == "previous"
+        assert TIME_PERIOD_MONTH == "month"
 
     def test_cost_aggregation_keys(self):
         """Test cost aggregation keys."""
