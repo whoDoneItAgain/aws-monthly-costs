@@ -374,9 +374,9 @@ class TestCrossYearBoundaryIntegration:
         result = _build_costs(response, account_list, daily_average=True)
 
         # December 2023 has 31 days
-        assert abs(result["Dec"]["Test Account"] - 100.0) < 0.01
+        assert abs(result["2023-Dec"]["Test Account"] - 100.0) < 0.01
         # January 2024 has 31 days
-        assert abs(result["Jan"]["Test Account"] - 100.0) < 0.01
+        assert abs(result["2024-Jan"]["Test Account"] - 100.0) < 0.01
 
 
 class TestSharedServicesAllocationIntegration:
@@ -419,8 +419,8 @@ class TestSharedServicesAllocationIntegration:
         )
 
         # Shared services should appear as separate line item
-        assert result["Jan"]["ss"] == 200.00
-        assert result["Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["ss"] == 200.00
+        assert result["2024-Jan"]["production"] == 1000.00
 
     def test_bu_costs_with_allocation(self, sample_config):
         """Test BU costs calculation with shared services allocation."""
@@ -473,6 +473,6 @@ class TestSharedServicesAllocationIntegration:
         # Shared services should be allocated to BUs
         # Production: 1000 + (200 * 0.60) = 1120
         # Development: 800 + (200 * 0.40) = 880
-        assert result["Jan"]["production"] == 1120.00
-        assert result["Jan"]["development"] == 880.00
-        assert result["Jan"]["ss"] == 0.00  # Allocated, so 0 remaining
+        assert result["2024-Jan"]["production"] == 1120.00
+        assert result["2024-Jan"]["development"] == 880.00
+        assert result["2024-Jan"]["ss"] == 0.00  # Allocated, so 0 remaining
