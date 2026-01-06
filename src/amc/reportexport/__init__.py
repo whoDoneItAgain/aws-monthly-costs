@@ -5,6 +5,7 @@ from datetime import datetime
 
 from openpyxl import Workbook
 from openpyxl.chart import PieChart, Reference
+from openpyxl.chart.label import DataLabelList
 from openpyxl.styles import Alignment, Font, PatternFill
 
 LOGGER = logging.getLogger(__name__)
@@ -326,8 +327,6 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     chart.set_categories(labels)
 
     # Configure data labels to show category name and percentage only on the pie slices
-    from openpyxl.chart.label import DataLabelList
-
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
     chart.dataLabels.showVal = False  # Don't show value
@@ -691,7 +690,6 @@ def _create_service_analysis_tables(
     chart.set_categories(labels)
 
     # Configure data labels to show category name and percentage only on the pie slices
-    from openpyxl.chart.label import DataLabelList
 
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
@@ -953,7 +951,6 @@ def _create_account_analysis_tables(
     chart.set_categories(labels)
 
     # Configure data labels to show category name and percentage only on the pie slices
-    from openpyxl.chart.label import DataLabelList
 
     chart.dataLabels = DataLabelList()
     chart.dataLabels.showCatName = True
