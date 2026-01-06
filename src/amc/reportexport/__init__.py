@@ -247,12 +247,12 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     # Data rows for monthly totals
     row += 1
     data_start_row = row
-    pie_chart_start_row = row
     
     # Sort BUs by most recent month's cost in descending order
     bus = list(group_list.keys())
     bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
     
+    # Display all BUs in the table
     for bu in bus:
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
         val2 = cost_matrix[last_2_months[1]].get(bu, 0)
@@ -277,13 +277,11 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         row += 1
-
-    pie_chart_end_row = row - 1
 
     # Total row
     total1 = cost_matrix[last_2_months[0]].get("total", 0)
@@ -300,8 +298,8 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws.cell(row, 1, "total")
     ws.cell(row, 2, total1).number_format = '"$"#,##0.00'
     ws.cell(row, 3, total2).number_format = '"$"#,##0.00'
-    ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
-    ws.cell(row, 5, pct_diff).number_format = "0.00%"
+    ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+    ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
     data_end_row = row
@@ -311,8 +309,51 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
 
-    # Add pie chart (using column C data, which is the latest month)
-    # Note: Exclude the total row from the pie chart as specified
+    # Create helper table for pie chart (groups BUs < 1% into "Other")
+    # Place it in column H, starting a few rows down
+    helper_row = data_start_row
+    helper_col = 8  # Column H
+    
+    total_for_pct = cost_matrix[last_2_months[1]].get("total", 1)
+    pie_chart_start_row = helper_row
+    
+    # Add BUs with >= 1% spend
+    for bu in bus:
+        val2 = cost_matrix[last_2_months[1]].get(bu, 0)
+        val1 = cost_matrix[last_2_months[0]].get(bu, 0)
+        
+        # Skip if zero
+        if val1 == 0 and val2 == 0:
+            continue
+            
+        pct_spend = val2 / total_for_pct
+        if pct_spend >= 0.01:  # >= 1%
+            ws.cell(helper_row, helper_col, bu)
+            ws.cell(helper_row, helper_col + 1, val2)
+            helper_row += 1
+    
+    # Calculate and add "Other" if there are BUs with < 1% spend
+    other_total = 0
+    for bu in bus:
+        val2 = cost_matrix[last_2_months[1]].get(bu, 0)
+        val1 = cost_matrix[last_2_months[0]].get(bu, 0)
+        
+        # Skip if zero
+        if val1 == 0 and val2 == 0:
+            continue
+            
+        pct_spend = val2 / total_for_pct
+        if pct_spend < 0.01:  # < 1%
+            other_total += val2
+    
+    if other_total > 0:
+        ws.cell(helper_row, helper_col, "Other")
+        ws.cell(helper_row, helper_col + 1, other_total)
+        helper_row += 1
+    
+    pie_chart_end_row = helper_row - 1
+
+    # Add pie chart using helper table data
     # Only add pie chart if there's BU data to display
     if pie_chart_end_row >= pie_chart_start_row:
         chart = PieChart()
@@ -321,12 +362,12 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         chart.height = 15  # Increase height to show all labels
         chart.width = 20  # Increase width to show all labels
 
-        # Use data from monthly totals excluding total row
+        # Use data from helper table
         labels = Reference(
-            ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+            ws, min_col=helper_col, min_row=pie_chart_start_row, max_row=pie_chart_end_row
         )
         data = Reference(
-            ws, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+            ws, min_col=helper_col + 1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
         )
 
         chart.add_data(data, titles_from_data=False)
@@ -342,7 +383,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         # Remove the legend - labels are shown on pie slices
         chart.legend = None
 
-        ws.add_chart(chart, "H3")
+        ws.add_chart(chart, "J3")  # Move chart to column J to avoid helper table
 
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
@@ -436,9 +477,9 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
             row, 3, val2
         ).number_format = '"$"#,##0.00'
         ws_daily.cell(
-            row, 4, diff
+            row, 4, abs(diff)
         ).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
+        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
 
@@ -461,8 +502,8 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws_daily.cell(
         row, 3, total2_daily
     ).number_format = '"$"#,##0.00'
-    ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
-    ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
+    ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+    ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
     daily_end_row = row
 
