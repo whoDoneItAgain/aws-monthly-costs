@@ -26,7 +26,11 @@ from amc.constants import (
     VALID_OUTPUT_FORMATS,
     VALID_RUN_MODES,
 )
-from amc.reportexport import export_analysis_excel, export_report, export_year_analysis_excel
+from amc.reportexport import (
+    export_analysis_excel,
+    export_report,
+    export_year_analysis_excel,
+)
 from amc.runmodes.account import calculate_account_costs, get_account_names
 from amc.runmodes.bu import calculate_business_unit_costs
 from amc.runmodes.service import calculate_service_costs, get_service_list
@@ -220,7 +224,9 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
         start_month = end_date.month - 2
         if start_month <= 0:
             # Need to go back to previous year
-            start_date = end_date.replace(year=end_date.year - 1, month=start_month + 12)
+            start_date = end_date.replace(
+                year=end_date.year - 1, month=start_month + 12
+            )
         else:
             start_date = end_date.replace(month=start_month)
     elif time_period_str == TIME_PERIOD_YEAR:
@@ -232,7 +238,9 @@ def parse_time_period(time_period_str: str) -> tuple[date, date]:
             # Need to go back years
             years_back = (-start_month // 12) + 1
             new_month = start_month + (years_back * 12)
-            start_date = end_date.replace(year=end_date.year - years_back, month=new_month)
+            start_date = end_date.replace(
+                year=end_date.year - years_back, month=new_month
+            )
         else:
             start_date = end_date.replace(month=start_month)
     else:
@@ -274,7 +282,7 @@ def validate_year_data(cost_matrix: dict) -> tuple[list[str], list[str]]:
 
     # Get list of months from data (in order)
     available_months = list(cost_matrix.keys())
-    
+
     # Check minimum data requirement
     if len(available_months) < MIN_MONTHS_FOR_YEAR_ANALYSIS:
         raise ValueError(
@@ -285,14 +293,14 @@ def validate_year_data(cost_matrix: dict) -> tuple[list[str], list[str]]:
 
     # Take the last 24 months as our data set for year analysis
     last_24_months = available_months[-MIN_MONTHS_FOR_YEAR_ANALYSIS:]
-    
+
     # Split into two 12-month periods (most recent complete years)
-    year1_months = last_24_months[:12]   # First 12 months
-    year2_months = last_24_months[12:]   # Last 12 months (most recent)
-    
+    year1_months = last_24_months[:12]  # First 12 months
+    year2_months = last_24_months[12:]  # Last 12 months (most recent)
+
     LOGGER.debug(f"Year 1 months: {year1_months}")
     LOGGER.debug(f"Year 2 months: {year2_months}")
-    
+
     return year1_months, year2_months
 
 
@@ -741,7 +749,7 @@ def main():
 
     # Generate analysis Excel file if all required data is available
     _generate_analysis_file(output_dir, analysis_data)
-    
+
     # Generate year analysis file if time period is "year" mode
     if args.time_period == TIME_PERIOD_YEAR:
         _generate_year_analysis_file(

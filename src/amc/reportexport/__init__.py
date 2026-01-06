@@ -158,7 +158,7 @@ def export_analysis_excel(
     # Get last 2 months from the data - sort chronologically
     def get_sort_key(month_str):
         """Generate a sortable key for month strings.
-        
+
         Handles both simple month format (e.g., 'Jan') and YYYY-Mon format (e.g., '2023-Jan').
         For simple format, assumes current/recent year for sorting.
         """
@@ -1105,41 +1105,41 @@ def _create_account_analysis_tables(
 
 def _aggregate_year_costs(cost_matrix: dict, year_months: list[str]) -> dict:
     """Aggregate monthly costs into yearly totals for each group.
-    
+
     Args:
         cost_matrix: Dictionary of monthly cost data {month: {group: cost}}
         year_months: List of month names to aggregate (e.g., ['Jan', 'Feb', ...])
-    
+
     Returns:
         Dictionary of aggregated yearly costs {group: total_cost}
     """
     year_totals = {}
-    
+
     for month in year_months:
         if month in cost_matrix:
             for group, cost in cost_matrix[month].items():
                 if group not in year_totals:
                     year_totals[group] = 0.0
                 year_totals[group] += cost
-    
+
     return {k: round(v, 2) for k, v in year_totals.items()}
 
 
 def _calculate_year_daily_average(cost_matrix: dict, year_months: list[str]) -> dict:
     """Calculate daily average costs for a year period.
-    
+
     Args:
         cost_matrix: Dictionary of monthly cost data {month: {group: cost}}
         year_months: List of month names in the year (e.g., ['2023-Jan', '2023-Feb', ...])
-    
+
     Returns:
         Dictionary of daily average costs {group: daily_avg_cost}
     """
     month_to_num = {month_abbr[i]: i for i in range(1, 13)}
-    
+
     # Calculate total days in the year period
     total_days = 0
-    
+
     for month_key in year_months:
         # Extract month name from key (e.g., "2023-Jan" -> "Jan")
         if "-" in month_key:
@@ -1149,14 +1149,14 @@ def _calculate_year_daily_average(cost_matrix: dict, year_months: list[str]) -> 
             # Fallback for month names without year
             month_name = month_key
             year = datetime.now().year
-        
+
         month_num = month_to_num.get(month_name, 1)
         days_in_month = monthrange(year, month_num)[1]
         total_days += days_in_month
-    
+
     # Get year totals
     year_totals = _aggregate_year_costs(cost_matrix, year_months)
-    
+
     # Calculate daily average
     if total_days > 0:
         return {k: round(v / total_days, 2) for k, v in year_totals.items()}
@@ -1165,17 +1165,17 @@ def _calculate_year_daily_average(cost_matrix: dict, year_months: list[str]) -> 
 
 def _calculate_year_monthly_average(cost_matrix: dict, year_months: list[str]) -> dict:
     """Calculate monthly average costs for a year period.
-    
+
     Args:
         cost_matrix: Dictionary of monthly cost data {month: {group: cost}}
         year_months: List of month names in the year (e.g., ['Jan', 'Feb', ...])
-    
+
     Returns:
         Dictionary of monthly average costs {group: monthly_avg_cost}
     """
     # Get year totals
     year_totals = _aggregate_year_costs(cost_matrix, year_months)
-    
+
     # Calculate monthly average (divide by number of months)
     num_months = len(year_months)
     if num_months > 0:
@@ -1222,32 +1222,48 @@ def export_year_analysis_excel(
     # Aggregate data into yearly totals
     bu_year1 = _aggregate_year_costs(bu_cost_matrix, year1_months)
     bu_year2 = _aggregate_year_costs(bu_cost_matrix, year2_months)
-    
+
     service_year1 = _aggregate_year_costs(service_cost_matrix, year1_months)
     service_year2 = _aggregate_year_costs(service_cost_matrix, year2_months)
-    
+
     account_year1 = _aggregate_year_costs(account_cost_matrix, year1_months)
     account_year2 = _aggregate_year_costs(account_cost_matrix, year2_months)
-    
+
     # Calculate daily averages
     bu_year1_daily = _calculate_year_daily_average(bu_cost_matrix, year1_months)
     bu_year2_daily = _calculate_year_daily_average(bu_cost_matrix, year2_months)
-    
-    service_year1_daily = _calculate_year_daily_average(service_cost_matrix, year1_months)
-    service_year2_daily = _calculate_year_daily_average(service_cost_matrix, year2_months)
-    
-    account_year1_daily = _calculate_year_daily_average(account_cost_matrix, year1_months)
-    account_year2_daily = _calculate_year_daily_average(account_cost_matrix, year2_months)
-    
+
+    service_year1_daily = _calculate_year_daily_average(
+        service_cost_matrix, year1_months
+    )
+    service_year2_daily = _calculate_year_daily_average(
+        service_cost_matrix, year2_months
+    )
+
+    account_year1_daily = _calculate_year_daily_average(
+        account_cost_matrix, year1_months
+    )
+    account_year2_daily = _calculate_year_daily_average(
+        account_cost_matrix, year2_months
+    )
+
     # Calculate monthly averages
     bu_year1_monthly = _calculate_year_monthly_average(bu_cost_matrix, year1_months)
     bu_year2_monthly = _calculate_year_monthly_average(bu_cost_matrix, year2_months)
-    
-    service_year1_monthly = _calculate_year_monthly_average(service_cost_matrix, year1_months)
-    service_year2_monthly = _calculate_year_monthly_average(service_cost_matrix, year2_months)
-    
-    account_year1_monthly = _calculate_year_monthly_average(account_cost_matrix, year1_months)
-    account_year2_monthly = _calculate_year_monthly_average(account_cost_matrix, year2_months)
+
+    service_year1_monthly = _calculate_year_monthly_average(
+        service_cost_matrix, year1_months
+    )
+    service_year2_monthly = _calculate_year_monthly_average(
+        service_cost_matrix, year2_months
+    )
+
+    account_year1_monthly = _calculate_year_monthly_average(
+        account_cost_matrix, year1_months
+    )
+    account_year2_monthly = _calculate_year_monthly_average(
+        account_cost_matrix, year2_months
+    )
 
     # Create year labels
     year1_label = f"Year 1 ({year1_months[0]}-{year1_months[-1]})"
@@ -1256,58 +1272,103 @@ def export_year_analysis_excel(
     # Create sheets for BU costs
     ws_bu = wb.create_sheet("BU Costs - Yearly")
     _create_year_comparison_sheet(
-        ws_bu, "Business Unit Yearly Totals", bu_year1, bu_year2, 
-        list(bu_group_list.keys()) + ["total"], year1_label, year2_label
+        ws_bu,
+        "Business Unit Yearly Totals",
+        bu_year1,
+        bu_year2,
+        list(bu_group_list.keys()) + ["total"],
+        year1_label,
+        year2_label,
     )
-    
+
     ws_bu_daily = wb.create_sheet("BU Costs - Daily Avg")
     _create_year_comparison_sheet(
-        ws_bu_daily, "Business Unit Daily Average", bu_year1_daily, bu_year2_daily,
-        list(bu_group_list.keys()) + ["total"], year1_label, year2_label
+        ws_bu_daily,
+        "Business Unit Daily Average",
+        bu_year1_daily,
+        bu_year2_daily,
+        list(bu_group_list.keys()) + ["total"],
+        year1_label,
+        year2_label,
     )
-    
+
     ws_bu_monthly = wb.create_sheet("BU Costs - Monthly Avg")
     _create_year_comparison_sheet(
-        ws_bu_monthly, "Business Unit Monthly Average", bu_year1_monthly, bu_year2_monthly,
-        list(bu_group_list.keys()) + ["total"], year1_label, year2_label
+        ws_bu_monthly,
+        "Business Unit Monthly Average",
+        bu_year1_monthly,
+        bu_year2_monthly,
+        list(bu_group_list.keys()) + ["total"],
+        year1_label,
+        year2_label,
     )
 
     # Create sheets for Service costs
     ws_service = wb.create_sheet("Top Services - Yearly")
     _create_year_comparison_sheet(
-        ws_service, "Top Services Yearly Totals", service_year1, service_year2,
-        service_group_list, year1_label, year2_label
+        ws_service,
+        "Top Services Yearly Totals",
+        service_year1,
+        service_year2,
+        service_group_list,
+        year1_label,
+        year2_label,
     )
-    
+
     ws_service_daily = wb.create_sheet("Top Services - Daily Avg")
     _create_year_comparison_sheet(
-        ws_service_daily, "Top Services Daily Average", service_year1_daily, service_year2_daily,
-        service_group_list, year1_label, year2_label
+        ws_service_daily,
+        "Top Services Daily Average",
+        service_year1_daily,
+        service_year2_daily,
+        service_group_list,
+        year1_label,
+        year2_label,
     )
-    
+
     ws_service_monthly = wb.create_sheet("Top Services - Monthly Avg")
     _create_year_comparison_sheet(
-        ws_service_monthly, "Top Services Monthly Average", service_year1_monthly, service_year2_monthly,
-        service_group_list, year1_label, year2_label
+        ws_service_monthly,
+        "Top Services Monthly Average",
+        service_year1_monthly,
+        service_year2_monthly,
+        service_group_list,
+        year1_label,
+        year2_label,
     )
 
     # Create sheets for Account costs
     ws_account = wb.create_sheet("Top Accounts - Yearly")
     _create_year_comparison_sheet(
-        ws_account, "Top Accounts Yearly Totals", account_year1, account_year2,
-        account_group_list, year1_label, year2_label
+        ws_account,
+        "Top Accounts Yearly Totals",
+        account_year1,
+        account_year2,
+        account_group_list,
+        year1_label,
+        year2_label,
     )
-    
+
     ws_account_daily = wb.create_sheet("Top Accounts - Daily Avg")
     _create_year_comparison_sheet(
-        ws_account_daily, "Top Accounts Daily Average", account_year1_daily, account_year2_daily,
-        account_group_list, year1_label, year2_label
+        ws_account_daily,
+        "Top Accounts Daily Average",
+        account_year1_daily,
+        account_year2_daily,
+        account_group_list,
+        year1_label,
+        year2_label,
     )
-    
+
     ws_account_monthly = wb.create_sheet("Top Accounts - Monthly Avg")
     _create_year_comparison_sheet(
-        ws_account_monthly, "Top Accounts Monthly Average", account_year1_monthly, account_year2_monthly,
-        account_group_list, year1_label, year2_label
+        ws_account_monthly,
+        "Top Accounts Monthly Average",
+        account_year1_monthly,
+        account_year2_monthly,
+        account_group_list,
+        year1_label,
+        year2_label,
     )
 
     # Save the workbook
@@ -1319,7 +1380,7 @@ def _create_year_comparison_sheet(
     worksheet, title, year1_data, year2_data, group_list, year1_label, year2_label
 ):
     """Create a year comparison sheet with formatted table and chart.
-    
+
     Args:
         worksheet: openpyxl worksheet object
         title: Title for the sheet
@@ -1331,7 +1392,9 @@ def _create_year_comparison_sheet(
     """
     # Define styles
     header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="4472C4", end_color="4472C4", fill_type="solid"
+    )
     header_alignment = Alignment(horizontal="center", vertical="center")
 
     # Title
@@ -1367,7 +1430,7 @@ def _create_year_comparison_sheet(
         val1 = year1_data.get(group, 0)
         val2 = year2_data.get(group, 0)
         diff = val2 - val1
-        
+
         # Calculate percentage difference
         if val1 > 0:
             pct_diff = (val2 - val1) / val1
@@ -1406,12 +1469,22 @@ def _create_year_comparison_sheet(
     chart_groups = [g for g in group_list if g != "total" and year2_data.get(g, 0) > 0]
     if chart_groups:
         # Create chart data reference
-        labels = Reference(worksheet, min_col=1, min_row=start_row, max_row=start_row + len(chart_groups) - 1)
-        data = Reference(worksheet, min_col=3, min_row=start_row - 1, max_row=start_row + len(chart_groups) - 1)
-        
+        labels = Reference(
+            worksheet,
+            min_col=1,
+            min_row=start_row,
+            max_row=start_row + len(chart_groups) - 1,
+        )
+        data = Reference(
+            worksheet,
+            min_col=3,
+            min_row=start_row - 1,
+            max_row=start_row + len(chart_groups) - 1,
+        )
+
         chart.add_data(data, titles_from_data=True)
         chart.set_categories(labels)
-        
+
         # Style the chart
         chart.dataLabels = DataLabelList()
         chart.dataLabels.showCatName = True
@@ -1419,5 +1492,5 @@ def _create_year_comparison_sheet(
         chart.dataLabels.showPercent = True
         chart.dataLabels.showSerName = False
         chart.legend = None
-        
+
         worksheet.add_chart(chart, "G3")

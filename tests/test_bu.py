@@ -207,7 +207,9 @@ class TestBuildCostMatrix:
         assert result["2024-Jan"]["production"] == 1180.00
         # Development: 500 + (300 * 0.40) = 620
         assert result["2024-Jan"]["development"] == 620.00
-        assert result["2024-Jan"]["ss"] == 0.00  # ss is included with 0 cost when allocated
+        assert (
+            result["2024-Jan"]["ss"] == 0.00
+        )  # ss is included with 0 cost when allocated
         assert result["2024-Jan"]["total"] == 1800.00
 
     def test_build_cost_matrix_zero_costs(self):
@@ -380,7 +382,9 @@ class TestCalculateBusinessUnitCosts:
         # Development: 800 + (200 * 0.40) = 880
         assert result["2024-Jan"]["production"] == 1120.00
         assert result["2024-Jan"]["development"] == 880.00
-        assert result["2024-Jan"]["ss"] == 0.00  # ss is included with 0 cost when allocated
+        assert (
+            result["2024-Jan"]["ss"] == 0.00
+        )  # ss is included with 0 cost when allocated
 
     def test_calculate_business_unit_costs_daily_average(
         self, mock_cost_explorer_client, sample_config

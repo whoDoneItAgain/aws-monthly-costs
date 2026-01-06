@@ -195,7 +195,9 @@ class TestParseTimePeriod:
         # Start date should be first day of 2 months ago
         start_month = expected_end.month - 2
         if start_month <= 0:
-            expected_start = expected_end.replace(year=expected_end.year - 1, month=start_month + 12)
+            expected_start = expected_end.replace(
+                year=expected_end.year - 1, month=start_month + 12
+            )
         else:
             expected_start = expected_end.replace(month=start_month)
         assert start_date == expected_start

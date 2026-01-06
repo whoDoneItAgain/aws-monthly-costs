@@ -36,7 +36,11 @@ class TestExportReport:
     def test_export_report_csv_bu(self, temp_output_dir, sample_config):
         """Test exporting business unit report to CSV."""
         cost_matrix = {
-            "2024-Jan": {"production": 1000.00, "development": 500.00, "total": 1500.00},
+            "2024-Jan": {
+                "production": 1000.00,
+                "development": 500.00,
+                "total": 1500.00,
+            },
         }
 
         export_file = temp_output_dir / "test-bu.csv"
@@ -99,7 +103,11 @@ class TestExportReport:
     def test_export_report_excel_bu(self, temp_output_dir, sample_config):
         """Test exporting business unit report to Excel."""
         cost_matrix = {
-            "2024-Jan": {"production": 1000.00, "development": 500.00, "total": 1500.00},
+            "2024-Jan": {
+                "production": 1000.00,
+                "development": 500.00,
+                "total": 1500.00,
+            },
         }
 
         export_file = temp_output_dir / "test-bu.xlsx"
