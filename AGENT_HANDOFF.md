@@ -437,7 +437,7 @@ If higher coverage is desired:
    - Added testing section
    - Added security section
    - Added contributing guidelines
-   - Added changelog for v2.0.0
+   - Added changelog for v0.1.0
    - Added acknowledgments section
    
 2. ✅ **Usage Examples**
@@ -477,8 +477,8 @@ If higher coverage is desired:
 
 ### New Sections Added
 
-- ✅ **Breaking Changes (v2.0+)** - Prominent warning at top of README
-- ✅ **Migration Guide** - Step-by-step upgrade instructions from v1.x to v2.0+
+- ✅ **Breaking Changes (v0.1.0+)** - Prominent warning at top of README
+- ✅ **Migration Guide** - Step-by-step upgrade instructions from pre-v0.1.0 to v0.1.0+
 - ✅ **Architecture Overview** - Detailed module structure explanation
 - ✅ **Troubleshooting** - Comprehensive troubleshooting guide
 - ✅ **Requirements** - Python version, AWS credentials, IAM permissions
@@ -488,7 +488,7 @@ If higher coverage is desired:
 - ✅ **Testing** - Quick test guide with statistics
 - ✅ **Security** - Security practices summary
 - ✅ **Contributing** - Development setup and contribution guidelines
-- ✅ **Changelog** - Version 2.0.0 changes documented
+- ✅ **Changelog** - Version 0.1.0 changes documented
 - ✅ **Acknowledgments** - Credit to all specialized agents
 
 ### Documentation Quality
@@ -496,7 +496,7 @@ If higher coverage is desired:
 - 📝 **Clear Structure**: Logical flow from installation to advanced usage
 - 📝 **Practical Examples**: Real-world command examples throughout
 - 📝 **Troubleshooting**: Solutions for common issues
-- 📝 **Migration Support**: Step-by-step guide for v1.x users
+- 📝 **Migration Support**: Step-by-step guide for pre-v0.1.0 users
 - 📝 **Security Guidance**: Debug logging warnings and IAM permissions
 - 📝 **Comprehensive**: Covers all features, options, and use cases
 - 📝 **Accessible**: Clear language for target audience (DevOps/FinOps)
@@ -519,7 +519,7 @@ If higher coverage is desired:
 ### Key Documentation Improvements
 
 1. **Breaking Changes Warning** - Prominent section at top prevents user confusion
-2. **Migration Guide** - Clear before/after examples for v1.x → v2.0+ upgrade
+2. **Migration Guide** - Clear before/after examples for pre-v0.1.0 → v0.1.0+ upgrade
 3. **Troubleshooting** - Solutions for all common errors with code examples
 4. **Architecture** - Developers can understand codebase structure quickly
 5. **IAM Permissions** - Complete list of required AWS permissions
@@ -539,7 +539,7 @@ If higher coverage is desired:
 - [x] Output files documentation
 - [x] Architecture overview
 - [x] Breaking changes warning
-- [x] Migration guide (v1.x → v2.0+)
+- [x] Migration guide (pre-v0.1.0 → v0.1.0+)
 - [x] Troubleshooting guide
 - [x] Error messages and solutions
 - [x] IAM permissions list
