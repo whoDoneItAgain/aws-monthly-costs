@@ -5,18 +5,15 @@ from datetime import datetime
 LOGGER = logging.getLogger(__name__)
 
 
-def _build_costs(cost_and_usage, daily_average=False, include_year=False):
+def _build_costs(cost_and_usage, daily_average=False):
     service_costs: dict = {}
     service_set = set()  # Use set to avoid duplicates from the start
 
     for period in cost_and_usage["ResultsByTime"]:
         month_costs: dict = {}
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
-        # Include year in key for multi-year analysis
-        if include_year:
-            cost_month_name = cost_month.strftime("%Y-%b")
-        else:
-            cost_month_name = cost_month.strftime("%b")
+        # Always use YYYY-Mon format for consistency
+        cost_month_name = cost_month.strftime("%Y-%b")
 
         if daily_average:
             # Use the actual year from the cost data, not today's year
@@ -90,10 +87,6 @@ def calculate_service_costs(
     Returns:
         Dictionary of cost data organized by month and service
     """
-    # Determine if we need to include year in month keys (for multi-year queries)
-    months_span = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
-    include_year = months_span > 12
-
     get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
@@ -106,10 +99,10 @@ def calculate_service_costs(
 
     LOGGER.debug(get_cost_and_usage["ResultsByTime"])
 
+    # Build costs (always uses YYYY-Mon format)
     service_costs, service_list = _build_costs(
         get_cost_and_usage,
         daily_average,
-        include_year=include_year,
     )
 
     LOGGER.debug(service_costs)

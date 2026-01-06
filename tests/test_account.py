@@ -22,10 +22,10 @@ class TestBuildCosts:
             sample_cost_and_usage_response, sample_account_list, daily_average=False
         )
 
-        assert "Jan" in result
-        assert "Feb" in result
-        assert "Production Account" in result["Jan"]
-        assert result["Jan"]["Production Account"] == 1000.50
+        assert "2024-Jan" in result
+        assert "2024-Feb" in result
+        assert "Production Account" in result["2024-Jan"]
+        assert result["2024-Jan"]["Production Account"] == 1000.50
 
     def test_build_costs_daily_average(
         self, sample_cost_and_usage_response, sample_account_list
@@ -37,8 +37,8 @@ class TestBuildCosts:
 
         # January has 31 days in 2024
         expected_daily = 1000.50 / 31
-        assert "Jan" in result
-        assert abs(result["Jan"]["Production Account"] - expected_daily) < 0.01
+        assert "2024-Jan" in result
+        assert abs(result["2024-Jan"]["Production Account"] - expected_daily) < 0.01
 
     def test_build_costs_leap_year_february(self, sample_account_list):
         """Test building costs for February in a leap year."""
@@ -64,7 +64,7 @@ class TestBuildCosts:
         )
 
         # 2900 / 29 days = 100
-        assert abs(result["Feb"]["Production Account"] - 100.0) < 0.01
+        assert abs(result["2024-Feb"]["Production Account"] - 100.0) < 0.01
 
     def test_build_costs_non_leap_year_february(self, sample_account_list):
         """Test building costs for February in a non-leap year."""
@@ -90,7 +90,7 @@ class TestBuildCosts:
         )
 
         # 2800 / 28 days = 100
-        assert abs(result["Feb"]["Production Account"] - 100.0) < 0.01
+        assert abs(result["2023-Feb"]["Production Account"] - 100.0) < 0.01
 
     def test_build_costs_missing_account(self, sample_account_list):
         """Test building costs with account not in account list."""
@@ -113,8 +113,8 @@ class TestBuildCosts:
         result = _build_costs(response, sample_account_list, daily_average=False)
 
         # Account not in list should not appear in results
-        assert "Jan" in result
-        assert len(result["Jan"]) == 0
+        assert "2024-Jan" in result
+        assert len(result["2024-Jan"]) == 0
 
 
 class TestBuildCostMatrix:
@@ -123,11 +123,11 @@ class TestBuildCostMatrix:
     def test_build_cost_matrix_basic(self):
         """Test building cost matrix from account costs."""
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "Account A": 100.123,
                 "Account B": 200.456,
             },
-            "Feb": {
+            "2024-Feb": {
                 "Account A": 150.789,
                 "Account B": 250.012,
             },
@@ -135,16 +135,16 @@ class TestBuildCostMatrix:
 
         result = _build_cost_matrix(account_costs)
 
-        assert "Jan" in result
-        assert "Feb" in result
-        assert result["Jan"]["Account A"] == 100.12
-        assert result["Jan"]["Account B"] == 200.46
-        assert result["Jan"]["total"] == 300.58
+        assert "2024-Jan" in result
+        assert "2024-Feb" in result
+        assert result["2024-Jan"]["Account A"] == 100.12
+        assert result["2024-Jan"]["Account B"] == 200.46
+        assert result["2024-Jan"]["total"] == 300.58
 
     def test_build_cost_matrix_rounding(self):
         """Test proper rounding in cost matrix."""
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "Account A": 99.995,  # Should round to 100.00
                 "Account B": 0.004,  # Should round to 0.00
             },
@@ -152,19 +152,19 @@ class TestBuildCostMatrix:
 
         result = _build_cost_matrix(account_costs)
 
-        assert result["Jan"]["Account A"] == 100.00
-        assert result["Jan"]["Account B"] == 0.00
-        assert result["Jan"]["total"] == 100.00
+        assert result["2024-Jan"]["Account A"] == 100.00
+        assert result["2024-Jan"]["Account B"] == 0.00
+        assert result["2024-Jan"]["total"] == 100.00
 
     def test_build_cost_matrix_empty(self):
         """Test building cost matrix with empty data."""
         account_costs = {
-            "Jan": {},
+            "2024-Jan": {},
         }
 
         result = _build_cost_matrix(account_costs)
 
-        assert result["Jan"]["total"] == 0
+        assert result["2024-Jan"]["total"] == 0
 
 
 class TestCalculateAccountCosts:
@@ -194,10 +194,10 @@ class TestCalculateAccountCosts:
             daily_average=False,
         )
 
-        assert "Jan" in result
-        assert "Feb" in result
-        assert "total" in result["Jan"]
-        assert "total" in result["Feb"]
+        assert "2024-Jan" in result
+        assert "2024-Feb" in result
+        assert "total" in result["2024-Jan"]
+        assert "total" in result["2024-Feb"]
 
     def test_calculate_account_costs_pagination(
         self, mock_cost_explorer_client, mock_organizations_client
@@ -257,7 +257,7 @@ class TestCalculateAccountCosts:
 
         # Should have called list_accounts twice
         assert mock_organizations_client.list_accounts.call_count == 2
-        assert "Jan" in result
+        assert "2024-Jan" in result
 
     def test_calculate_account_costs_top_accounts_only(
         self, mock_cost_explorer_client, mock_organizations_client
@@ -295,7 +295,7 @@ class TestCalculateAccountCosts:
         )
 
         # Should only have 3 accounts + total
-        assert len(result["Jan"]) == 4  # 3 accounts + total
+        assert len(result["2024-Jan"]) == 4  # 3 accounts + total
 
 
 class TestGetAccountNames:

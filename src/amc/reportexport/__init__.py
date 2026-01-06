@@ -156,13 +156,26 @@ def export_analysis_excel(
     wb.remove(wb.active)  # Remove default sheet
 
     # Get last 2 months from the data - sort chronologically
-    def get_month_num(month_str):
+    def get_sort_key(month_str):
+        """Generate a sortable key for month strings.
+        
+        Handles both simple month format (e.g., 'Jan') and YYYY-Mon format (e.g., '2023-Jan').
+        For simple format, assumes current/recent year for sorting.
+        """
         try:
-            return datetime.strptime(month_str, "%b").month
+            # Try simple month format first (e.g., "Jan")
+            month_date = datetime.strptime(month_str, "%b")
+            # For simple format, use a recent year for sorting
+            return datetime(2024, month_date.month, 1)
         except ValueError:
-            return 0
+            try:
+                # Try YYYY-Mon format (e.g., "2023-Jan")
+                return datetime.strptime(month_str, "%Y-%b")
+            except ValueError:
+                # Fallback to string sorting
+                return datetime.min
 
-    months = sorted(list(bu_cost_matrix.keys()), key=get_month_num)
+    months = sorted(list(bu_cost_matrix.keys()), key=get_sort_key)
     if len(months) < 2:
         LOGGER.warning("Need at least 2 months of data for analysis")
         return

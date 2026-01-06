@@ -5,7 +5,7 @@ from datetime import datetime
 LOGGER = logging.getLogger(__name__)
 
 
-def _build_costs(cost_and_usage, account_list, daily_average=False, include_year=False):
+def _build_costs(cost_and_usage, account_list, daily_average=False):
     account_costs: dict = {}
     # Build account ID to name mapping once for O(1) lookups
     account_map = {acc["Id"]: acc["Name"] for acc in account_list}
@@ -13,11 +13,8 @@ def _build_costs(cost_and_usage, account_list, daily_average=False, include_year
     for period in cost_and_usage["ResultsByTime"]:
         month_costs: dict = {}
         cost_month = datetime.strptime(period["TimePeriod"]["Start"], "%Y-%m-%d")
-        # Include year in key for multi-year analysis
-        if include_year:
-            cost_month_name = cost_month.strftime("%Y-%b")
-        else:
-            cost_month_name = cost_month.strftime("%b")
+        # Always use YYYY-Mon format for consistency
+        cost_month_name = cost_month.strftime("%Y-%b")
 
         if daily_average:
             # Use the actual year from the cost data, not today's year
@@ -83,10 +80,6 @@ def calculate_account_costs(
         )
         account_list.extend(list_accounts_response["Accounts"])
 
-    # Determine if we need to include year in month keys (for multi-year queries)
-    months_span = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
-    include_year = months_span > 12
-
     account_get_cost_and_usage = cost_explorer_client.get_cost_and_usage(
         TimePeriod={
             "Start": start_date.strftime("%Y-%m-%d"),
@@ -99,11 +92,11 @@ def calculate_account_costs(
 
     LOGGER.debug(account_get_cost_and_usage["ResultsByTime"])
 
+    # Build costs (always uses YYYY-Mon format)
     account_costs = _build_costs(
         account_get_cost_and_usage,
         account_list,
         daily_average,
-        include_year=include_year,
     )
 
     LOGGER.debug(account_costs)
