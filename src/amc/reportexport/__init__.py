@@ -248,7 +248,11 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     row += 1
     data_start_row = row
     pie_chart_start_row = row
+    
+    # Sort BUs by most recent month's cost in descending order
     bus = list(group_list.keys())
+    bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
+    
     for bu in bus:
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
         val2 = cost_matrix[last_2_months[1]].get(bu, 0)
@@ -271,9 +275,9 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
             pct_diff = 0
         pct_spend = val2 / cost_matrix[last_2_months[1]].get("total", 1)
 
-        ws.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
         ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -294,9 +298,9 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         pct_diff = 0
 
     ws.cell(row, 1, "total")
-    ws.cell(row, 2, total1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-    ws.cell(row, 3, total2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-    ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+    ws.cell(row, 2, total1).number_format = '"$"#,##0.00'
+    ws.cell(row, 3, total2).number_format = '"$"#,##0.00'
+    ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
     ws.cell(row, 5, pct_diff).number_format = "0.00%"
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
@@ -427,13 +431,13 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
         ws_daily.cell(
             row, 2, val1
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(
             row, 3, val2
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(
             row, 4, diff
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
@@ -453,11 +457,11 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws_daily.cell(row, 1, "total")
     ws_daily.cell(
         row, 2, total1_daily
-    ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+    ).number_format = '"$"#,##0.00'
     ws_daily.cell(
         row, 3, total2_daily
-    ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-    ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+    ).number_format = '"$"#,##0.00'
+    ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
     ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
     daily_end_row = row
