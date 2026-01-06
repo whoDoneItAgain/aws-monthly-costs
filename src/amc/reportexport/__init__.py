@@ -136,7 +136,7 @@ def export_analysis_excel(
     Creates analysis tables showing:
     - Monthly totals (last 2 months comparison)
     - Daily average (last 2 months comparison)
-    - Pie charts for services and accounts (top 10 + Other)
+    - Pie charts for business units, services, and accounts
 
     Args:
         output_file: Path to the output analysis Excel file
@@ -206,7 +206,7 @@ def export_analysis_excel(
 
 
 def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_months):
-    """Create BU analysis tables with monthly totals on one sheet and daily average on another."""
+    """Create BU analysis tables with monthly totals on one sheet, daily average on another, and pie chart."""
     # Header formatting
     header_font = Font(bold=True, size=14, color="FF000000")
     header_fill = PatternFill(
@@ -246,6 +246,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     # Data rows for monthly totals
     row += 1
     data_start_row = row
+    pie_chart_start_row = row
     bus = list(group_list.keys())
     for bu in bus:
         val1 = cost_matrix[last_2_months[0]].get(bu, 0)
@@ -277,6 +278,8 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
 
         row += 1
 
+    pie_chart_end_row = row - 1
+
     # Total row
     total1 = cost_matrix[last_2_months[0]].get("total", 0)
     total2 = cost_matrix[last_2_months[1]].get("total", 0)
@@ -296,12 +299,45 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
     ws.cell(row, 5, pct_diff).number_format = "0.00%"
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
-    data_end_row = row
+    data_end_row = pie_chart_end_row
 
     # Add conditional formatting to difference and % difference columns
     _add_conditional_formatting(
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
+
+    # Add pie chart (using column C data, which is the latest month)
+    # Note: Exclude the total row from the pie chart as specified
+    chart = PieChart()
+    chart.title = "BU Costs Distribution"
+    chart.style = 10
+    chart.height = 15  # Increase height to show all labels
+    chart.width = 20  # Increase width to show all labels
+
+    # Use data from monthly totals excluding total row
+    labels = Reference(
+        ws, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+    )
+    data = Reference(
+        ws, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+    )
+
+    chart.add_data(data, titles_from_data=False)
+    chart.set_categories(labels)
+
+    # Configure data labels to show category name and percentage only on the pie slices
+    from openpyxl.chart.label import DataLabelList
+
+    chart.dataLabels = DataLabelList()
+    chart.dataLabels.showCatName = True
+    chart.dataLabels.showVal = False  # Don't show value
+    chart.dataLabels.showPercent = True
+    chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
+
+    # Remove the legend - labels are shown on pie slices
+    chart.legend = None
+
+    ws.add_chart(chart, "H3")
 
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
