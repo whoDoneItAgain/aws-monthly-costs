@@ -2,9 +2,9 @@
 
 A Python CLI tool to retrieve and report AWS monthly costs across accounts, business units, and services using AWS Cost Explorer API.
 
-## 🚨 Breaking Changes (v2.0+)
+## 🚨 Recent Breaking Changes (v0.1.0+)
 
-If you're upgrading from an earlier version, please note:
+If you're upgrading from an earlier version (pre-v0.1.0), please note:
 
 - **`--profile` is now REQUIRED**: Previously optional with a hardcoded default, now you must explicitly specify an AWS profile for security
 - **`--include-ss` renamed to `--include-shared-services`**: More descriptive argument name
@@ -698,22 +698,22 @@ Do not share debug logs in public forums without sanitizing sensitive data.
 
 ## Migration Guide
 
-### Upgrading from v1.x to v2.0+
+### Upgrading from Earlier Versions to v0.1.0+
 
-Version 2.0 introduced breaking changes to improve security and code quality. Follow these steps to upgrade:
+Version 0.1.0 introduced breaking changes to improve security and code quality. Follow these steps to upgrade:
 
 #### Step 1: Update Command-Line Arguments
 
 **Breaking Change 1: `--profile` is now required**
 
-❌ **Old** (v1.x):
+❌ **Old** (pre-v0.1.0):
 ```bash
 # Profile was optional with hardcoded default
 amc --include-ss
 amc  # Used hardcoded default profile
 ```
 
-✅ **New** (v2.0+):
+✅ **New** (v0.1.0+):
 ```bash
 # Profile is now REQUIRED (more secure)
 amc --profile your-profile-name --include-shared-services
@@ -721,12 +721,12 @@ amc --profile your-profile-name --include-shared-services
 
 **Breaking Change 2: `--include-ss` renamed to `--include-shared-services`**
 
-❌ **Old** (v1.x):
+❌ **Old** (pre-v0.1.0):
 ```bash
 amc --profile prod --include-ss
 ```
 
-✅ **New** (v2.0+):
+✅ **New** (v0.1.0+):
 ```bash
 amc --profile prod --include-shared-services
 ```
@@ -735,17 +735,17 @@ amc --profile prod --include-shared-services
 
 If you have scripts, CI/CD pipelines, or cron jobs calling `amc`, update them:
 
-**Before**:
+**Before** (pre-v0.1.0):
 ```bash
 #!/bin/bash
-# v1.x script
+# Old script
 amc --include-ss --output-format csv
 ```
 
-**After**:
+**After** (v0.1.0+):
 ```bash
 #!/bin/bash
-# v2.0+ script
+# Updated script
 amc --profile production-readonly --include-shared-services --output-format csv
 ```
 
@@ -779,7 +779,7 @@ amc --profile your-profile-name --help
 amc --profile your-profile-name --config-file your-config.yaml
 ```
 
-### What Changed in v2.0
+### What Changed in v0.1.0
 
 **Bug Fixes** (all verified with tests):
 1. ✅ Time period parsing now correctly calculates previous month
@@ -909,7 +909,13 @@ See `LICENSE.md` for license information.
 
 ## Changelog
 
-### Version 2.0.0 (2026-01-02)
+For a complete changelog, see [CHANGELOG.md](CHANGELOG.md).
+
+### Version 0.1.2 (Current)
+
+See CHANGELOG.md for recent updates.
+
+### Version 0.1.0 (2026-01-02)
 
 **Breaking Changes**:
 - `--profile` argument now required (previously optional)
