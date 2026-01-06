@@ -172,8 +172,10 @@ def export_analysis_excel(
     # Create analysis sheets
     ws_bu = wb.create_sheet("BU Costs")
     ws_bu_daily = wb.create_sheet("BU Daily Average")
+    ws_bu_helper = wb.create_sheet("_BU_Chart_Data")
+    ws_bu_helper.sheet_state = "hidden"  # Hide the helper sheet
     _create_bu_analysis_tables(
-        ws_bu, ws_bu_daily, bu_cost_matrix, bu_group_list, last_2_months
+        ws_bu, ws_bu_daily, ws_bu_helper, bu_cost_matrix, bu_group_list, last_2_months
     )
 
     ws_service = wb.create_sheet("Top Services")
@@ -206,8 +208,8 @@ def export_analysis_excel(
     LOGGER.info(f"Analysis Excel file saved: {output_file}")
 
 
-def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_months):
-    """Create BU analysis tables with monthly totals on one sheet, daily average on another, and pie chart."""
+def _create_bu_analysis_tables(ws, ws_daily, ws_helper, cost_matrix, group_list, last_2_months):
+    """Create BU analysis tables with monthly totals on one sheet, daily average on another, and pie chart with helper table in hidden sheet."""
     # Header formatting
     header_font = Font(bold=True, size=14, color="FF000000")
     header_fill = PatternFill(
@@ -309,10 +311,9 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
 
-    # Create helper table for pie chart (groups BUs < 1% into "Other")
-    # Place it in column H, starting a few rows down
-    helper_row = data_start_row
-    helper_col = 8  # Column H
+    # Create helper table for pie chart in hidden sheet (groups BUs < 1% into "Other")
+    helper_row = 1
+    helper_col = 1  # Column A in helper sheet
     
     total_for_pct = cost_matrix[last_2_months[1]].get("total", 1)
     pie_chart_start_row = helper_row
@@ -328,8 +329,8 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
             
         pct_spend = val2 / total_for_pct
         if pct_spend >= 0.01:  # >= 1%
-            ws.cell(helper_row, helper_col, bu)
-            ws.cell(helper_row, helper_col + 1, val2)
+            ws_helper.cell(helper_row, helper_col, bu)
+            ws_helper.cell(helper_row, helper_col + 1, val2)
             helper_row += 1
     
     # Calculate and add "Other" if there are BUs with < 1% spend
@@ -347,13 +348,13 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
             other_total += val2
     
     if other_total > 0:
-        ws.cell(helper_row, helper_col, "Other")
-        ws.cell(helper_row, helper_col + 1, other_total)
+        ws_helper.cell(helper_row, helper_col, "Other")
+        ws_helper.cell(helper_row, helper_col + 1, other_total)
         helper_row += 1
     
     pie_chart_end_row = helper_row - 1
 
-    # Add pie chart using helper table data
+    # Add pie chart using helper table data from hidden sheet
     # Only add pie chart if there's BU data to display
     if pie_chart_end_row >= pie_chart_start_row:
         chart = PieChart()
@@ -362,12 +363,12 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         chart.height = 15  # Increase height to show all labels
         chart.width = 20  # Increase width to show all labels
 
-        # Use data from helper table
+        # Use data from helper sheet
         labels = Reference(
-            ws, min_col=helper_col, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+            ws_helper, min_col=helper_col, min_row=pie_chart_start_row, max_row=pie_chart_end_row
         )
         data = Reference(
-            ws, min_col=helper_col + 1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
+            ws_helper, min_col=helper_col + 1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
         )
 
         chart.add_data(data, titles_from_data=False)
@@ -383,7 +384,7 @@ def _create_bu_analysis_tables(ws, ws_daily, cost_matrix, group_list, last_2_mon
         # Remove the legend - labels are shown on pie slices
         chart.legend = None
 
-        ws.add_chart(chart, "J3")  # Move chart to column J to avoid helper table
+        ws.add_chart(chart, "H3")  # Position chart at H3
 
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws)
@@ -667,10 +668,10 @@ def _create_service_analysis_tables(
             pct_diff = 0
         pct_spend = val2 / bu_total
 
-        ws.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         row += 1
@@ -698,12 +699,12 @@ def _create_service_analysis_tables(
 
         ws.cell(
             row, 2, other_amount_prev
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws.cell(
             row, 3, other_amount
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         pie_chart_end_row = row
@@ -826,14 +827,14 @@ def _create_service_analysis_tables(
 
         ws_daily.cell(
             row, 2, val1
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(
             row, 3, val2
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(
-            row, 4, diff
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
+            row, 4, abs(diff)
+        ).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
 
@@ -928,10 +929,10 @@ def _create_account_analysis_tables(
             pct_diff = 0
         pct_spend = val2 / bu_total
 
-        ws.cell(row, 2, val1).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 3, val2).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         row += 1
@@ -959,12 +960,12 @@ def _create_account_analysis_tables(
 
         ws.cell(
             row, 2, other_amount_prev
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws.cell(
             row, 3, other_amount
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 4, diff).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws.cell(row, 5, pct_diff).number_format = "0.00%"
+        ).number_format = '"$"#,##0.00'
+        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         pie_chart_end_row = row
@@ -1087,14 +1088,14 @@ def _create_account_analysis_tables(
 
         ws_daily.cell(
             row, 2, val1
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(
             row, 3, val2
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
+        ).number_format = '"$"#,##0.00'
         ws_daily.cell(
-            row, 4, diff
-        ).number_format = '"$"#,##0.00_);[Red]\\("$"#,##0.00\\)'
-        ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
+            row, 4, abs(diff)
+        ).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
 
