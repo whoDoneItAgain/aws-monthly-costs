@@ -356,7 +356,7 @@ aws-monthly-costs/
 │   ├── constants.py             # Named constants (57 lines)
 │   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
-│   ├── reportexport/            # Report generation (1682 lines + utilities)
+│   ├── reportexport/            # Report generation (1663 lines + utilities)
 │   │   ├── __init__.py          # CSV/Excel export, charts, formatting
 │   │   ├── calculations.py     # Calculation utilities (58 lines)
 │   │   ├── formatting.py       # Formatting utilities (129 lines)
@@ -688,6 +688,203 @@ pytest tests/test_main.py -v
 
 ---
 
+## Documentation Standards and Patterns
+
+### Code Documentation
+
+#### Module-Level Docstrings
+All Python modules include a module-level docstring explaining the module's purpose:
+
+```python
+"""Module purpose description.
+
+Additional details about what this module provides and when to use it.
+"""
+```
+
+**Examples**:
+- `runmodes/common.py`: "Common utilities for cost calculation across all runmodes..."
+- `reportexport/calculations.py`: "Calculation utilities for report generation..."
+- `runmodes/account/calculator.py`: "Account cost calculation module..."
+
+#### Function Docstrings
+All public functions (not starting with `_`) must have docstrings following this pattern:
+
+```python
+def function_name(param1: type, param2: type) -> return_type:
+    """Brief one-line description.
+    
+    More detailed description if needed, explaining the function's behavior,
+    edge cases, or important notes.
+    
+    Args:
+        param1: Description of param1
+        param2: Description of param2
+    
+    Returns:
+        Description of return value
+    """
+```
+
+**Key Standards**:
+- ✅ Brief first line (summary)
+- ✅ Args section with parameter descriptions
+- ✅ Returns section describing return value
+- ✅ Type hints in function signature
+- ✅ Edge cases documented in description when relevant
+
+**Example from codebase**:
+```python
+def calculate_percentage_difference(val1: float, val2: float) -> float:
+    """Calculate percentage difference between two values.
+
+    Handles edge cases:
+    - If val1 is 0 and val2 is non-zero, returns 1.0 (100% increase) or -1.0 (100% decrease)
+    - If both values are 0, returns 0.0
+    - Otherwise calculates: (val2 - val1) / val1
+
+    Args:
+        val1: First value (baseline)
+        val2: Second value (comparison)
+
+    Returns:
+        Percentage difference as a decimal (e.g., 0.25 for 25% increase)
+    """
+```
+
+#### Private Function Documentation
+Private functions (starting with `_`) should have docstrings for internal clarity:
+
+```python
+def _build_costs(cost_and_usage, account_list, daily_average=False):
+    """Build cost dictionary from AWS Cost Explorer response.
+
+    Args:
+        cost_and_usage: Response from AWS Cost Explorer API
+        account_list: List of AWS account information
+        daily_average: If True, calculate daily average costs
+
+    Returns:
+        Dictionary of costs organized by month and account name
+    """
+```
+
+### User-Facing Documentation
+
+#### README.md Structure
+The README follows this structure (in order):
+1. **Title and brief description**
+2. **Breaking changes notice** (if applicable)
+3. **Features** (bulleted list with emojis)
+4. **Requirements** (dependencies and permissions)
+5. **Installation** (step-by-step)
+6. **Usage** (Quick Start → Advanced → Examples)
+7. **Configuration** (file structure and examples)
+8. **Output Files** (what gets generated)
+9. **Architecture Overview** (for developers)
+10. **Troubleshooting** (common issues and solutions)
+11. **Migration Guide** (for breaking changes)
+12. **Testing** (how to run tests)
+13. **Security** (security considerations)
+14. **Contributing** (development setup)
+15. **License and Changelog**
+
+**Writing Style**:
+- ✅ Use emojis sparingly for visual navigation (✅, ⚠️, 📊, 🚨)
+- ✅ Provide both quick start and detailed examples
+- ✅ Include actual command examples with real flags
+- ✅ Use code blocks with bash syntax highlighting
+- ✅ Organize with clear headers (##, ###, ####)
+- ✅ Use tables for structured information (options, metrics)
+- ✅ Include "Before" and "After" examples for breaking changes
+
+#### TESTING.md Structure
+Testing documentation follows this pattern:
+1. **Quick Start** (how to run tests immediately)
+2. **Test Results** (current statistics)
+3. **What's Tested** (categories of tests)
+4. **Test Organization** (file structure)
+5. **Running Specific Tests** (examples)
+6. **Writing New Tests** (guidelines)
+7. **CI/CD Integration** (automation details)
+
+#### AGENT_HANDOFF.md Structure
+Agent handoff documentation follows this pattern:
+1. **Executive Summary** (key metrics and status)
+2. **Chronological work sections** (by agent and date)
+   - Overview of changes
+   - Detailed implementation notes
+   - Test results
+   - Code metrics
+   - Files changed
+   - Benefits achieved
+3. **Architecture Overview** (code structure)
+4. **Previous Work History** (bug fixes, optimizations)
+5. **Testing Infrastructure**
+6. **Known Limitations** (not bugs)
+7. **Development Guidelines**
+8. **Common Tasks** (how-to guides for future agents)
+9. **Important Notes for Specialized Agents** (by agent type)
+10. **Breaking Changes**
+11. **Key Configuration**
+12. **Dependencies**
+13. **Release Information**
+14. **Handoff Checklist**
+
+**Key Patterns**:
+- ✅ Date-stamp all major changes
+- ✅ Use checkmarks (✅, ❌, ⚠️) for status indicators
+- ✅ Include code examples with "Before/After" patterns
+- ✅ Document "BY DESIGN" decisions to prevent regression
+- ✅ List specific line counts and file locations
+- ✅ Include commit SHAs for traceability
+- ✅ Provide context for future agent reviews
+
+### Documentation Maintenance
+
+#### When to Update Documentation
+
+**README.md must be updated when**:
+- Adding new features or commands
+- Changing CLI arguments or flags
+- Modifying output file formats
+- Changing requirements or dependencies
+- Fixing security issues
+- Making breaking changes
+
+**AGENT_HANDOFF.md must be updated when**:
+- Completing major refactoring work
+- Fixing bugs (add to bug fix history)
+- Performing security reviews
+- Making performance optimizations
+- Changing architecture or file structure
+- Adding new modules or packages
+
+**TESTING.md must be updated when**:
+- Test count changes significantly
+- Adding new test categories
+- Changing test infrastructure
+- Modifying how to run tests
+
+#### Version Numbers and Metrics
+When documenting line counts, test counts, or other metrics:
+- ✅ Verify actual values before documenting
+- ✅ Update all references consistently (README + AGENT_HANDOFF)
+- ✅ Use specific numbers, not approximations
+- ✅ Include measurement method if ambiguous
+
+#### Removed Documentation Files
+The following files were removed as redundant (2026-01-07):
+- `AGENT_HANDOFF_OLD.md` - Superseded by current AGENT_HANDOFF.md
+- `IMPLEMENTATION_SUMMARY.md` - Content covered in RELEASE_WORKFLOW.md
+- `REFACTORING_SUMMARY.md` - Content incorporated into AGENT_HANDOFF.md
+- `TEST_IMPLEMENTATION_SUMMARY.md` - Content covered in TESTING.md and AGENT_HANDOFF.md
+- `REPOSITORY_REVIEW.md` - One-time review, not ongoing documentation
+
+**Principle**: Maintain single source of truth. Don't duplicate information across multiple files.
+
+---
+
 ## Development Guidelines
 
 ### Code Quality Standards
@@ -839,10 +1036,22 @@ pytest tests/test_main.py -v
 - Add property-based tests if desired
 
 ### Documentation-Writer Agent
-- README.md is comprehensive and up-to-date
-- Breaking changes are clearly documented
-- Migration guide exists for v0.1.0+
-- Troubleshooting section is extensive
+- **Latest comprehensive review:** 2026-01-07
+- **Status:** All documentation reviewed and updated
+- **Key Updates:**
+  - ✅ Fixed test count discrepancy (128 tests, not 112)
+  - ✅ Updated line counts to match actual code
+  - ✅ Removed 5 redundant documentation files
+  - ✅ Added comprehensive documentation standards section
+  - ✅ Verified all public functions have docstrings
+  - ✅ README.md architecture section updated
+- **Documentation Quality:** Excellent
+  - All public functions documented with proper docstrings
+  - README.md comprehensive with examples and troubleshooting
+  - AGENT_HANDOFF.md well-structured and up-to-date
+  - TESTING.md provides clear guidance
+  - Documentation patterns now explicitly documented
+- **Note:** Documentation follows consistent patterns with single source of truth principle
 
 ### Refactoring-Expert Agent
 - Code is already well-refactored
