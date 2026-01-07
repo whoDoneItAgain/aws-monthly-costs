@@ -321,7 +321,7 @@ def export_analysis_excel(
     # Create Account Summary sheet first (if all_account_costs provided)
     if all_account_costs:
         ws_summary = wb.create_sheet("Account Summary", 0)
-        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs)
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name)
 
     # Get last 2 months from the data - sort chronologically
     def get_sort_key(month_str):
@@ -1295,6 +1295,7 @@ def export_year_analysis_excel(
     year1_months,
     year2_months,
     all_account_costs=None,
+    account_id_to_name=None,
 ):
     """Export year-level analysis Excel file with formatted tables and charts.
 
@@ -1316,6 +1317,16 @@ def export_year_analysis_excel(
         year1_months: List of month names for first year period
         year2_months: List of month names for second year period
         all_account_costs: Dictionary of all account costs (optional, for account summary)
+        account_id_to_name: Dictionary mapping account IDs to names (optional, for account summary)
+    """
+        bu_group_list: Dictionary of BU groups
+        service_cost_matrix: Dictionary containing service cost data organized by month
+        service_group_list: List of services
+        account_cost_matrix: Dictionary containing account cost data organized by month
+        account_group_list: List of accounts
+        year1_months: List of month names for first year period
+        year2_months: List of month names for second year period
+        all_account_costs: Dictionary of all account costs (optional, for account summary)
     """
     LOGGER.info(f"Creating year analysis Excel file: {output_file}")
 
@@ -1326,7 +1337,7 @@ def export_year_analysis_excel(
     # Create Account Summary sheet first (if all_account_costs provided)
     if all_account_costs:
         ws_summary = wb.create_sheet("Account Summary", 0)
-        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs)
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name)
 
     # Aggregate data into yearly totals
     bu_year1 = _aggregate_year_costs(bu_cost_matrix, year1_months)
