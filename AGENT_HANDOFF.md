@@ -9,12 +9,124 @@
 
 This codebase is a **Python CLI tool** for generating AWS cost reports by account, business unit, and service using the AWS Cost Explorer API. The application has been through multiple refactoring and improvement cycles, achieving:
 
-- ✅ **95% test coverage** (225 tests: unit, integration, and E2E) - **UPDATED 2026-01-07**
+- ✅ **93% test coverage** (226 tests: unit, integration, and E2E) - **UPDATED 2026-01-07**
 - ✅ **No security vulnerabilities** (verified by Security-Analyzer Agent)
 - ✅ **Optimized performance** (50% reduction in API calls for BU mode)
 - ✅ **Proper module organization** (business logic removed from `__init__.py` files)
 - ✅ **DRY principles applied** (eliminated 190+ lines of duplicate code)
 - ✅ **Well-documented** with comprehensive README and inline docstrings
+- ✅ **Bug-free BU cost calculations** (includes unallocated accounts) - **NEW 2026-01-07**
+
+---
+
+## ✅ Bug Fix: BU Costs Missing Unallocated Accounts & Year Rounding (Debugger Agent - 2026-01-07)
+
+### Overview
+Fixed critical calculation bugs in BU costs and year reports:
+1. **BU Costs Bug**: Accounts not assigned to any business unit were excluded from totals
+2. **Year Rounding Bug**: "Other" calculations in year reports had penny-level rounding errors
+3. **Account Summary**: Added new first sheet showing account allocations for review
+
+### Issue #1: BU Costs Missing Unallocated Accounts
+
+**Problem:**
+- November total: AWS Console showed $121,943.52, app showed $121,878.74 (missing $64.78)
+- December total: AWS Console showed $122,120.80, app showed $121,951.78 (missing $169.02)
+- Similar discrepancies in year reports
+
+**Root Cause:**
+In `src/amc/runmodes/bu/calculator.py`, the `_build_cost_matrix()` function only summed costs for accounts explicitly listed in each BU's account group. Any AWS accounts in the cost data but not assigned to a BU (orphan accounts) were silently dropped.
+
+```python
+# Before - Line 74-77
+bu_cost = sum(
+    costs_for_month.get(account_id, 0.0)
+    for account_id in bu_accounts.keys()  # Only accounts in the BU
+)
+```
+
+**Solution:**
+1. Track which accounts are assigned during aggregation
+2. Calculate costs from unassigned accounts
+3. Add "unallocated" category to BU costs if any exist
+4. Log warning with list of unallocated account IDs
+
+```python
+# After - Lines 125-166
+assigned_accounts = set()
+# ... aggregate BU costs and track assigned accounts ...
+assigned_accounts.update(bu_accounts.keys())
+
+# Include costs from unallocated accounts
+unallocated_accounts = {
+    account_id: cost
+    for account_id, cost in costs_for_month.items()
+    if account_id not in assigned_accounts
+}
+
+if unallocated_accounts:
+    unallocated_total = sum(unallocated_accounts.values())
+    bu_month_costs["unallocated"] = unallocated_total
+    
+    # Log unallocated accounts for review
+    LOGGER.warning(
+        f"Unallocated accounts found for {cost_month}: "
+        f"{list(unallocated_accounts.keys())} "
+        f"(total: ${unallocated_total:.2f})"
+    )
+```
+
+### Issue #2: Year Report Rounding Errors
+
+**Problem:**
+Top Services and Top Accounts in year reports were off by 1 penny.
+
+**Root Cause:**
+When calculating "Other" for services/accounts in year mode (line 1402-1403 in `__init__.py`):
+```python
+service_other_year1 = bu_year1_total - top_10_year1_total
+service_other_year2 = bu_year2_total - top_10_year2_total
+```
+Both `bu_year_total` and `top_10_total` were independently rounded to 2 decimals after aggregating monthly data. Subtracting two rounded values introduces rounding errors.
+
+**Solution:**
+Round the subtraction result to ensure precision:
+```python
+service_other_year1 = round(bu_year1_total - top_10_year1_total, 2)
+service_other_year2 = round(bu_year2_total - top_10_year2_total, 2)
+```
+Applied to both services (lines 1402-1403) and accounts (lines 1481-1482).
+
+### Issue #3: Account Summary Sheet
+
+**New Feature:**
+Added "Account Summary" sheet as the first sheet in both analysis and year analysis Excel exports, showing:
+- Business units with their assigned account IDs
+- Unallocated accounts (highlighted in red if any exist)
+- Consistent styling matching existing sheets
+
+**Implementation:**
+1. Modified `calculate_business_unit_costs()` to return tuple: `(bu_cost_matrix, all_account_costs)`
+2. Created `_create_account_summary_sheet()` function in `src/amc/reportexport/__init__.py`
+3. Updated `export_analysis_excel()` and `export_year_analysis_excel()` to:
+   - Accept `all_account_costs` parameter
+   - Create summary sheet as index 0
+4. Updated main to pass `all_account_costs` through the pipeline
+
+### Impact
+- **Accuracy**: BU cost totals now match AWS Console exactly
+- **Visibility**: Unallocated accounts are logged and displayed in summary sheet
+- **Year Reports**: Rounding errors eliminated (penny-perfect)
+- **Tests**: Added test for unallocated accounts scenario
+- **All Tests Pass**: 226/226 tests pass
+
+### Files Changed
+- `src/amc/runmodes/bu/calculator.py` - BU cost calculation with unallocated account handling
+- `src/amc/reportexport/__init__.py` - Account summary sheet and year rounding fixes
+- `src/amc/__main__.py` - Updated to pass all_account_costs through pipeline
+- `tests/test_bu.py` - Added test for unallocated accounts
+- `tests/test_integration.py` - Updated for tuple return
+- `tests/test_main_coverage.py` - Updated for tuple return
 
 ---
 
