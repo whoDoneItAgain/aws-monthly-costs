@@ -1281,6 +1281,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
+        workbook=wb,
     )
 
     ws_bu_daily = wb.create_sheet("BU Costs - Daily Avg")
@@ -1293,6 +1294,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=False,  # No chart for daily average
+        workbook=wb,
     )
 
     ws_bu_monthly = wb.create_sheet("BU Costs - Monthly Avg")
@@ -1305,6 +1307,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=False,  # No chart for monthly average
+        workbook=wb,
     )
 
     # Create sheets for Service costs
@@ -1318,6 +1321,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
+        workbook=wb,
     )
 
     ws_service_daily = wb.create_sheet("Top Services - Daily Avg")
@@ -1330,6 +1334,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=False,  # No chart for daily average
+        workbook=wb,
     )
 
     ws_service_monthly = wb.create_sheet("Top Services - Monthly Avg")
@@ -1342,6 +1347,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=False,  # No chart for monthly average
+        workbook=wb,
     )
 
     # Create sheets for Account costs
@@ -1355,6 +1361,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
+        workbook=wb,
     )
 
     ws_account_daily = wb.create_sheet("Top Accounts - Daily Avg")
@@ -1367,6 +1374,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=False,  # No chart for daily average
+        workbook=wb,
     )
 
     ws_account_monthly = wb.create_sheet("Top Accounts - Monthly Avg")
@@ -1379,6 +1387,7 @@ def export_year_analysis_excel(
         year1_label,
         year2_label,
         include_chart=False,  # No chart for monthly average
+        workbook=wb,
     )
 
     # Save the workbook
@@ -1395,6 +1404,7 @@ def _create_year_comparison_sheet(
     year1_label,
     year2_label,
     include_chart=True,
+    workbook=None,
 ):
     """Create a year comparison sheet with formatted table and chart.
 
@@ -1407,6 +1417,7 @@ def _create_year_comparison_sheet(
         year1_label: Label for year 1 column
         year2_label: Label for year 2 column
         include_chart: Whether to include pie chart (default: True, only for yearly totals)
+        workbook: Workbook object for creating helper sheet (needed for pie chart with "Other" grouping)
     """
     # Define styles - match monthly analysis format
     header_font = Font(bold=True, size=14, color="FF000000")
@@ -1441,6 +1452,13 @@ def _create_year_comparison_sheet(
     worksheet.cell(row, 5).fill = header_fill
     worksheet.cell(row, 5).alignment = header_alignment
 
+    # Add % Spend column header (only for sheets with totals, not for daily/monthly averages)
+    has_totals = "total" in group_list
+    if has_totals and include_chart:
+        worksheet.cell(row, 6, "% Spend").font = header_font
+        worksheet.cell(row, 6).fill = header_fill
+        worksheet.cell(row, 6).alignment = header_alignment
+
     # Sort groups by year2 (most recent) value in descending order, with 'total' at the end
     sorted_groups = []
     total_group = None
@@ -1460,6 +1478,9 @@ def _create_year_comparison_sheet(
     # Data rows
     row += 1
     start_row = row
+
+    # Calculate total for % Spend
+    total_val2 = year2_data.get("total", 1) if has_totals else 1
 
     for group in sorted_groups:
         val1 = year1_data.get(group, 0)
@@ -1486,6 +1507,11 @@ def _create_year_comparison_sheet(
         worksheet.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         worksheet.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
+        # Add % Spend column (skip for total row)
+        if has_totals and include_chart and group != "total":
+            pct_spend = val2 / total_val2 if total_val2 > 0 else 0
+            worksheet.cell(row, 6, pct_spend).number_format = "0.00%"
+
         row += 1
 
     end_row = row - 1
@@ -1501,45 +1527,89 @@ def _create_year_comparison_sheet(
     _auto_adjust_column_widths(worksheet)
 
     # Add pie chart for year 2 data (most recent) - only if include_chart is True
-    if include_chart:
-        chart = PieChart()
-        chart.title = f"{year2_label} Distribution"
-        chart.style = 10
-        chart.height = 15  # Increase height to show all labels
-        chart.width = 20  # Increase width to show all labels
+    if include_chart and workbook:
+        # Create helper sheet for pie chart data (groups items < 1% into "Other")
+        helper_sheet_name = f"_{worksheet.title}_Chart_Data"
+        ws_helper = workbook.create_sheet(helper_sheet_name)
+        ws_helper.sheet_state = "hidden"
 
-        # Data for chart (exclude 'total' row if present)
-        chart_groups = [
-            g for g in sorted_groups if g != "total" and year2_data.get(g, 0) > 0
-        ]
-        if chart_groups:
-            # Find the row range for chart data (excluding total)
-            chart_start_row = start_row
-            chart_end_row = start_row + len(chart_groups) - 1
+        helper_row = 1
+        helper_col = 1
+        pie_chart_start_row = helper_row
 
-            # Create chart data reference
+        # Add groups with >= 1% spend
+        for group in sorted_groups:
+            if group == "total":
+                continue
+
+            val2 = year2_data.get(group, 0)
+            val1 = year1_data.get(group, 0)
+
+            # Skip if zero
+            if val1 == 0 and val2 == 0:
+                continue
+
+            pct_spend = val2 / total_val2 if total_val2 > 0 else 0
+            if pct_spend >= 0.01:  # >= 1%
+                ws_helper.cell(helper_row, helper_col, group)
+                ws_helper.cell(helper_row, helper_col + 1, val2)
+                helper_row += 1
+
+        # Calculate and add "Other" if there are groups with < 1% spend
+        other_total = 0
+        for group in sorted_groups:
+            if group == "total":
+                continue
+
+            val2 = year2_data.get(group, 0)
+            val1 = year1_data.get(group, 0)
+
+            # Skip if zero
+            if val1 == 0 and val2 == 0:
+                continue
+
+            pct_spend = val2 / total_val2 if total_val2 > 0 else 0
+            if pct_spend < 0.01:  # < 1%
+                other_total += val2
+
+        if other_total > 0:
+            ws_helper.cell(helper_row, helper_col, "Other")
+            ws_helper.cell(helper_row, helper_col + 1, other_total)
+            helper_row += 1
+
+        pie_chart_end_row = helper_row - 1
+
+        # Add pie chart using helper table data from hidden sheet
+        if pie_chart_end_row >= pie_chart_start_row:
+            chart = PieChart()
+            chart.title = f"{year2_label} Distribution"
+            chart.style = 10
+            chart.height = 15
+            chart.width = 20
+
+            # Use data from helper sheet
             labels = Reference(
-                worksheet,
-                min_col=1,
-                min_row=chart_start_row,
-                max_row=chart_end_row,
+                ws_helper,
+                min_col=helper_col,
+                min_row=pie_chart_start_row,
+                max_row=pie_chart_end_row,
             )
             data = Reference(
-                worksheet,
-                min_col=3,
-                min_row=chart_start_row - 1,
-                max_row=chart_end_row,
+                ws_helper,
+                min_col=helper_col + 1,
+                min_row=pie_chart_start_row,
+                max_row=pie_chart_end_row,
             )
 
-            chart.add_data(data, titles_from_data=True)
+            chart.add_data(data, titles_from_data=False)
             chart.set_categories(labels)
 
-            # Style the chart
+            # Configure data labels to show category name and percentage only
             chart.dataLabels = DataLabelList()
             chart.dataLabels.showCatName = True
-            chart.dataLabels.showVal = True
+            chart.dataLabels.showVal = False
             chart.dataLabels.showPercent = True
             chart.dataLabels.showSerName = False
             chart.legend = None
 
-            worksheet.add_chart(chart, "G3")
+            worksheet.add_chart(chart, "H3")
