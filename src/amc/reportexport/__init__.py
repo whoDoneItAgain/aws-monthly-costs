@@ -294,8 +294,8 @@ def _create_bu_analysis_tables(
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         row += 1
@@ -315,8 +315,8 @@ def _create_bu_analysis_tables(
     ws.cell(row, 1, "total")
     ws.cell(row, 2, total1).number_format = '"$"#,##0.00'
     ws.cell(row, 3, total2).number_format = '"$"#,##0.00'
-    ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-    ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+    ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+    ws.cell(row, 5, pct_diff).number_format = "0.00%"
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
     data_end_row = row
@@ -494,8 +494,8 @@ def _create_bu_analysis_tables(
 
         ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
 
@@ -514,8 +514,8 @@ def _create_bu_analysis_tables(
     ws_daily.cell(row, 1, "total")
     ws_daily.cell(row, 2, total1_daily).number_format = '"$"#,##0.00'
     ws_daily.cell(row, 3, total2_daily).number_format = '"$"#,##0.00'
-    ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-    ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+    ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+    ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
     daily_end_row = row
 
@@ -682,8 +682,8 @@ def _create_service_analysis_tables(
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         row += 1
@@ -711,8 +711,8 @@ def _create_service_analysis_tables(
 
         ws.cell(row, 2, other_amount_prev).number_format = '"$"#,##0.00'
         ws.cell(row, 3, other_amount).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         pie_chart_end_row = row
@@ -835,8 +835,8 @@ def _create_service_analysis_tables(
 
         ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
 
@@ -933,8 +933,8 @@ def _create_account_analysis_tables(
 
         ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         row += 1
@@ -962,8 +962,8 @@ def _create_account_analysis_tables(
 
         ws.cell(row, 2, other_amount_prev).number_format = '"$"#,##0.00'
         ws.cell(row, 3, other_amount).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws.cell(row, 5, pct_diff).number_format = "0.00%"
         ws.cell(row, 6, pct_spend).number_format = "0.00%"
 
         pie_chart_end_row = row
@@ -1086,8 +1086,8 @@ def _create_account_analysis_tables(
 
         ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        ws_daily.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, pct_diff).number_format = "0.00%"
 
         row += 1
 
@@ -1587,9 +1587,8 @@ def _create_year_comparison_sheet(
         worksheet.cell(row, 1, group)
         worksheet.cell(row, 2, val1).number_format = '"$"#,##0.00'
         worksheet.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        # Use absolute value for difference column to match monthly format
-        worksheet.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        worksheet.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+        worksheet.cell(row, 4, diff).number_format = '"$"#,##0.00'
+        worksheet.cell(row, 5, pct_diff).number_format = "0.00%"
 
         # Add % Spend column (skip for total row, but show for Other)
         if (has_totals or has_other) and include_chart and group != "total":
