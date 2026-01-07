@@ -491,6 +491,7 @@ def _process_service_mode(
     output_dir: Path,
     output_formats: list[str],
     analysis_data: dict,
+    service_exclusions: list = None,
 ):
     """Process service-based cost reporting.
 
@@ -504,6 +505,7 @@ def _process_service_mode(
         output_dir: Directory for output files
         output_formats: List of formats to generate
         analysis_data: Dictionary to store data for analysis file
+        service_exclusions: List of services to exclude from reports
     """
     is_daily = run_mode == RUN_MODE_SERVICE_DAILY
 
@@ -514,6 +516,7 @@ def _process_service_mode(
         service_aggregations,
         top_cost_count=top_cost_count,
         daily_average=is_daily,
+        service_exclusions=service_exclusions,
     )
 
     service_list = get_service_list(cost_matrix, service_aggregations)
@@ -673,6 +676,7 @@ def main():
         config_settings["ss-allocations"] if args.include_shared_services else None
     )
     service_aggregations = config_settings["service-aggregations"]
+    service_exclusions = config_settings.get("service-exclusions", [])
     top_costs_limits = config_settings["top-costs-count"]
 
     # Parse time period
@@ -745,6 +749,7 @@ def main():
                 output_dir,
                 output_formats,
                 analysis_data,
+                service_exclusions,
             )
 
     # Generate analysis Excel file if all required data is available

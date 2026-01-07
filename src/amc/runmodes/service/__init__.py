@@ -33,7 +33,7 @@ def _build_costs(cost_and_usage, daily_average=False):
     return service_costs, list(service_set)
 
 
-def _build_cost_matrix(service_list, service_costs, service_aggregation):
+def _build_cost_matrix(service_list, service_costs, service_aggregation, service_exclusions=None):
     cost_matrix: dict = {}
 
     # Build reverse mapping for faster lookups: service -> aggregation name
@@ -42,10 +42,17 @@ def _build_cost_matrix(service_list, service_costs, service_aggregation):
         for service in agg_services:
             service_to_agg[service] = agg_name
 
+    # Normalize exclusions list (default to empty list if None)
+    exclusions = service_exclusions if service_exclusions else []
+
     for cost_month, costs_for_month in service_costs.items():
         service_month_costs: dict = {}
 
         for service in service_list:
+            # Skip excluded services
+            if service in exclusions:
+                continue
+
             cost = costs_for_month.get(service, 0.0)
 
             # Check if service belongs to an aggregation
@@ -73,6 +80,7 @@ def calculate_service_costs(
     service_aggregations,
     top_cost_count,
     daily_average=False,
+    service_exclusions=None,
 ):
     """Calculate AWS costs grouped by service.
 
@@ -83,6 +91,7 @@ def calculate_service_costs(
         service_aggregations: Dictionary of service aggregation rules
         top_cost_count: Number of top services to include
         daily_average: If True, calculate daily average costs
+        service_exclusions: List of services to exclude from reports
 
     Returns:
         Dictionary of cost data organized by month and service
@@ -108,7 +117,7 @@ def calculate_service_costs(
     LOGGER.debug(service_costs)
 
     service_cost_matrix = _build_cost_matrix(
-        service_list, service_costs, service_aggregations
+        service_list, service_costs, service_aggregations, service_exclusions
     )
 
     # Get the most recent month - optimized to avoid creating intermediate list

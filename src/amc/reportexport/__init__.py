@@ -1283,6 +1283,7 @@ def export_year_analysis_excel(
         include_chart=True,  # Include pie chart for yearly totals
         workbook=wb,
         chart_helper_name="_BU_Year_Chart",
+        chart_title="BU Costs Distribution",
     )
 
     ws_bu_daily = wb.create_sheet("BU Costs - Daily Avg")
@@ -1324,6 +1325,7 @@ def export_year_analysis_excel(
         include_chart=True,  # Include pie chart for yearly totals
         workbook=wb,
         chart_helper_name="_Service_Year_Chart",
+        chart_title="Top Services Distribution",
     )
 
     ws_service_daily = wb.create_sheet("Top Services - Daily Avg")
@@ -1365,6 +1367,7 @@ def export_year_analysis_excel(
         include_chart=True,  # Include pie chart for yearly totals
         workbook=wb,
         chart_helper_name="_Account_Year_Chart",
+        chart_title="Top Accounts Distribution",
     )
 
     ws_account_daily = wb.create_sheet("Top Accounts - Daily Avg")
@@ -1409,6 +1412,7 @@ def _create_year_comparison_sheet(
     include_chart=True,
     workbook=None,
     chart_helper_name=None,
+    chart_title=None,
 ):
     """Create a year comparison sheet with formatted table and chart.
 
@@ -1423,6 +1427,7 @@ def _create_year_comparison_sheet(
         include_chart: Whether to include pie chart (default: True, only for yearly totals)
         workbook: Workbook object for creating helper sheet (needed for pie chart with "Other" grouping)
         chart_helper_name: Short name for hidden helper sheet (max 31 chars, default: auto-generated)
+        chart_title: Title for pie chart (default: uses year2_label Distribution)
     """
     # Define styles - match monthly analysis format
     header_font = Font(bold=True, size=14, color="FF000000")
@@ -1593,7 +1598,8 @@ def _create_year_comparison_sheet(
         # Add pie chart using helper table data from hidden sheet
         if pie_chart_end_row >= pie_chart_start_row:
             chart = PieChart()
-            chart.title = f"{year2_label} Distribution"
+            # Use provided chart title, otherwise default to year2_label Distribution
+            chart.title = chart_title if chart_title else f"{year2_label} Distribution"
             chart.style = 10
             chart.height = 15
             chart.width = 20

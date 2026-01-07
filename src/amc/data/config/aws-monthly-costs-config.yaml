@@ -146,6 +146,8 @@ service-aggregations:
     - 'AWS Network Firewall'
   'Amazon CloudWatch (Monitoring)':
     - 'AmazonCloudWatch'
+service-exclusions:
+  - 'Tax'
 top-costs-count:
   account: 10
   service: 10
