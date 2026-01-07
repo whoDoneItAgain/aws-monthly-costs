@@ -373,7 +373,7 @@ def _create_bu_analysis_tables(
     # Only add pie chart if there's BU data to display
     if pie_chart_end_row >= pie_chart_start_row:
         chart = PieChart()
-        chart.title = "BU Costs Distribution"
+        chart.title = None  # Remove title to prevent label overlap
         chart.style = 10
         chart.height = 15  # Increase height to show all labels
         chart.width = 20  # Increase width to show all labels
@@ -729,7 +729,7 @@ def _create_service_analysis_tables(
 
     # Add pie chart (using column C data, which is the latest month)
     chart = PieChart()
-    chart.title = "Top Services Distribution"
+    chart.title = None  # Remove title to prevent label overlap
     chart.style = 10
     chart.height = 15  # Increase height to show all labels
     chart.width = 20  # Increase width to show all labels
@@ -980,7 +980,7 @@ def _create_account_analysis_tables(
 
     # Add pie chart (using column C data, which is the latest month)
     chart = PieChart()
-    chart.title = "Top Accounts Distribution"
+    chart.title = None  # Remove title to prevent label overlap
     chart.style = 10
     chart.height = 15  # Increase height to show all labels
     chart.width = 20  # Increase width to show all labels
