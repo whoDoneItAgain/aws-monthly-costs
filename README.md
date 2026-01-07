@@ -883,6 +883,14 @@ Contributions are welcome! Please ensure:
 4. **Documentation updated**: Update README if adding features
 5. **Security**: No new vulnerabilities introduced
 
+### API Documentation
+
+For developers working with the codebase, see [API_REFERENCE.md](API_REFERENCE.md) for detailed API documentation including:
+- Function signatures and parameters
+- Module organization
+- Usage examples
+- Type hints and return values
+
 ### Release Process
 
 For maintainers, see [RELEASE_WORKFLOW.md](RELEASE_WORKFLOW.md) for detailed instructions on:
@@ -961,7 +969,7 @@ See CHANGELOG.md for recent updates.
 - No vulnerable dependencies
 - Comprehensive security review completed
 
-See `AGENT_HANDOFF.md`, `REFACTORING_SUMMARY.md`, `TEST_IMPLEMENTATION_SUMMARY.md`, and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
+See `AGENT_HANDOFF.md` and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
 
 ## Acknowledgments
 

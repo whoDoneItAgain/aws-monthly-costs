@@ -786,7 +786,7 @@ The README follows this structure (in order):
 11. **Migration Guide** (for breaking changes)
 12. **Testing** (how to run tests)
 13. **Security** (security considerations)
-14. **Contributing** (development setup)
+14. **Contributing** (development setup and API reference)
 15. **License and Changelog**
 
 **Writing Style**:
@@ -797,6 +797,24 @@ The README follows this structure (in order):
 - ✅ Organize with clear headers (##, ###, ####)
 - ✅ Use tables for structured information (options, metrics)
 - ✅ Include "Before" and "After" examples for breaking changes
+
+#### API_REFERENCE.md Structure
+Comprehensive API documentation for developers:
+1. **Module organization** (by package/module)
+2. **Function signatures** (with type hints)
+3. **Parameter descriptions** (Args section)
+4. **Return values** (Returns section)
+5. **Exceptions** (Raises section)
+6. **Usage examples** (practical code samples)
+7. **Constants** (all constant definitions)
+8. **Cross-references** (See Also section)
+
+**Writing Style**:
+- ✅ Use consistent heading structure (##, ###, ####)
+- ✅ Include type hints in function signatures
+- ✅ Provide practical usage examples
+- ✅ Document all public APIs
+- ✅ Link to related documentation files
 
 #### TESTING.md Structure
 Testing documentation follows this pattern:
@@ -1130,6 +1148,8 @@ Migration guide available in README.md
 
 **For security concerns**, see `SECURITY_REVIEW.md`
 
+**For API documentation**, see `API_REFERENCE.md`
+
 ---
 
 ## Handoff Checklist
@@ -1153,6 +1173,7 @@ For questions about this codebase or agent handoff:
 2. Check function docstrings for implementation details
 3. Refer to test files for expected behavior examples
 4. See README.md for user-facing documentation
+5. See API_REFERENCE.md for detailed API documentation
 
 ---
 
