@@ -18,6 +18,62 @@ This codebase is a **Python CLI tool** for generating AWS cost reports by accoun
 
 ---
 
+## ✅ Bug Fix: NameError in _create_bu_analysis_tables (Debugger Agent - 2026-01-07)
+
+### Overview
+Fixed a critical NameError in the `_create_bu_analysis_tables` function that was preventing BU analysis Excel exports from being generated. This bug was introduced during the refactoring work in PR #141.
+
+### Issue
+**Error:** `NameError: name 'header_font' is not defined`
+**Location:** `src/amc/reportexport/__init__.py`, line 373 (Daily Average section)
+
+### Root Cause
+During the refactoring to eliminate code duplication in PR #141, the Monthly Totals section of `_create_bu_analysis_tables` (lines 256-260) was successfully updated to use the `apply_header_style()` utility function. However, the Daily Average section (lines 373-391) was not updated and still referenced the old local variables `header_font`, `header_fill`, and `header_alignment` that were no longer defined.
+
+### Solution
+Replaced the manual header styling in the Daily Average section with the `apply_header_style()` utility function, consistent with the refactoring pattern used in the Monthly Totals section.
+
+**Before (lines 373-391):**
+```python
+ws_daily.cell(row, 1, "Month").font = header_font
+ws_daily.cell(row, 1).fill = header_fill
+ws_daily.cell(row, 1).alignment = header_alignment
+
+ws_daily.cell(row, 2, last_2_months[0]).font = header_font
+ws_daily.cell(row, 2).fill = header_fill
+ws_daily.cell(row, 2).alignment = header_alignment
+# ... 3 more similar blocks
+```
+
+**After (lines 373-378):**
+```python
+# Apply header styling using utility functions
+for col, header_text in enumerate(
+    ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"],
+    start=1,
+):
+    apply_header_style(ws_daily.cell(row, col, header_text))
+```
+
+### Impact
+- **Lines Eliminated:** 19 lines reduced to 6 lines (68% reduction)
+- **Consistency:** Daily Average section now uses same pattern as Monthly Totals section
+- **Bug Fixed:** BU analysis Excel exports now generate successfully
+- **DRY Principle:** Completed the refactoring that was partially done in PR #141
+
+### Files Changed
+- `src/amc/reportexport/__init__.py` - Fixed Daily Average header styling
+
+### Verification
+- ✅ Ruff formatting applied
+- ✅ Code follows existing refactoring patterns
+- ✅ Consistent with the utility function approach from PR #141
+
+### Commits
+- Initial fix for NameError in _create_bu_analysis_tables function
+
+---
+
 ## ✅ Comprehensive Refactoring Completed (Refactoring-Expert Agent - 2026-01-07)
 
 ### Overview
