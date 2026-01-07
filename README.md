@@ -164,10 +164,26 @@ amc --profile your-aws-profile --run-modes account bu service account-daily bu-d
 
 #### Custom Configuration File
 
+The tool supports multiple ways to specify your configuration file, with the following priority order:
+
+1. **Explicit `--config-file` parameter** (highest priority)
+2. **`~/.amcrc` file in your home directory** (fallback if no parameter specified)
+3. **Built-in default configuration** (lowest priority)
+
 ```bash
-# Use a custom configuration file
+# Use a custom configuration file (highest priority)
 amc --profile your-aws-profile --config-file /path/to/custom-config.yaml
+
+# Use ~/.amcrc from your home directory (create this file to set your default config)
+# No --config-file parameter needed
+cp my-config.yaml ~/.amcrc
+amc --profile your-aws-profile
+
+# Use built-in default configuration (if no --config-file and no ~/.amcrc exists)
+amc --profile your-aws-profile
 ```
+
+**Security Note**: The `~/.amcrc` file is useful for storing your default configuration with potentially sensitive account mappings in your home directory, rather than specifying it on the command line each time.
 
 #### Debug Logging
 
@@ -214,7 +230,7 @@ amc --help
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
 | `--profile` | **Yes** | None | AWS profile name from `~/.aws/config` |
-| `--config-file` | No | `src/amc/data/config/aws-monthly-costs-config.yaml` | Path to configuration YAML file |
+| `--config-file` | No | `~/.amcrc` if exists, otherwise built-in default | Path to configuration YAML file |
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |
@@ -224,7 +240,17 @@ amc --help
 
 ### Configuration File
 
-The configuration file defines business units, shared services, and service aggregation rules. Example structure:
+The configuration file defines business units, shared services, and service aggregation rules.
+
+**Configuration File Priority**:
+The tool looks for configuration in the following order:
+1. **`--config-file` parameter** - Explicit path provided on command line (highest priority)
+2. **`~/.amcrc`** - Configuration file in your home directory (useful for default settings)
+3. **Built-in default** - `src/amc/data/config/aws-monthly-costs-config.yaml` (lowest priority)
+
+**Tip**: Create a `~/.amcrc` file to set your default configuration without specifying `--config-file` each time. This is especially useful for keeping sensitive account mappings out of command-line history.
+
+Example structure:
 
 ```yaml
 # Business unit definitions
@@ -579,19 +605,29 @@ aws sso login --profile your-profile-name
 
 #### "Configuration file not found"
 
-**Error**: `Configuration file not found: /path/to/config.yaml`
+**Error**: `Configuration file not found: /path/to/config.yaml` or `Specified configuration file not found`
 
 **Solution**:
 ```bash
-# Use the default config
+# Option 1: Use the built-in default config (no arguments needed)
 amc --profile your-profile-name
 
-# Or specify correct path
+# Option 2: Create a ~/.amcrc file in your home directory
+cp src/amc/data/config/aws-monthly-costs-config.yaml ~/.amcrc
+# Edit ~/.amcrc with your configuration
+amc --profile your-profile-name
+
+# Option 3: Specify an explicit config file path
 amc --profile your-profile-name --config-file /correct/path/to/config.yaml
 
-# Copy example config
-cp src/amc/data/config/aws-monthly-costs-config.yaml my-config.yaml
+# View which config file is being used (with debug logging)
+amc --profile your-profile-name --debug-logging
 ```
+
+**Configuration Priority**:
+1. Explicit `--config-file` parameter (highest priority)
+2. `~/.amcrc` in your home directory (if exists)
+3. Built-in default configuration (if no other options)
 
 #### "Invalid time period format"
 
