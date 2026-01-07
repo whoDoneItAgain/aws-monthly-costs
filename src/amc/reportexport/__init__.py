@@ -44,17 +44,16 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
     from openpyxl.styles import Font, PatternFill, Alignment
     
     # Get all account IDs that are defined in account_groups
-    assigned_accounts = {}
+    assigned_accounts = set()
     for bu, bu_accounts in account_groups.items():
-        for account_id, account_name in bu_accounts.items():
-            assigned_accounts[account_id] = (bu, account_name)
+        assigned_accounts.update(bu_accounts.keys())
     
     # Get all account IDs from cost data (from the first month)
     first_month_key = next(iter(all_account_costs.keys()))
     all_cost_account_ids = set(all_account_costs[first_month_key].keys())
     
     # Identify unallocated accounts
-    unallocated_account_ids = all_cost_account_ids - set(assigned_accounts.keys())
+    unallocated_account_ids = all_cost_account_ids - assigned_accounts
     
     # Define styles matching existing sheets
     title_font = Font(bold=True, size=16)
@@ -84,29 +83,16 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
         cell.font = section_font
         row += 1
         
-        # Column headers with styling matching existing sheets
-        header_cell_1 = worksheet.cell(row, 1, "Account ID")
-        header_cell_1.font = header_font
-        header_cell_1.fill = header_fill
-        header_cell_1.alignment = header_alignment
-        
-        header_cell_2 = worksheet.cell(row, 2, "Account Name")
-        header_cell_2.font = header_font
-        header_cell_2.fill = header_fill
-        header_cell_2.alignment = header_alignment
+        # Column header with styling matching existing sheets
+        header_cell = worksheet.cell(row, 1, "Account ID")
+        header_cell.font = header_font
+        header_cell.fill = header_fill
+        header_cell.alignment = header_alignment
         row += 1
         
         if bu_accounts:
             for account_id in sorted(bu_accounts.keys()):
-                account_name_or_dict = bu_accounts[account_id]
-                # Handle case where account_name might be a dict with metadata
-                if isinstance(account_name_or_dict, dict):
-                    # Drop metadata properties like 'cost-class', only use 'name' if present
-                    account_name = account_name_or_dict.get('name', '(no name)')
-                else:
-                    account_name = account_name_or_dict
                 worksheet.cell(row, 1, account_id)
-                worksheet.cell(row, 2, str(account_name))
                 row += 1
         else:
             cell = worksheet.cell(row, 1, "(no accounts)")
@@ -142,7 +128,6 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
     
     # Auto-adjust column widths
     worksheet.column_dimensions['A'].width = 20
-    worksheet.column_dimensions['B'].width = 40
 
 
 def export_report(
