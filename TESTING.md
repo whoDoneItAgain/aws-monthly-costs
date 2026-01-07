@@ -16,14 +16,18 @@ open htmlcov/index.html
 
 ## Test Results
 
-✅ **128 tests passing**
-- 116 unit tests
-- 12 integration tests
+✅ **225 tests passing** - **UPDATED 2026-01-07**
+- 200+ unit tests
+- 17 integration tests  
+- 7 end-to-end tests
 
-📊 **48% code coverage**
+📊 **95% code coverage** - **UPDATED 2026-01-07**
 - Core business logic: 100%
-- Main entry point: 92%
-- Constants: 100%
+- Main entry point: 99%
+- Report export: 93%
+- All calculator modules: 100%
+
+**Why 95% and not 100%?** See [TEST_COVERAGE_ANALYSIS.md](TEST_COVERAGE_ANALYSIS.md) for detailed explanation of the remaining 5%.
 
 ## What's Tested
 
