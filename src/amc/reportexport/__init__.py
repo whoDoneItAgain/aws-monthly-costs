@@ -539,7 +539,8 @@ def _add_conditional_formatting(ws, diff_range, pct_range):
         pct_range: Cell range for % Difference column (e.g., "E4:E10")
     """
     from openpyxl.formatting.rule import Rule
-    from openpyxl.styles import Font as CFFont, PatternFill as CFPatternFill
+    from openpyxl.styles import Font as CFFont
+    from openpyxl.styles import PatternFill as CFPatternFill
     from openpyxl.styles.differential import DifferentialStyle
 
     # Green for decrease (current < previous) - good, saving money
@@ -1503,7 +1504,9 @@ def _create_year_comparison_sheet(
     if include_chart:
         chart = PieChart()
         chart.title = f"{year2_label} Distribution"
-        # Use default size to match monthly charts (don't set height/width)
+        chart.style = 10
+        chart.height = 15  # Increase height to show all labels
+        chart.width = 20  # Increase width to show all labels
 
         # Data for chart (exclude 'total' row if present)
         chart_groups = [
