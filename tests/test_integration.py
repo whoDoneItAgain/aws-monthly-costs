@@ -340,7 +340,7 @@ class TestCrossYearBoundaryIntegration:
 
     def test_account_costs_across_year_boundary(self):
         """Test calculating account costs across year boundary."""
-        from amc.runmodes.account import _build_costs
+        from amc.runmodes.account.calculator import _build_costs
 
         response = {
             "ResultsByTime": [

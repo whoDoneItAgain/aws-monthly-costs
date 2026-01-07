@@ -8,6 +8,28 @@ from openpyxl.chart import PieChart, Reference
 from openpyxl.chart.label import DataLabelList
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from amc.reportexport.calculations import (
+    calculate_difference,
+    calculate_percentage_difference,
+    calculate_percentage_spend,
+)
+from amc.reportexport.formatting import (
+    CURRENCY_FORMAT,
+    HEADER_ALIGNMENT_CENTER,
+    HEADER_FILL_STANDARD,
+    HEADER_FONT_STANDARD,
+    PERCENTAGE_FORMAT,
+    apply_currency_format,
+    apply_header_style,
+    apply_percentage_format,
+    auto_adjust_column_widths,
+)
+from amc.reportexport.charts import (
+    add_chart_to_worksheet,
+    add_data_to_pie_chart,
+    create_pie_chart,
+)
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -225,41 +247,17 @@ def _create_bu_analysis_tables(
     ws, ws_daily, ws_helper, cost_matrix, group_list, last_2_months
 ):
     """Create BU analysis tables with monthly totals on one sheet, daily average on another, and pie chart with helper table in hidden sheet."""
-    # Header formatting
-    header_font = Font(bold=True, size=14, color="FF000000")
-    header_fill = PatternFill(
-        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
-    )
-    header_alignment = Alignment(horizontal="center")
-
     # Monthly Totals section
     ws["A1"] = "BU Monthly Totals"
     ws["A1"].font = Font(bold=True, size=16)
 
     row = 3
-    ws.cell(row, 1, "Month").font = header_font
-    ws.cell(row, 1).fill = header_fill
-    ws.cell(row, 1).alignment = header_alignment
-
-    ws.cell(row, 2, last_2_months[0]).font = header_font
-    ws.cell(row, 2).fill = header_fill
-    ws.cell(row, 2).alignment = header_alignment
-
-    ws.cell(row, 3, last_2_months[1]).font = header_font
-    ws.cell(row, 3).fill = header_fill
-    ws.cell(row, 3).alignment = header_alignment
-
-    ws.cell(row, 4, "Difference").font = header_font
-    ws.cell(row, 4).fill = header_fill
-    ws.cell(row, 4).alignment = header_alignment
-
-    ws.cell(row, 5, "% Difference").font = header_font
-    ws.cell(row, 5).fill = header_fill
-    ws.cell(row, 5).alignment = header_alignment
-
-    ws.cell(row, 6, "% Spend").font = header_font
-    ws.cell(row, 6).fill = header_fill
-    ws.cell(row, 6).alignment = header_alignment
+    # Apply header styling using utility functions
+    for col, header_text in enumerate(
+        ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"],
+        start=1,
+    ):
+        apply_header_style(ws.cell(row, col, header_text))
 
     # Data rows for monthly totals
     row += 1
@@ -280,43 +278,33 @@ def _create_bu_analysis_tables(
 
         ws.cell(row, 1, bu)
 
-        diff = val2 - val1
-        # Handle percentage calculation properly
-        if val1 > 0:
-            pct_diff = (val2 - val1) / val1
-        elif val1 == 0 and val2 != 0:
-            # If starting from 0, show as 100% increase
-            pct_diff = 1.0 if val2 > 0 else 0
-        else:
-            # Both are 0
-            pct_diff = 0
-        pct_spend = val2 / cost_matrix[last_2_months[1]].get("total", 1)
+        # Use calculation utilities
+        diff = calculate_difference(val1, val2)
+        pct_diff = calculate_percentage_difference(val1, val2)
+        pct_spend = calculate_percentage_spend(
+            val2, cost_matrix[last_2_months[1]].get("total", 1)
+        )
 
-        ws.cell(row, 2, val1).number_format = '"$"#,##0.00'
-        ws.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-        ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
-        ws.cell(row, 6, pct_spend).number_format = "0.00%"
+        # Apply formatting using utility functions
+        apply_currency_format(ws.cell(row, 2, val1))
+        apply_currency_format(ws.cell(row, 3, val2))
+        apply_currency_format(ws.cell(row, 4, diff))
+        apply_percentage_format(ws.cell(row, 5, abs(pct_diff)))
+        apply_percentage_format(ws.cell(row, 6, pct_spend))
 
         row += 1
 
     # Total row
     total1 = cost_matrix[last_2_months[0]].get("total", 0)
     total2 = cost_matrix[last_2_months[1]].get("total", 0)
-    diff = total2 - total1
-    # Handle percentage calculation properly
-    if total1 > 0:
-        pct_diff = (total2 - total1) / total1
-    elif total1 == 0 and total2 != 0:
-        pct_diff = 1.0 if total2 > 0 else 0
-    else:
-        pct_diff = 0
+    diff = calculate_difference(total1, total2)
+    pct_diff = calculate_percentage_difference(total1, total2)
 
     ws.cell(row, 1, "total")
-    ws.cell(row, 2, total1).number_format = '"$"#,##0.00'
-    ws.cell(row, 3, total2).number_format = '"$"#,##0.00'
-    ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
-    ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+    apply_currency_format(ws.cell(row, 2, total1))
+    apply_currency_format(ws.cell(row, 3, total2))
+    apply_currency_format(ws.cell(row, 4, diff))
+    apply_percentage_format(ws.cell(row, 5, abs(pct_diff)))
     # Column 6 (% Spend) intentionally left empty for total row - it's implied to be 100%
 
     data_end_row = row
@@ -372,43 +360,14 @@ def _create_bu_analysis_tables(
     # Add pie chart using helper table data from hidden sheet
     # Only add pie chart if there's BU data to display
     if pie_chart_end_row >= pie_chart_start_row:
-        chart = PieChart()
-        chart.title = None  # Remove title to prevent label overlap
-        chart.style = 10
-        chart.height = 15  # Increase height to show all labels
-        chart.width = 20  # Increase width to show all labels
-
-        # Use data from helper sheet
-        labels = Reference(
-            ws_helper,
-            min_col=helper_col,
-            min_row=pie_chart_start_row,
-            max_row=pie_chart_end_row,
+        chart = create_pie_chart(show_legend=False, show_series_name=False)
+        chart = add_data_to_pie_chart(
+            chart, ws_helper, helper_col + 1, helper_col, pie_chart_start_row, pie_chart_end_row
         )
-        data = Reference(
-            ws_helper,
-            min_col=helper_col + 1,
-            min_row=pie_chart_start_row,
-            max_row=pie_chart_end_row,
-        )
-
-        chart.add_data(data, titles_from_data=False)
-        chart.set_categories(labels)
-
-        # Configure data labels to show category name and percentage only on the pie slices
-        chart.dataLabels = DataLabelList()
-        chart.dataLabels.showCatName = True
-        chart.dataLabels.showVal = False  # Don't show value
-        chart.dataLabels.showPercent = True
-        chart.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
-
-        # Remove the legend - labels are shown on pie slices
-        chart.legend = None
-
-        ws.add_chart(chart, "H3")  # Position chart at H3
+        add_chart_to_worksheet(ws, chart, "H3")
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(ws)
+    auto_adjust_column_widths(ws)
 
     # Daily Average section - on separate sheet
     ws_daily["A1"] = "BU Daily Average"
