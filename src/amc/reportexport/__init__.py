@@ -34,6 +34,8 @@ from amc.reportexport.charts import (
     create_pie_chart,
 )
 from amc.reportexport.analysis_tables import (
+    create_analysis_header_row,
+    create_section_title,
     create_monthly_totals_table,
     create_daily_average_table,
     create_pie_chart_with_data,
@@ -662,13 +664,6 @@ def _create_service_analysis_tables(
     ws, ws_daily, cost_matrix, group_list, last_2_months, bu_cost_matrix
 ):
     """Create service analysis tables with monthly totals on one sheet, daily average on another, and pie chart."""
-    # Header formatting
-    header_font = Font(bold=True, size=14, color="FF000000")
-    header_fill = PatternFill(
-        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
-    )
-    header_alignment = Alignment(horizontal="center")
-
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
@@ -677,44 +672,18 @@ def _create_service_analysis_tables(
     month2_costs = cost_matrix[last_2_months[1]]
 
     # Get top 10 services by latest month cost (excluding 'total')
-    service_costs = [
-        (svc, month2_costs.get(svc, 0)) for svc in group_list if svc != "total"
-    ]
-    service_costs.sort(key=lambda x: x[1], reverse=True)
-    top_10_services = [svc for svc, _ in service_costs[:10]]
+    top_10_services = get_top_n_items(cost_matrix, group_list, last_2_months, n=10)
 
     # Calculate "Other" - difference between BU total and sum of top 10 services
     top_10_total = sum(month2_costs.get(svc, 0) for svc in top_10_services)
     other_amount = bu_total - top_10_total
 
     # Monthly Totals section
-    ws["A1"] = "Top Services Monthly Totals"
-    ws["A1"].font = Font(bold=True, size=16)
+    create_section_title(ws, "Top Services Monthly Totals")
 
     row = 3
-    ws.cell(row, 1, "Month").font = header_font
-    ws.cell(row, 1).fill = header_fill
-    ws.cell(row, 1).alignment = header_alignment
-
-    ws.cell(row, 2, last_2_months[0]).font = header_font
-    ws.cell(row, 2).fill = header_fill
-    ws.cell(row, 2).alignment = header_alignment
-
-    ws.cell(row, 3, last_2_months[1]).font = header_font
-    ws.cell(row, 3).fill = header_fill
-    ws.cell(row, 3).alignment = header_alignment
-
-    ws.cell(row, 4, "Difference").font = header_font
-    ws.cell(row, 4).fill = header_fill
-    ws.cell(row, 4).alignment = header_alignment
-
-    ws.cell(row, 5, "% Difference").font = header_font
-    ws.cell(row, 5).fill = header_fill
-    ws.cell(row, 5).alignment = header_alignment
-
-    ws.cell(row, 6, "% Spend").font = header_font
-    ws.cell(row, 6).fill = header_fill
-    ws.cell(row, 6).alignment = header_alignment
+    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"]
+    create_analysis_header_row(ws, row, headers)
 
     # Data rows for monthly totals (top 10 only)
     row += 1
@@ -845,30 +814,11 @@ def _create_service_analysis_tables(
     except ValueError:
         days1 = days2 = 30
 
-    ws_daily["A1"] = "Top Services Daily Average"
-    ws_daily["A1"].font = Font(bold=True, size=16)
+    create_section_title(ws_daily, "Top Services Daily Average")
 
     row = 3
-
-    ws_daily.cell(row, 1, "Month").font = header_font
-    ws_daily.cell(row, 1).fill = header_fill
-    ws_daily.cell(row, 1).alignment = header_alignment
-
-    ws_daily.cell(row, 2, last_2_months[0]).font = header_font
-    ws_daily.cell(row, 2).fill = header_fill
-    ws_daily.cell(row, 2).alignment = header_alignment
-
-    ws_daily.cell(row, 3, last_2_months[1]).font = header_font
-    ws_daily.cell(row, 3).fill = header_fill
-    ws_daily.cell(row, 3).alignment = header_alignment
-
-    ws_daily.cell(row, 4, "Difference").font = header_font
-    ws_daily.cell(row, 4).fill = header_fill
-    ws_daily.cell(row, 4).alignment = header_alignment
-
-    ws_daily.cell(row, 5, "% Difference").font = header_font
-    ws_daily.cell(row, 5).fill = header_fill
-    ws_daily.cell(row, 5).alignment = header_alignment
+    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"]
+    create_analysis_header_row(ws_daily, row, headers)
 
     # Data rows for daily average (top 10 only)
     row += 1
@@ -937,13 +887,6 @@ def _create_account_analysis_tables(
     ws, ws_daily, cost_matrix, group_list, last_2_months, bu_cost_matrix
 ):
     """Create account analysis tables with monthly totals on one sheet, daily average on another, and pie chart."""
-    # Header formatting
-    header_font = Font(bold=True, size=14, color="FF000000")
-    header_fill = PatternFill(
-        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
-    )
-    header_alignment = Alignment(horizontal="center")
-
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
@@ -952,44 +895,18 @@ def _create_account_analysis_tables(
     month2_costs = cost_matrix[last_2_months[1]]
 
     # Get top 10 accounts by latest month cost (excluding 'total')
-    account_costs = [
-        (acc, month2_costs.get(acc, 0)) for acc in group_list if acc != "total"
-    ]
-    account_costs.sort(key=lambda x: x[1], reverse=True)
-    top_10_accounts = [acc for acc, _ in account_costs[:10]]
+    top_10_accounts = get_top_n_items(cost_matrix, group_list, last_2_months, n=10)
 
     # Calculate "Other" - difference between BU total and sum of top 10 accounts
     top_10_total = sum(month2_costs.get(acc, 0) for acc in top_10_accounts)
     other_amount = bu_total - top_10_total
 
     # Monthly Totals section
-    ws["A1"] = "Top Accounts Monthly Totals"
-    ws["A1"].font = Font(bold=True, size=16)
+    create_section_title(ws, "Top Accounts Monthly Totals")
 
     row = 3
-    ws.cell(row, 1, "Month").font = header_font
-    ws.cell(row, 1).fill = header_fill
-    ws.cell(row, 1).alignment = header_alignment
-
-    ws.cell(row, 2, last_2_months[0]).font = header_font
-    ws.cell(row, 2).fill = header_fill
-    ws.cell(row, 2).alignment = header_alignment
-
-    ws.cell(row, 3, last_2_months[1]).font = header_font
-    ws.cell(row, 3).fill = header_fill
-    ws.cell(row, 3).alignment = header_alignment
-
-    ws.cell(row, 4, "Difference").font = header_font
-    ws.cell(row, 4).fill = header_fill
-    ws.cell(row, 4).alignment = header_alignment
-
-    ws.cell(row, 5, "% Difference").font = header_font
-    ws.cell(row, 5).fill = header_fill
-    ws.cell(row, 5).alignment = header_alignment
-
-    ws.cell(row, 6, "% Spend").font = header_font
-    ws.cell(row, 6).fill = header_fill
-    ws.cell(row, 6).alignment = header_alignment
+    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"]
+    create_analysis_header_row(ws, row, headers)
 
     # Data rows for monthly totals (top 10 only)
     row += 1
@@ -1120,30 +1037,11 @@ def _create_account_analysis_tables(
     except ValueError:
         days1 = days2 = 30
 
-    ws_daily["A1"] = "Top Accounts Daily Average"
-    ws_daily["A1"].font = Font(bold=True, size=16)
+    create_section_title(ws_daily, "Top Accounts Daily Average")
 
     row = 3
-
-    ws_daily.cell(row, 1, "Month").font = header_font
-    ws_daily.cell(row, 1).fill = header_fill
-    ws_daily.cell(row, 1).alignment = header_alignment
-
-    ws_daily.cell(row, 2, last_2_months[0]).font = header_font
-    ws_daily.cell(row, 2).fill = header_fill
-    ws_daily.cell(row, 2).alignment = header_alignment
-
-    ws_daily.cell(row, 3, last_2_months[1]).font = header_font
-    ws_daily.cell(row, 3).fill = header_fill
-    ws_daily.cell(row, 3).alignment = header_alignment
-
-    ws_daily.cell(row, 4, "Difference").font = header_font
-    ws_daily.cell(row, 4).fill = header_fill
-    ws_daily.cell(row, 4).alignment = header_alignment
-
-    ws_daily.cell(row, 5, "% Difference").font = header_font
-    ws_daily.cell(row, 5).fill = header_fill
-    ws_daily.cell(row, 5).alignment = header_alignment
+    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"]
+    create_analysis_header_row(ws_daily, row, headers)
 
     # Data rows for daily average (top 10 only)
     row += 1

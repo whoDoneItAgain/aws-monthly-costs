@@ -43,14 +43,14 @@ def get_top_n_items(cost_matrix, group_list, last_2_months, n=10):
     return [item for item, _ in item_costs[:n]]
 
 
-def calculate_other_amount(cost_matrix, top_items, last_2_months, bu_total):
+def calculate_other_amount(cost_matrix, top_items, last_2_months, bu_cost_matrix):
     """Calculate the 'Other' amount (total minus top N).
 
     Args:
         cost_matrix: Dictionary containing cost data organized by month
         top_items: List of top N items
         last_2_months: List of the last 2 months
-        bu_total: Total BU cost for the latest month
+        bu_cost_matrix: Business unit cost matrix containing totals
 
     Returns:
         Tuple of (other_amount_latest, other_amount_previous)
@@ -58,11 +58,14 @@ def calculate_other_amount(cost_matrix, top_items, last_2_months, bu_total):
     month1_costs = cost_matrix[last_2_months[0]]
     month2_costs = cost_matrix[last_2_months[1]]
 
+    # Get BU totals from the BU cost matrix
+    bu_total_latest = bu_cost_matrix[last_2_months[1]].get("total", 0)
+    bu_total_prev = bu_cost_matrix[last_2_months[0]].get("total", 0)
+
     top_total_latest = sum(month2_costs.get(item, 0) for item in top_items)
-    other_amount_latest = bu_total - top_total_latest
+    other_amount_latest = bu_total_latest - top_total_latest
 
     top_total_prev = sum(month1_costs.get(item, 0) for item in top_items)
-    bu_total_prev = bu_total  # For previous month, use same logic if available
     other_amount_prev = bu_total_prev - top_total_prev
 
     return other_amount_latest, other_amount_prev
@@ -84,6 +87,21 @@ def create_analysis_header_row(worksheet, row, headers):
         cell.font = HEADER_FONT_STANDARD
         cell.fill = HEADER_FILL_STANDARD
         cell.alignment = HEADER_ALIGNMENT_CENTER
+
+
+def create_section_title(worksheet, title, cell="A1"):
+    """Create a section title with standard formatting.
+
+    Args:
+        worksheet: The worksheet to write to
+        title: Title text
+        cell: Cell location for the title (default: "A1")
+
+    Returns:
+        None (modifies worksheet in place)
+    """
+    worksheet[cell] = title
+    worksheet[cell].font = Font(bold=True, size=16)
 
 
 def write_data_row(worksheet, row, item_name, val1, val2, bu_total):
@@ -114,7 +132,7 @@ def write_data_row(worksheet, row, item_name, val1, val2, bu_total):
 
 
 def create_monthly_totals_table(
-    worksheet, cost_matrix, items, last_2_months, bu_total, title, include_other=True
+    worksheet, cost_matrix, items, last_2_months, bu_cost_matrix, title, include_other=True
 ):
     """Create a monthly totals table with top items.
 
@@ -123,7 +141,7 @@ def create_monthly_totals_table(
         cost_matrix: Dictionary containing cost data organized by month
         items: List of items to include in the table
         last_2_months: List of the last 2 months
-        bu_total: Total BU cost for the latest month
+        bu_cost_matrix: Business unit cost matrix containing totals
         title: Title for the table
         include_other: Whether to include an "Other" row (default: True)
 
@@ -133,6 +151,7 @@ def create_monthly_totals_table(
     # Cache month dictionaries for faster lookups
     month1_costs = cost_matrix[last_2_months[0]]
     month2_costs = cost_matrix[last_2_months[1]]
+    bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
     # Title
     worksheet["A1"] = title
@@ -157,7 +176,7 @@ def create_monthly_totals_table(
     # Add "Other" row if requested
     if include_other:
         other_latest, other_prev = calculate_other_amount(
-            cost_matrix, items, last_2_months, bu_total
+            cost_matrix, items, last_2_months, bu_cost_matrix
         )
         if other_latest > 0:
             write_data_row(worksheet, row, "Other", other_prev, other_latest, bu_total)
