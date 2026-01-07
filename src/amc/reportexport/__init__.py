@@ -6,7 +6,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.chart import PieChart, Reference
 from openpyxl.chart.label import DataLabelList
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Font
 
 from amc.reportexport.calculations import (
     calculate_difference,
@@ -14,13 +14,8 @@ from amc.reportexport.calculations import (
     calculate_percentage_spend,
 )
 from amc.reportexport.formatting import (
-    CURRENCY_FORMAT,
     EXPORT_HEADER_FILL,
     EXPORT_HEADER_FONT,
-    HEADER_ALIGNMENT_CENTER,
-    HEADER_FILL_STANDARD,
-    HEADER_FONT_STANDARD,
-    PERCENTAGE_FORMAT,
     add_conditional_formatting,
     apply_currency_format,
     apply_header_style,
@@ -36,9 +31,6 @@ from amc.reportexport.charts import (
 from amc.reportexport.analysis_tables import (
     create_analysis_header_row,
     create_section_title,
-    create_monthly_totals_table,
-    create_daily_average_table,
-    create_pie_chart_with_data,
     get_top_n_items,
 )
 
@@ -1521,46 +1513,20 @@ def _create_year_comparison_sheet(
         chart_helper_name: Short name for hidden helper sheet (max 31 chars, default: auto-generated)
         chart_title: Title for pie chart (default: uses year2_label Distribution)
     """
-    # Define styles - match monthly analysis format
-    header_font = Font(bold=True, size=14, color="FF000000")
-    header_fill = PatternFill(
-        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
-    )
-    header_alignment = Alignment(horizontal="center")
-
     # Title
-    worksheet["A1"] = title
-    worksheet["A1"].font = Font(bold=True, size=16)
+    create_section_title(worksheet, title)
 
     # Headers - match monthly format with "Month" instead of "Group"
     row = 3
-    worksheet.cell(row, 1, "Month").font = header_font
-    worksheet.cell(row, 1).fill = header_fill
-    worksheet.cell(row, 1).alignment = header_alignment
-
-    worksheet.cell(row, 2, year1_label).font = header_font
-    worksheet.cell(row, 2).fill = header_fill
-    worksheet.cell(row, 2).alignment = header_alignment
-
-    worksheet.cell(row, 3, year2_label).font = header_font
-    worksheet.cell(row, 3).fill = header_fill
-    worksheet.cell(row, 3).alignment = header_alignment
-
-    worksheet.cell(row, 4, "Difference").font = header_font
-    worksheet.cell(row, 4).fill = header_fill
-    worksheet.cell(row, 4).alignment = header_alignment
-
-    worksheet.cell(row, 5, "% Difference").font = header_font
-    worksheet.cell(row, 5).fill = header_fill
-    worksheet.cell(row, 5).alignment = header_alignment
-
+    headers = ["Month", year1_label, year2_label, "Difference", "% Difference"]
+    
     # Add % Spend column header (only for sheets with totals or Other, not for daily/monthly averages)
     has_totals = "total" in group_list
     has_other = "Other" in group_list
     if (has_totals or has_other) and include_chart:
-        worksheet.cell(row, 6, "% Spend").font = header_font
-        worksheet.cell(row, 6).fill = header_fill
-        worksheet.cell(row, 6).alignment = header_alignment
+        headers.append("% Spend")
+    
+    create_analysis_header_row(worksheet, row, headers)
 
     # Sort groups by year2 (most recent) value in descending order, with 'Other' and 'total' at the end
     sorted_groups = []
