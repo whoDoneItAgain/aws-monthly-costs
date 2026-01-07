@@ -303,14 +303,6 @@ def export_analysis_excel(
         all_account_costs: Dictionary of all account costs (optional, for account summary)
         account_id_to_name: Dictionary mapping account IDs to names (optional, for account summary)
     """
-        bu_cost_matrix: Dictionary containing BU cost data organized by month
-        bu_group_list: Dictionary of BU groups
-        service_cost_matrix: Dictionary containing service cost data organized by month
-        service_group_list: List of services
-        account_cost_matrix: Dictionary containing account cost data organized by month
-        account_group_list: List of accounts
-        all_account_costs: Dictionary of all account costs (optional, for account summary)
-    """
 
     LOGGER.info(f"Creating analysis Excel file: {output_file}")
 
@@ -1318,15 +1310,6 @@ def export_year_analysis_excel(
         year2_months: List of month names for second year period
         all_account_costs: Dictionary of all account costs (optional, for account summary)
         account_id_to_name: Dictionary mapping account IDs to names (optional, for account summary)
-    """
-        bu_group_list: Dictionary of BU groups
-        service_cost_matrix: Dictionary containing service cost data organized by month
-        service_group_list: List of services
-        account_cost_matrix: Dictionary containing account cost data organized by month
-        account_group_list: List of accounts
-        year1_months: List of month names for first year period
-        year2_months: List of month names for second year period
-        all_account_costs: Dictionary of all account costs (optional, for account summary)
     """
     LOGGER.info(f"Creating year analysis Excel file: {output_file}")
 
