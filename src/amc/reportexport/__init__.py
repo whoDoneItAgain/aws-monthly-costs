@@ -15,19 +15,29 @@ from amc.reportexport.calculations import (
 )
 from amc.reportexport.formatting import (
     CURRENCY_FORMAT,
+    EXPORT_HEADER_FILL,
+    EXPORT_HEADER_FONT,
     HEADER_ALIGNMENT_CENTER,
     HEADER_FILL_STANDARD,
     HEADER_FONT_STANDARD,
     PERCENTAGE_FORMAT,
+    add_conditional_formatting,
     apply_currency_format,
     apply_header_style,
     apply_percentage_format,
     auto_adjust_column_widths,
+    auto_adjust_column_widths_advanced,
 )
 from amc.reportexport.charts import (
     add_chart_to_worksheet,
     add_data_to_pie_chart,
     create_pie_chart,
+)
+from amc.reportexport.analysis_tables import (
+    create_monthly_totals_table,
+    create_daily_average_table,
+    create_pie_chart_with_data,
+    get_top_n_items,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -238,18 +248,12 @@ def _export_to_excel(export_file, cost_matrix, group_list, group_by_type, months
     worksheet = workbook.active
     worksheet.title = "AWS Costs"
 
-    # Define styles for header
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(
-        start_color="366092", end_color="366092", fill_type="solid"
-    )
-
     # Write header
     header = ["Month"] + months
     for col_idx, header_value in enumerate(header, start=1):
         cell = worksheet.cell(row=1, column=col_idx, value=header_value)
-        cell.font = header_font
-        cell.fill = header_fill
+        cell.font = EXPORT_HEADER_FONT
+        cell.fill = EXPORT_HEADER_FILL
 
     # Write data rows
     row_idx = 2
@@ -493,7 +497,7 @@ def _create_bu_analysis_tables(
     data_end_row = row
 
     # Add conditional formatting to difference and % difference columns
-    _add_conditional_formatting(
+    add_conditional_formatting(
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
 
@@ -644,86 +648,14 @@ def _create_bu_analysis_tables(
     daily_end_row = row
 
     # Add conditional formatting for daily average difference and % difference columns
-    _add_conditional_formatting(
+    add_conditional_formatting(
         ws_daily,
         f"D{daily_start_row}:D{daily_end_row}",
         f"E{daily_start_row}:E{daily_end_row}",
     )
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(ws_daily)
-
-
-def _add_conditional_formatting(ws, diff_range, pct_range):
-    """Add conditional formatting to difference and % difference columns.
-
-    Args:
-        ws: Worksheet
-        diff_range: Cell range for Difference column (e.g., "D4:D10")
-        pct_range: Cell range for % Difference column (e.g., "E4:E10")
-    """
-    from openpyxl.formatting.rule import Rule
-    from openpyxl.styles import Font as CFFont
-    from openpyxl.styles import PatternFill as CFPatternFill
-    from openpyxl.styles.differential import DifferentialStyle
-
-    # Green for decrease (current < previous) - good, saving money
-    # This means column C < column B, so the formatting should trigger when difference is negative
-    green_fill = CFPatternFill(bgColor="FFC6EFCE")
-    green_font = CFFont(color="FF006100")
-    green_dxf = DifferentialStyle(fill=green_fill, font=green_font)
-
-    # Red for increase (current > previous) - bad, spending more
-    # This means column C > column B
-    red_fill = CFPatternFill(bgColor="FFFFC7CE")
-    red_font = CFFont(color="FF9C0006")
-    red_dxf = DifferentialStyle(fill=red_fill, font=red_font)
-
-    # For difference columns: Green when current (C) < previous (B), Red when current > previous
-    start_row = int(diff_range.split(":")[0][1:])
-
-    green_rule_diff = Rule(type="expression", dxf=green_dxf)
-    green_rule_diff.formula = [f"C{start_row}<B{start_row}"]
-
-    red_rule_diff = Rule(type="expression", dxf=red_dxf)
-    red_rule_diff.formula = [f"C{start_row}>B{start_row}"]
-
-    ws.conditional_formatting.add(diff_range, green_rule_diff)
-    ws.conditional_formatting.add(diff_range, red_rule_diff)
-
-    # Same for % difference columns
-    green_rule_pct = Rule(type="expression", dxf=green_dxf)
-    green_rule_pct.formula = [f"C{start_row}<B{start_row}"]
-
-    red_rule_pct = Rule(type="expression", dxf=red_dxf)
-    red_rule_pct.formula = [f"C{start_row}>B{start_row}"]
-
-    ws.conditional_formatting.add(pct_range, green_rule_pct)
-    ws.conditional_formatting.add(pct_range, red_rule_pct)
-
-
-def _get_cell_length(cell):
-    """Helper function to calculate cell length for column width adjustment."""
-    if cell.value is None:
-        return 0
-    # For numeric values with formatting, use a reasonable width
-    if isinstance(cell.value, (int, float)):
-        return 15  # Fixed width for currency/percentage
-    return len(str(cell.value))
-
-
-def _auto_adjust_column_widths(ws):
-    """Auto-adjust column widths based on content - optimized."""
-    for column in ws.columns:
-        try:
-            # Use generator expression with max() for efficiency
-            max_length = max((_get_cell_length(cell) for cell in column), default=0)
-            # Add extra padding and ensure minimum width
-            adjusted_width = min(max(max_length + 3, 12), 50)
-            ws.column_dimensions[column[0].column_letter].width = adjusted_width
-        except (AttributeError, TypeError, ValueError):
-            # Set default width if calculation fails
-            ws.column_dimensions[column[0].column_letter].width = 12
+    auto_adjust_column_widths_advanced(ws_daily)
 
 
 def _create_service_analysis_tables(
@@ -845,7 +777,7 @@ def _create_service_analysis_tables(
     data_end_row = pie_chart_end_row
 
     # Add conditional formatting to difference and % difference columns for service monthly totals
-    _add_conditional_formatting(
+    add_conditional_formatting(
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
 
@@ -881,7 +813,7 @@ def _create_service_analysis_tables(
     ws.add_chart(chart, "H3")
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(ws)
+    auto_adjust_column_widths_advanced(ws)
 
     # Daily Average section - on separate sheet
     try:
@@ -991,14 +923,14 @@ def _create_service_analysis_tables(
     daily_end_row = row - 1
 
     # Add conditional formatting for service daily average difference and % difference columns
-    _add_conditional_formatting(
+    add_conditional_formatting(
         ws_daily,
         f"D{daily_start_row}:D{daily_end_row}",
         f"E{daily_start_row}:E{daily_end_row}",
     )
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(ws_daily)
+    auto_adjust_column_widths_advanced(ws_daily)
 
 
 def _create_account_analysis_tables(
@@ -1120,7 +1052,7 @@ def _create_account_analysis_tables(
     data_end_row = pie_chart_end_row
 
     # Add conditional formatting to difference and % difference columns for account monthly totals
-    _add_conditional_formatting(
+    add_conditional_formatting(
         ws, f"D{data_start_row}:D{data_end_row}", f"E{data_start_row}:E{data_end_row}"
     )
 
@@ -1156,7 +1088,7 @@ def _create_account_analysis_tables(
     ws.add_chart(chart, "H3")
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(ws)
+    auto_adjust_column_widths_advanced(ws)
 
     # Daily Average section - on separate sheet
     try:
@@ -1266,14 +1198,14 @@ def _create_account_analysis_tables(
     daily_end_row = row - 1
 
     # Add conditional formatting for account daily average difference and % difference columns
-    _add_conditional_formatting(
+    add_conditional_formatting(
         ws_daily,
         f"D{daily_start_row}:D{daily_end_row}",
         f"E{daily_start_row}:E{daily_end_row}",
     )
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(ws_daily)
+    auto_adjust_column_widths_advanced(ws_daily)
 
 
 def _aggregate_year_costs(cost_matrix: dict, year_months: list[str]) -> dict:
@@ -1805,14 +1737,14 @@ def _create_year_comparison_sheet(
     end_row = row - 1
 
     # Add conditional formatting
-    _add_conditional_formatting(
+    add_conditional_formatting(
         worksheet,
         f"D{start_row}:D{end_row}",
         f"E{start_row}:E{end_row}",
     )
 
     # Auto-adjust column widths
-    _auto_adjust_column_widths(worksheet)
+    auto_adjust_column_widths_advanced(worksheet)
 
     # Add pie chart for year 2 data (most recent) - only if include_chart is True
     if include_chart and workbook:
