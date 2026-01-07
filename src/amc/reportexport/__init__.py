@@ -98,9 +98,15 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
         
         if bu_accounts:
             for account_id in sorted(bu_accounts.keys()):
-                account_name = bu_accounts[account_id]
+                account_name_or_dict = bu_accounts[account_id]
+                # Handle case where account_name might be a dict with metadata
+                if isinstance(account_name_or_dict, dict):
+                    # Drop metadata properties like 'cost-class', only use 'name' if present
+                    account_name = account_name_or_dict.get('name', '(no name)')
+                else:
+                    account_name = account_name_or_dict
                 worksheet.cell(row, 1, account_id)
-                worksheet.cell(row, 2, account_name)
+                worksheet.cell(row, 2, str(account_name))
                 row += 1
         else:
             cell = worksheet.cell(row, 1, "(no accounts)")
@@ -1399,8 +1405,8 @@ def export_year_analysis_excel(
     bu_year1_total = bu_year1.get("total", 0)
     bu_year2_total = bu_year2.get("total", 0)
 
-    service_other_year1 = bu_year1_total - top_10_year1_total
-    service_other_year2 = bu_year2_total - top_10_year2_total
+    service_other_year1 = round(bu_year1_total - top_10_year1_total, 2)
+    service_other_year2 = round(bu_year2_total - top_10_year2_total, 2)
 
     # Add Other to year1 and year2 data
     service_year1_with_other = {**service_year1, "Other": service_other_year1}
@@ -1478,8 +1484,8 @@ def export_year_analysis_excel(
     top_10_acc_year1_total = sum(account_year1.get(acc, 0) for acc in top_10_accounts)
     top_10_acc_year2_total = sum(account_year2.get(acc, 0) for acc in top_10_accounts)
 
-    account_other_year1 = bu_year1_total - top_10_acc_year1_total
-    account_other_year2 = bu_year2_total - top_10_acc_year2_total
+    account_other_year1 = round(bu_year1_total - top_10_acc_year1_total, 2)
+    account_other_year2 = round(bu_year2_total - top_10_acc_year2_total, 2)
 
     # Add Other to year1 and year2 data
     account_year1_with_other = {**account_year1, "Other": account_other_year1}

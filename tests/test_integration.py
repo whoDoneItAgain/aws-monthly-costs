@@ -207,7 +207,7 @@ class TestEndToEndIntegration:
 
         # Verify analysis_data was populated
         assert analysis_data["bu"] is not None
-        assert len(analysis_data["bu"]) == 2  # (cost_matrix, account_groups)
+        assert len(analysis_data["bu"]) == 3  # (cost_matrix, account_groups, all_account_costs)
 
     @patch("amc.__main__.boto3.Session")
     def test_integration_service_mode(self, mock_session, sample_config, tmp_path):
@@ -409,7 +409,7 @@ class TestSharedServicesAllocationIntegration:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_ce,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -461,7 +461,7 @@ class TestSharedServicesAllocationIntegration:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_ce,
             date(2024, 1, 1),
             date(2024, 2, 1),
