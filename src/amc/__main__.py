@@ -45,6 +45,40 @@ DEFAULT_CONFIG_LOCATION = Path(__file__).parent.joinpath(
 )
 USER_RC_FILE = "~/.amcrc"
 
+# Skeleton configuration template (minimal structure required to run)
+SKELETON_CONFIG = """# AWS Monthly Costs Configuration File
+# This is a minimal skeleton configuration. Customize it with your AWS account structure.
+
+# Define your business units and their associated AWS account IDs
+account-groups:
+  # Example business unit
+  your-business-unit:
+    '123456789012':  # Replace with your AWS account ID
+      cost-class: opex  # or 'capex'
+  
+  # Shared services accounts (required key)
+  ss:
+    '999999999999':  # Replace with your shared services account ID(s)
+      cost-class: capex
+
+# Shared services cost allocation percentages (optional)
+# Only used when --include-shared-services flag is set
+ss-allocations:
+  your-business-unit: 100  # Percentage allocation across business units
+
+# Service name aggregation rules (optional)
+# Group related AWS services under custom names
+service-aggregations:
+  'Example Aggregation':
+    - 'Amazon Elastic Compute Cloud - Compute'
+    - 'EC2 - Other'
+
+# Number of top accounts/services to include in reports
+top-costs-count:
+  account: 10
+  service: 10
+"""
+
 
 def parse_arguments():
     """Parse command-line arguments for the AWS Monthly Costs tool.
@@ -65,10 +99,25 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Inline YAML configuration string (highest priority)",
+    )
+
+    parser.add_argument(
         "--config-file",
         type=str,
         default=None,
-        help=f"Path to the configuration YAML file (default: {USER_RC_FILE} if exists, otherwise {DEFAULT_CONFIG_LOCATION})",
+        help=f"Path to the configuration YAML file (default: {USER_RC_FILE} if exists, otherwise skeleton config)",
+    )
+
+    parser.add_argument(
+        "--generate-config",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Generate a skeleton configuration file at the specified path (use '~/.amcrc' for RC file) and exit",
     )
 
     parser.add_argument(
@@ -205,13 +254,89 @@ def load_configuration(config_file_path: Path) -> dict:
     return config
 
 
+def load_configuration_from_string(config_string: str) -> dict:
+    """Load configuration from YAML string.
+
+    Args:
+        config_string: YAML configuration as a string
+
+    Returns:
+        Dictionary containing configuration settings
+
+    Raises:
+        ValueError: If config string is invalid or missing required keys
+    """
+    try:
+        config = yaml.safe_load(config_string)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML in configuration string: {e}")
+
+    if config is None:
+        raise ValueError("Configuration string is empty")
+
+    # Validate required keys
+    required_keys = ["account-groups", "service-aggregations", "top-costs-count"]
+    missing_keys = [key for key in required_keys if key not in config]
+    if missing_keys:
+        raise ValueError(
+            f"Configuration missing required keys: {', '.join(missing_keys)}"
+        )
+
+    # Validate account-groups has 'ss' key
+    if "ss" not in config["account-groups"]:
+        raise ValueError(
+            "Configuration 'account-groups' must contain 'ss' (shared services) key"
+        )
+
+    # Validate top-costs-count has required subkeys
+    if not isinstance(config["top-costs-count"], dict):
+        raise ValueError("Configuration 'top-costs-count' must be a dictionary")
+
+    required_top_costs_keys = ["account", "service"]
+    missing_top_costs_keys = [
+        key for key in required_top_costs_keys if key not in config["top-costs-count"]
+    ]
+    if missing_top_costs_keys:
+        raise ValueError(
+            f"Configuration 'top-costs-count' missing required keys: {', '.join(missing_top_costs_keys)}"
+        )
+
+    return config
+
+
+def generate_skeleton_config(output_path: str):
+    """Generate a skeleton configuration file at the specified path.
+
+    Args:
+        output_path: Path where the skeleton config should be written
+
+    Raises:
+        OSError: If file cannot be written
+    """
+    output_path_resolved = Path(os.path.expanduser(output_path)).absolute()
+    
+    # Create parent directories if they don't exist
+    output_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write skeleton config
+    with open(output_path_resolved, "w") as f:
+        f.write(SKELETON_CONFIG)
+    
+    LOGGER.info(f"Generated skeleton configuration file at: {output_path_resolved}")
+    print(f"✓ Generated skeleton configuration file at: {output_path_resolved}")
+    print(f"\nEdit this file to add your AWS account mappings and run:")
+    print(f"  amc --profile your-profile --config-file {output_path}")
+
+
 def resolve_config_file_path(config_file_arg: str | None) -> Path:
     """Resolve the configuration file path based on priority order.
 
     Priority order:
-    1. --config-file parameter (highest priority)
-    2. ~/.amcrc file in user's home directory (fallback)
-    3. Built-in default config file (lowest priority)
+    1. --config-file parameter (if specified)
+    2. ~/.amcrc file in user's home directory (if exists)
+    3. Use skeleton configuration (lowest priority)
+
+    Note: --config inline YAML string is handled separately and takes highest priority
 
     Args:
         config_file_arg: The --config-file argument value (None if not provided)
@@ -238,10 +363,9 @@ def resolve_config_file_path(config_file_arg: str | None) -> Path:
         LOGGER.debug(f"Using configuration from user RC file: {user_rc_path}")
         return user_rc_path
 
-    # Priority 3: Use built-in default configuration
-    default_config_path = DEFAULT_CONFIG_LOCATION.absolute()
-    LOGGER.debug(f"Using built-in default configuration: {default_config_path}")
-    return default_config_path
+    # Priority 3: Return None to indicate skeleton config should be used
+    LOGGER.debug("Using skeleton configuration (no config file or RC file found)")
+    return None
 
 
 def parse_time_period(time_period_str: str) -> tuple[date, date]:
@@ -714,17 +838,35 @@ def main():
     # Parse command-line arguments
     args = parse_arguments()
 
+    # Handle --generate-config if specified
+    if args.generate_config:
+        generate_skeleton_config(args.generate_config)
+        sys.exit(0)
+
     # Configure logging
     configure_logging(debug_logging=args.debug_logging, info_logging=args.info_logging)
 
     LOGGER.debug(f"Configuration Arguments: {args}")
 
-    # Resolve file paths
+    # Load configuration based on priority order
+    # Priority 1: --config (inline YAML string)
+    if args.config:
+        LOGGER.debug("Using configuration from --config inline string")
+        config_settings = load_configuration_from_string(args.config)
+    else:
+        # Priority 2-4: --config-file, ~/.amcrc, or skeleton
+        config_file_path = resolve_config_file_path(args.config_file)
+        if config_file_path is None:
+            # Use skeleton configuration
+            LOGGER.debug("Using skeleton configuration")
+            config_settings = load_configuration_from_string(SKELETON_CONFIG)
+        else:
+            # Load from file
+            config_settings = load_configuration(config_file_path)
+    
+    # Resolve AWS config file path
     aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
-    config_file_path = resolve_config_file_path(args.config_file)
-
-    # Load configuration
-    config_settings = load_configuration(config_file_path)
+    
     account_groups = config_settings["account-groups"]
     shared_services_allocations = (
         config_settings["ss-allocations"] if args.include_shared_services else None
