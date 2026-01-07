@@ -1312,14 +1312,45 @@ def export_year_analysis_excel(
         workbook=wb,
     )
 
-    # Create sheets for Service costs
+    # For services, calculate top 10 + Other (like monthly reports)
+    # Get top 10 services by year 2 cost
+    service_costs_sorted = [
+        (svc, service_year2.get(svc, 0))
+        for svc in service_group_list
+        if svc != "total"
+    ]
+    service_costs_sorted.sort(key=lambda x: x[1], reverse=True)
+    top_10_services = [svc for svc, _ in service_costs_sorted[:10]]
+    
+    # Calculate "Other" for services (sum of services not in top 10)
+    top_10_year1_total = sum(service_year1.get(svc, 0) for svc in top_10_services)
+    top_10_year2_total = sum(service_year2.get(svc, 0) for svc in top_10_services)
+    
+    # Get BU total for calculating Other
+    bu_year1_total = bu_year1.get("total", 0)
+    bu_year2_total = bu_year2.get("total", 0)
+    
+    service_other_year1 = bu_year1_total - top_10_year1_total
+    service_other_year2 = bu_year2_total - top_10_year2_total
+    
+    # Add Other to year1 and year2 data
+    service_year1_with_other = {**service_year1, "Other": service_other_year1}
+    service_year2_with_other = {**service_year2, "Other": service_other_year2}
+    
+    service_year1_daily_with_other = {**service_year1_daily, "Other": service_other_year1 / 365}  # Approximate daily
+    service_year2_daily_with_other = {**service_year2_daily, "Other": service_other_year2 / 365}
+    
+    service_year1_monthly_with_other = {**service_year1_monthly, "Other": service_other_year1 / 12}
+    service_year2_monthly_with_other = {**service_year2_monthly, "Other": service_other_year2 / 12}
+    
+    # Create sheets for Service costs (top 10 + Other)
     ws_service = wb.create_sheet("Top Services - Yearly")
     _create_year_comparison_sheet(
         ws_service,
         "Top Services Yearly Totals",
-        service_year1,
-        service_year2,
-        service_group_list,
+        service_year1_with_other,
+        service_year2_with_other,
+        top_10_services + ["Other"],  # Top 10 + Other, no total
         year1_label,
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
@@ -1332,9 +1363,9 @@ def export_year_analysis_excel(
     _create_year_comparison_sheet(
         ws_service_daily,
         "Top Services Daily Average",
-        service_year1_daily,
-        service_year2_daily,
-        service_group_list,
+        service_year1_daily_with_other,
+        service_year2_daily_with_other,
+        top_10_services + ["Other"],  # Top 10 + Other, no total
         year1_label,
         year2_label,
         include_chart=False,  # No chart for daily average
@@ -1345,23 +1376,50 @@ def export_year_analysis_excel(
     _create_year_comparison_sheet(
         ws_service_monthly,
         "Top Services Monthly Average",
-        service_year1_monthly,
-        service_year2_monthly,
-        service_group_list,
+        service_year1_monthly_with_other,
+        service_year2_monthly_with_other,
+        top_10_services + ["Other"],  # Top 10 + Other, no total
         year1_label,
         year2_label,
         include_chart=False,  # No chart for monthly average
         workbook=wb,
     )
 
-    # Create sheets for Account costs
+    # For accounts, calculate top 10 + Other (like monthly reports)
+    # Get top 10 accounts by year 2 cost
+    account_costs_sorted = [
+        (acc, account_year2.get(acc, 0))
+        for acc in account_group_list
+        if acc != "total"
+    ]
+    account_costs_sorted.sort(key=lambda x: x[1], reverse=True)
+    top_10_accounts = [acc for acc, _ in account_costs_sorted[:10]]
+    
+    # Calculate "Other" for accounts (sum of accounts not in top 10)
+    top_10_acc_year1_total = sum(account_year1.get(acc, 0) for acc in top_10_accounts)
+    top_10_acc_year2_total = sum(account_year2.get(acc, 0) for acc in top_10_accounts)
+    
+    account_other_year1 = bu_year1_total - top_10_acc_year1_total
+    account_other_year2 = bu_year2_total - top_10_acc_year2_total
+    
+    # Add Other to year1 and year2 data
+    account_year1_with_other = {**account_year1, "Other": account_other_year1}
+    account_year2_with_other = {**account_year2, "Other": account_other_year2}
+    
+    account_year1_daily_with_other = {**account_year1_daily, "Other": account_other_year1 / 365}  # Approximate daily
+    account_year2_daily_with_other = {**account_year2_daily, "Other": account_other_year2 / 365}
+    
+    account_year1_monthly_with_other = {**account_year1_monthly, "Other": account_other_year1 / 12}
+    account_year2_monthly_with_other = {**account_year2_monthly, "Other": account_other_year2 / 12}
+    
+    # Create sheets for Account costs (top 10 + Other)
     ws_account = wb.create_sheet("Top Accounts - Yearly")
     _create_year_comparison_sheet(
         ws_account,
         "Top Accounts Yearly Totals",
-        account_year1,
-        account_year2,
-        account_group_list,
+        account_year1_with_other,
+        account_year2_with_other,
+        top_10_accounts + ["Other"],  # Top 10 + Other, no total
         year1_label,
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
@@ -1374,9 +1432,9 @@ def export_year_analysis_excel(
     _create_year_comparison_sheet(
         ws_account_daily,
         "Top Accounts Daily Average",
-        account_year1_daily,
-        account_year2_daily,
-        account_group_list,
+        account_year1_daily_with_other,
+        account_year2_daily_with_other,
+        top_10_accounts + ["Other"],  # Top 10 + Other, no total
         year1_label,
         year2_label,
         include_chart=False,  # No chart for daily average
@@ -1387,9 +1445,9 @@ def export_year_analysis_excel(
     _create_year_comparison_sheet(
         ws_account_monthly,
         "Top Accounts Monthly Average",
-        account_year1_monthly,
-        account_year2_monthly,
-        account_group_list,
+        account_year1_monthly_with_other,
+        account_year2_monthly_with_other,
+        top_10_accounts + ["Other"],  # Top 10 + Other, no total
         year1_label,
         year2_label,
         include_chart=False,  # No chart for monthly average
@@ -1462,9 +1520,10 @@ def _create_year_comparison_sheet(
     worksheet.cell(row, 5).fill = header_fill
     worksheet.cell(row, 5).alignment = header_alignment
 
-    # Add % Spend column header (only for sheets with totals, not for daily/monthly averages)
+    # Add % Spend column header (only for sheets with totals or Other, not for daily/monthly averages)
     has_totals = "total" in group_list
-    if has_totals and include_chart:
+    has_other = "Other" in group_list
+    if (has_totals or has_other) and include_chart:
         worksheet.cell(row, 6, "% Spend").font = header_font
         worksheet.cell(row, 6).fill = header_fill
         worksheet.cell(row, 6).alignment = header_alignment
@@ -1490,7 +1549,15 @@ def _create_year_comparison_sheet(
     start_row = row
 
     # Calculate total for % Spend
-    total_val2 = year2_data.get("total", 1) if has_totals else 1
+    # For BU costs, use "total" if present
+    # For Services/Accounts with "Other", calculate sum of all items including Other
+    if has_totals:
+        total_val2 = year2_data.get("total", 1)
+    elif has_other:
+        # Sum all groups including Other for % Spend calculation
+        total_val2 = sum(year2_data.get(g, 0) for g in sorted_groups if g != "total")
+    else:
+        total_val2 = 1
 
     for group in sorted_groups:
         val1 = year1_data.get(group, 0)
@@ -1517,8 +1584,8 @@ def _create_year_comparison_sheet(
         worksheet.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         worksheet.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
-        # Add % Spend column (skip for total row)
-        if has_totals and include_chart and group != "total":
+        # Add % Spend column (skip for total row, but show for Other)
+        if (has_totals or has_other) and include_chart and group != "total":
             pct_spend = val2 / total_val2 if total_val2 > 0 else 0
             worksheet.cell(row, 6, pct_spend).number_format = "0.00%"
 
@@ -1553,9 +1620,18 @@ def _create_year_comparison_sheet(
         helper_col = 1
         pie_chart_start_row = helper_row
 
-        # Add groups with >= 1% spend
+        # Add groups with >= 1% spend (or "Other" if explicitly in the data)
         for group in sorted_groups:
             if group == "total":
+                continue
+            
+            # If group is "Other" and it's in the year2_data, add it directly
+            if group == "Other" and "Other" in year2_data:
+                val2 = year2_data.get("Other", 0)
+                if val2 > 0:
+                    ws_helper.cell(helper_row, helper_col, "Other")
+                    ws_helper.cell(helper_row, helper_col + 1, val2)
+                    helper_row += 1
                 continue
 
             val2 = year2_data.get(group, 0)
@@ -1571,27 +1647,29 @@ def _create_year_comparison_sheet(
                 ws_helper.cell(helper_row, helper_col + 1, val2)
                 helper_row += 1
 
-        # Calculate and add "Other" if there are groups with < 1% spend
-        other_total = 0
-        for group in sorted_groups:
-            if group == "total":
-                continue
+        # Calculate and add "Other" ONLY if not already in the data
+        # (i.e., only calculate for BU costs, not for Services/Accounts which have explicit Other)
+        if "Other" not in year2_data:
+            other_total = 0
+            for group in sorted_groups:
+                if group == "total":
+                    continue
 
-            val2 = year2_data.get(group, 0)
-            val1 = year1_data.get(group, 0)
+                val2 = year2_data.get(group, 0)
+                val1 = year1_data.get(group, 0)
 
-            # Skip if zero
-            if val1 == 0 and val2 == 0:
-                continue
+                # Skip if zero
+                if val1 == 0 and val2 == 0:
+                    continue
 
-            pct_spend = val2 / total_val2 if total_val2 > 0 else 0
-            if pct_spend < 0.01:  # < 1%
-                other_total += val2
+                pct_spend = val2 / total_val2 if total_val2 > 0 else 0
+                if pct_spend < 0.01:  # < 1%
+                    other_total += val2
 
-        if other_total > 0:
-            ws_helper.cell(helper_row, helper_col, "Other")
-            ws_helper.cell(helper_row, helper_col + 1, other_total)
-            helper_row += 1
+            if other_total > 0:
+                ws_helper.cell(helper_row, helper_col, "Other")
+                ws_helper.cell(helper_row, helper_col + 1, other_total)
+                helper_row += 1
 
         pie_chart_end_row = helper_row - 1
 
@@ -1601,8 +1679,9 @@ def _create_year_comparison_sheet(
             # Use provided chart title, otherwise default to year2_label Distribution
             chart.title = chart_title if chart_title else f"{year2_label} Distribution"
             chart.style = 10
-            chart.height = 15
-            chart.width = 20
+            # Use default chart size to match monthly reports and prevent label overlap
+            # chart.height = 15
+            # chart.width = 20
 
             # Use data from helper sheet
             labels = Reference(
@@ -1629,4 +1708,5 @@ def _create_year_comparison_sheet(
             chart.dataLabels.showSerName = False
             chart.legend = None
 
-            worksheet.add_chart(chart, "H3")
+            # Position chart lower to avoid label overlap with title
+            worksheet.add_chart(chart, "H5")

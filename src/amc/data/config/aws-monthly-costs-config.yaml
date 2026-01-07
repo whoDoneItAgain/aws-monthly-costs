@@ -138,6 +138,10 @@ service-aggregations:
     - 'Amazon FSx'
   'Amazon OpenSearch Service (Security)':
     - 'Amazon OpenSearch Service'
+  'AWS Support':
+    - 'AWS Support (Business)'
+    - 'AWS Support (Developer)'
+    - 'AWS Support (Enterprise)'
 service-exclusions:
   - 'Tax'
 top-costs-count:
