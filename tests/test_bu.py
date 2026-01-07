@@ -3,11 +3,11 @@
 from datetime import date
 
 
-from amc.runmodes.bu import (
+from amc.runmodes.bu.calculator import (
     _build_cost_matrix,
     _build_costs,
-    calculate_business_unit_costs,
 )
+from amc.runmodes.bu import calculate_business_unit_costs
 
 
 class TestBuildCosts:

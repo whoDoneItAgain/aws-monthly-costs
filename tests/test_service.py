@@ -3,9 +3,11 @@
 from datetime import date
 
 
-from amc.runmodes.service import (
+from amc.runmodes.service.calculator import (
     _build_cost_matrix,
     _build_costs,
+)
+from amc.runmodes.service import (
     calculate_service_costs,
     get_service_list,
 )
