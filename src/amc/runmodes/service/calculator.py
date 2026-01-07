@@ -56,7 +56,9 @@ def _build_costs(cost_and_usage, daily_average=False):
     return service_costs, list(service_set)
 
 
-def _build_cost_matrix(service_list, service_costs, service_aggregation, service_exclusions=None):
+def _build_cost_matrix(
+    service_list, service_costs, service_aggregation, service_exclusions=None
+):
     """Build final cost matrix with service aggregations and exclusions applied.
 
     Args:

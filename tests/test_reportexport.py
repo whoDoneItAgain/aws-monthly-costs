@@ -4,7 +4,7 @@ import csv
 
 from openpyxl import load_workbook
 
-from amc.reportexport import export_report
+from amc.reportexport import export_analysis_excel, export_report
 
 
 class TestExportReport:
@@ -227,3 +227,129 @@ class TestExportReport:
             reader = csv.reader(f)
             rows = list(reader)
             assert rows[1] == ["Account A", "999999.99"]
+
+
+class TestExportAnalysisExcel:
+    """Tests for export_analysis_excel function."""
+
+    def test_export_analysis_excel_bu_tables(self, temp_output_dir, sample_config):
+        """Test exporting BU analysis Excel with multiple sheets.
+
+        This test ensures that _create_bu_analysis_tables function works correctly
+        and catches issues like missing variable definitions that could cause NameErrors.
+        """
+        # Create sample cost data with at least 2 months (required for analysis)
+        bu_cost_matrix = {
+            "2024-Jan": {
+                "production": 1000.00,
+                "development": 500.00,
+                "total": 1500.00,
+            },
+            "2024-Feb": {
+                "production": 1200.00,
+                "development": 600.00,
+                "total": 1800.00,
+            },
+        }
+
+        service_cost_matrix = {
+            "2024-Jan": {
+                "Amazon EC2": 800.00,
+                "Amazon S3": 200.00,
+                "total": 1000.00,
+            },
+            "2024-Feb": {
+                "Amazon EC2": 900.00,
+                "Amazon S3": 250.00,
+                "total": 1150.00,
+            },
+        }
+
+        account_cost_matrix = {
+            "2024-Jan": {
+                "Account A": 500.00,
+                "Account B": 300.00,
+                "total": 800.00,
+            },
+            "2024-Feb": {
+                "Account A": 600.00,
+                "Account B": 350.00,
+                "total": 950.00,
+            },
+        }
+
+        export_file = temp_output_dir / "test-analysis.xlsx"
+
+        # This should not raise any NameError or other exceptions
+        export_analysis_excel(
+            export_file,
+            bu_cost_matrix,
+            sample_config["account-groups"],
+            service_cost_matrix,
+            ["Amazon EC2", "Amazon S3"],
+            account_cost_matrix,
+            ["Account A", "Account B"],
+        )
+
+        assert export_file.exists()
+
+        # Verify workbook structure
+        wb = load_workbook(export_file)
+
+        # Check that expected sheets exist
+        assert "BU Costs" in wb.sheetnames
+        assert "BU Daily Average" in wb.sheetnames
+        assert "Top Services" in wb.sheetnames
+        assert "Top Accounts" in wb.sheetnames
+
+        # Verify BU Costs sheet has expected structure
+        ws_bu = wb["BU Costs"]
+        assert ws_bu["A1"].value == "BU Monthly Totals"
+        assert ws_bu["A3"].value == "Month"  # Header row
+        assert ws_bu["B3"].value == "2024-Jan"
+        assert ws_bu["C3"].value == "2024-Feb"
+
+        # Verify BU Daily Average sheet has expected structure
+        ws_bu_daily = wb["BU Daily Average"]
+        assert ws_bu_daily["A1"].value == "BU Daily Average"
+        assert ws_bu_daily["A3"].value == "Month"  # Header row
+        assert ws_bu_daily["B3"].value == "2024-Jan"
+        assert ws_bu_daily["C3"].value == "2024-Feb"
+
+        # Verify header cells have proper styling (should not be None)
+        # This checks that apply_header_style was called correctly
+        assert ws_bu_daily.cell(3, 1).font is not None
+        assert ws_bu_daily.cell(3, 2).font is not None
+
+        wb.close()
+
+    def test_export_analysis_excel_insufficient_months(
+        self, temp_output_dir, sample_config
+    ):
+        """Test that export_analysis_excel handles insufficient months gracefully."""
+        # Only one month of data (need at least 2)
+        bu_cost_matrix = {
+            "2024-Jan": {
+                "production": 1000.00,
+                "total": 1000.00,
+            },
+        }
+
+        service_cost_matrix = {"2024-Jan": {"Amazon EC2": 800.00, "total": 800.00}}
+        account_cost_matrix = {"2024-Jan": {"Account A": 500.00, "total": 500.00}}
+
+        export_file = temp_output_dir / "test-analysis-single-month.xlsx"
+
+        # Should handle this gracefully (logs warning and returns early)
+        export_analysis_excel(
+            export_file,
+            bu_cost_matrix,
+            sample_config["account-groups"],
+            service_cost_matrix,
+            ["Amazon EC2"],
+            account_cost_matrix,
+            ["Account A"],
+        )
+
+        # File should not be created or should be empty/incomplete
+        # The function returns early with only 1 month

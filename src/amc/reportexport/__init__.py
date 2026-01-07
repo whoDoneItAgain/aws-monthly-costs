@@ -254,7 +254,14 @@ def _create_bu_analysis_tables(
     row = 3
     # Apply header styling using utility functions
     for col, header_text in enumerate(
-        ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"],
+        [
+            "Month",
+            last_2_months[0],
+            last_2_months[1],
+            "Difference",
+            "% Difference",
+            "% Spend",
+        ],
         start=1,
     ):
         apply_header_style(ws.cell(row, col, header_text))
@@ -357,7 +364,12 @@ def _create_bu_analysis_tables(
     if pie_chart_end_row >= pie_chart_start_row:
         chart = create_pie_chart(show_legend=False, show_series_name=False)
         chart = add_data_to_pie_chart(
-            chart, ws_helper, helper_col + 1, helper_col, pie_chart_start_row, pie_chart_end_row
+            chart,
+            ws_helper,
+            helper_col + 1,
+            helper_col,
+            pie_chart_start_row,
+            pie_chart_end_row,
         )
         add_chart_to_worksheet(ws, chart, "H3")
 
@@ -370,25 +382,12 @@ def _create_bu_analysis_tables(
 
     row = 3
 
-    ws_daily.cell(row, 1, "Month").font = header_font
-    ws_daily.cell(row, 1).fill = header_fill
-    ws_daily.cell(row, 1).alignment = header_alignment
-
-    ws_daily.cell(row, 2, last_2_months[0]).font = header_font
-    ws_daily.cell(row, 2).fill = header_fill
-    ws_daily.cell(row, 2).alignment = header_alignment
-
-    ws_daily.cell(row, 3, last_2_months[1]).font = header_font
-    ws_daily.cell(row, 3).fill = header_fill
-    ws_daily.cell(row, 3).alignment = header_alignment
-
-    ws_daily.cell(row, 4, "Difference").font = header_font
-    ws_daily.cell(row, 4).fill = header_fill
-    ws_daily.cell(row, 4).alignment = header_alignment
-
-    ws_daily.cell(row, 5, "% Difference").font = header_font
-    ws_daily.cell(row, 5).fill = header_fill
-    ws_daily.cell(row, 5).alignment = header_alignment
+    # Apply header styling using utility functions
+    for col, header_text in enumerate(
+        ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"],
+        start=1,
+    ):
+        apply_header_style(ws_daily.cell(row, col, header_text))
 
     # Calculate days in each month
     # For the last 2 months, infer the year intelligently
@@ -576,9 +575,7 @@ def _create_service_analysis_tables(
 
     # Get top 10 services by latest month cost (excluding 'total')
     service_costs = [
-        (svc, month2_costs.get(svc, 0))
-        for svc in group_list
-        if svc != "total"
+        (svc, month2_costs.get(svc, 0)) for svc in group_list if svc != "total"
     ]
     service_costs.sort(key=lambda x: x[1], reverse=True)
     top_10_services = [svc for svc, _ in service_costs[:10]]
@@ -827,9 +824,7 @@ def _create_account_analysis_tables(
 
     # Get top 10 accounts by latest month cost (excluding 'total')
     account_costs = [
-        (acc, month2_costs.get(acc, 0))
-        for acc in group_list
-        if acc != "total"
+        (acc, month2_costs.get(acc, 0)) for acc in group_list if acc != "total"
     ]
     account_costs.sort(key=lambda x: x[1], reverse=True)
     top_10_accounts = [acc for acc, _ in account_costs[:10]]
@@ -1269,34 +1264,44 @@ def export_year_analysis_excel(
     # For services, calculate top 10 + Other (like monthly reports)
     # Get top 10 services by year 2 cost
     service_costs_sorted = [
-        (svc, service_year2.get(svc, 0))
-        for svc in service_group_list
-        if svc != "total"
+        (svc, service_year2.get(svc, 0)) for svc in service_group_list if svc != "total"
     ]
     service_costs_sorted.sort(key=lambda x: x[1], reverse=True)
     top_10_services = [svc for svc, _ in service_costs_sorted[:10]]
-    
+
     # Calculate "Other" for services (sum of services not in top 10)
     top_10_year1_total = sum(service_year1.get(svc, 0) for svc in top_10_services)
     top_10_year2_total = sum(service_year2.get(svc, 0) for svc in top_10_services)
-    
+
     # Get BU total for calculating Other
     bu_year1_total = bu_year1.get("total", 0)
     bu_year2_total = bu_year2.get("total", 0)
-    
+
     service_other_year1 = bu_year1_total - top_10_year1_total
     service_other_year2 = bu_year2_total - top_10_year2_total
-    
+
     # Add Other to year1 and year2 data
     service_year1_with_other = {**service_year1, "Other": service_other_year1}
     service_year2_with_other = {**service_year2, "Other": service_other_year2}
-    
-    service_year1_daily_with_other = {**service_year1_daily, "Other": service_other_year1 / 365}  # Approximate daily
-    service_year2_daily_with_other = {**service_year2_daily, "Other": service_other_year2 / 365}
-    
-    service_year1_monthly_with_other = {**service_year1_monthly, "Other": service_other_year1 / 12}
-    service_year2_monthly_with_other = {**service_year2_monthly, "Other": service_other_year2 / 12}
-    
+
+    service_year1_daily_with_other = {
+        **service_year1_daily,
+        "Other": service_other_year1 / 365,
+    }  # Approximate daily
+    service_year2_daily_with_other = {
+        **service_year2_daily,
+        "Other": service_other_year2 / 365,
+    }
+
+    service_year1_monthly_with_other = {
+        **service_year1_monthly,
+        "Other": service_other_year1 / 12,
+    }
+    service_year2_monthly_with_other = {
+        **service_year2_monthly,
+        "Other": service_other_year2 / 12,
+    }
+
     # Create sheets for Service costs (top 10 + Other)
     ws_service = wb.create_sheet("Top Services - Yearly")
     _create_year_comparison_sheet(
@@ -1342,30 +1347,40 @@ def export_year_analysis_excel(
     # For accounts, calculate top 10 + Other (like monthly reports)
     # Get top 10 accounts by year 2 cost
     account_costs_sorted = [
-        (acc, account_year2.get(acc, 0))
-        for acc in account_group_list
-        if acc != "total"
+        (acc, account_year2.get(acc, 0)) for acc in account_group_list if acc != "total"
     ]
     account_costs_sorted.sort(key=lambda x: x[1], reverse=True)
     top_10_accounts = [acc for acc, _ in account_costs_sorted[:10]]
-    
+
     # Calculate "Other" for accounts (sum of accounts not in top 10)
     top_10_acc_year1_total = sum(account_year1.get(acc, 0) for acc in top_10_accounts)
     top_10_acc_year2_total = sum(account_year2.get(acc, 0) for acc in top_10_accounts)
-    
+
     account_other_year1 = bu_year1_total - top_10_acc_year1_total
     account_other_year2 = bu_year2_total - top_10_acc_year2_total
-    
+
     # Add Other to year1 and year2 data
     account_year1_with_other = {**account_year1, "Other": account_other_year1}
     account_year2_with_other = {**account_year2, "Other": account_other_year2}
-    
-    account_year1_daily_with_other = {**account_year1_daily, "Other": account_other_year1 / 365}  # Approximate daily
-    account_year2_daily_with_other = {**account_year2_daily, "Other": account_other_year2 / 365}
-    
-    account_year1_monthly_with_other = {**account_year1_monthly, "Other": account_other_year1 / 12}
-    account_year2_monthly_with_other = {**account_year2_monthly, "Other": account_other_year2 / 12}
-    
+
+    account_year1_daily_with_other = {
+        **account_year1_daily,
+        "Other": account_other_year1 / 365,
+    }  # Approximate daily
+    account_year2_daily_with_other = {
+        **account_year2_daily,
+        "Other": account_other_year2 / 365,
+    }
+
+    account_year1_monthly_with_other = {
+        **account_year1_monthly,
+        "Other": account_other_year1 / 12,
+    }
+    account_year2_monthly_with_other = {
+        **account_year2_monthly,
+        "Other": account_other_year2 / 12,
+    }
+
     # Create sheets for Account costs (top 10 + Other)
     ws_account = wb.create_sheet("Top Accounts - Yearly")
     _create_year_comparison_sheet(
@@ -1500,7 +1515,7 @@ def _create_year_comparison_sheet(
     # Add Other before total (if present)
     if other_group:
         sorted_groups.append(other_group)
-    
+
     # Add total at the very end if present
     if total_group:
         sorted_groups.append(total_group)
@@ -1588,7 +1603,7 @@ def _create_year_comparison_sheet(
         for group in sorted_groups:
             if group == "total":
                 continue
-            
+
             # If group is "Other" and it's in the year2_data, add it directly
             if group == "Other" and "Other" in year2_data:
                 val2 = year2_data.get("Other", 0)
