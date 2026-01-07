@@ -967,6 +967,7 @@ def _create_service_analysis_tables(
     if other_amount > 0:
         ws_daily.cell(row, 1, "Other")
         # Calculate Other daily average values for both months
+        top_10_total_prev = sum(month1_costs.get(svc, 0) for svc in top_10_services)
         other_amount_prev = (
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
@@ -1275,6 +1276,7 @@ def _create_account_analysis_tables(
     if other_amount > 0:
         ws_daily.cell(row, 1, "Other")
         # Calculate Other daily average values for both months
+        top_10_total_prev = sum(month1_costs.get(acc, 0) for acc in top_10_accounts)
         other_amount_prev = (
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
