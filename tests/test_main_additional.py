@@ -20,11 +20,14 @@ class TestConfigureLoggingRemoveHandlers:
 
     def test_configure_logging_removes_existing_handlers(self):
         """Test that configure_logging removes existing handlers before adding new one."""
-        # Add a dummy handler first
+        # Get logger and clear any existing handlers first
         logger = logging.getLogger("amc")
+        logger.handlers.clear()
+        
+        # Add a dummy handler
         dummy_handler = logging.StreamHandler()
         logger.addHandler(dummy_handler)
-        initial_handler_count = len(logger.handlers)
+        assert len(logger.handlers) == 1
         
         # Configure logging
         configure_logging(debug_logging=False, info_logging=False)

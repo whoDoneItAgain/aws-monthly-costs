@@ -3,6 +3,7 @@
 import pytest
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from amc.reportexport.formatting import (
     CURRENCY_FORMAT,
@@ -214,3 +215,27 @@ class TestAutoAdjustColumnWidths:
         
         col_a_width = ws.column_dimensions["A"].width
         assert col_a_width >= 12
+
+    def test_auto_adjust_with_exception_handling(self):
+        """Test auto-adjusting when an exception occurs during width calculation."""
+        wb = Workbook()
+        ws = wb.active
+        
+        # Create a scenario that might cause an exception
+        # Add a cell with a problematic value
+        ws["A1"] = "Normal text"
+        
+        # Manually create a column with missing attributes to trigger exception
+        with patch.object(type(ws), 'columns', new_callable=PropertyMock) as mock_columns:
+            # Create a mock column that will raise an exception
+            mock_column = [MagicMock()]
+            mock_column[0].column_letter = "A"
+            mock_column[0].value = "Test"
+            # Make the generator expression fail
+            mock_columns.return_value = [mock_column]
+            
+            # This should catch the exception and use default width
+            auto_adjust_column_widths(ws, max_width=50, min_width=12)
+            
+            # Should have set default width despite exception
+            assert ws.column_dimensions["A"].width == 12
