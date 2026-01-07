@@ -1528,19 +1528,26 @@ def _create_year_comparison_sheet(
         worksheet.cell(row, 6).fill = header_fill
         worksheet.cell(row, 6).alignment = header_alignment
 
-    # Sort groups by year2 (most recent) value in descending order, with 'total' at the end
+    # Sort groups by year2 (most recent) value in descending order, with 'Other' and 'total' at the end
     sorted_groups = []
     total_group = None
+    other_group = None
     for group in group_list:
         if group == "total":
             total_group = group
+        elif group == "Other":
+            other_group = group
         else:
             sorted_groups.append(group)
 
     # Sort by most recent year's value (descending)
     sorted_groups.sort(key=lambda g: year2_data.get(g, 0), reverse=True)
 
-    # Add total at the end if present
+    # Add Other before total (if present)
+    if other_group:
+        sorted_groups.append(other_group)
+    
+    # Add total at the very end if present
     if total_group:
         sorted_groups.append(total_group)
 
@@ -1676,12 +1683,13 @@ def _create_year_comparison_sheet(
         # Add pie chart using helper table data from hidden sheet
         if pie_chart_end_row >= pie_chart_start_row:
             chart = PieChart()
-            # Use provided chart title, otherwise default to year2_label Distribution
-            chart.title = chart_title if chart_title else f"{year2_label} Distribution"
+            # Remove title to prevent pie labels from falling behind it
+            # The sheet already has a descriptive section title
+            chart.title = None
             chart.style = 10
-            # Use default chart size to match monthly reports and prevent label overlap
-            # chart.height = 15
-            # chart.width = 20
+            # Match monthly report chart size
+            chart.height = 15
+            chart.width = 20
 
             # Use data from helper sheet
             labels = Reference(
@@ -1708,5 +1716,5 @@ def _create_year_comparison_sheet(
             chart.dataLabels.showSerName = False
             chart.legend = None
 
-            # Position chart lower to avoid label overlap with title
-            worksheet.add_chart(chart, "H5")
+            # Position chart to match monthly reports
+            worksheet.add_chart(chart, "H3")
