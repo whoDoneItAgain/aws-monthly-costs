@@ -407,7 +407,7 @@ The application follows a modular architecture with clear separation of concerns
 aws-monthly-costs/
 ├── src/amc/
 │   ├── __main__.py              # Entry point & orchestration (775 lines)
-│   ├── constants.py             # Named constants (57 lines)
+│   ├── constants.py             # Named constants (56 lines)
 │   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
 │   ├── reportexport/            # Report generation (1663 lines + utilities)
@@ -813,7 +813,7 @@ amc --profile your-profile-name --config-file your-config.yaml
 5. 🔒 Secure error messages
 
 **Code Quality**:
-1. 📝 100% test coverage on core logic (112 tests)
+1. 📝 100% test coverage on core logic (128 tests)
 2. 📝 Comprehensive docstrings
 3. 📝 Named constants instead of magic values
 4. 📝 Extracted helper functions
@@ -978,5 +978,5 @@ This project was comprehensively refactored and tested by specialized agents:
 - **Bug-Hunter Agent**: Fixed 7 critical bugs
 - **Security-Analyzer Agent**: Security review and hardening
 - **Performance-Optimizer Agent**: Performance optimizations
-- **Test-Generator Agent**: Comprehensive test suite (112 tests)
+- **Test-Generator Agent**: Comprehensive test suite (128 tests)
 - **Documentation-Writer Agent**: Documentation updates

@@ -353,7 +353,7 @@ ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 aws-monthly-costs/
 ├── src/amc/
 │   ├── __main__.py              # Entry point & orchestration (775 lines)
-│   ├── constants.py             # Named constants (57 lines)
+│   ├── constants.py             # Named constants (56 lines)
 │   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
 │   ├── reportexport/            # Report generation (1663 lines + utilities)
