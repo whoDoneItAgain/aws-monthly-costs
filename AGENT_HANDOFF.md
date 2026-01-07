@@ -13,7 +13,7 @@ This codebase is a **Python CLI tool** for generating AWS cost reports by accoun
 - ✅ **No security vulnerabilities** (verified by Security-Analyzer Agent)
 - ✅ **Optimized performance** (50% reduction in API calls for BU mode)
 - ✅ **Proper module organization** (business logic removed from `__init__.py` files)
-- ✅ **DRY principles applied** (eliminated 190+ lines of duplicate code)
+- ✅ **DRY principles applied** (eliminated 400+ lines of duplicate code)
 - ✅ **Well-documented** with comprehensive README and inline docstrings
 - ✅ **Bug-free BU cost calculations** (includes unallocated accounts) - **NEW 2026-01-07**
 
@@ -591,10 +591,11 @@ from amc.runmodes.account import calculate_account_costs
 
 ### Future Opportunities
 
-**Reportexport (Phase 2)**:
-- Refactor remaining 6+ analysis table functions to use utilities
-- Refactor year analysis functions
-- Extract CSV/Excel exporters to separate modules
+**Reportexport Module**:
+- ✅ ~~Refactor analysis table functions~~ - COMPLETED in Phase 2
+- ✅ ~~Refactor year analysis functions~~ - COMPLETED in Phase 2
+- Extract CSV/Excel exporters to separate modules (optional)
+- Apply Builder Pattern for complex worksheet creation (optional)
 
 **Main Module**:
 - Extract configuration loading (~150 lines)
@@ -602,16 +603,156 @@ from amc.runmodes.account import calculate_account_costs
 - Extract time period parsing (~100 lines)
 - Simplify `_process_*_mode` functions with common pattern
 
-**Design Patterns**:
+**Design Patterns** (optional enhancements):
 - Apply Strategy Pattern for export formats
 - Apply Factory Pattern for runmode creation
-- Apply Builder Pattern for complex worksheets
 
 ### Commits
 - `76e4d58` - Refactor: Move runmode logic out of __init__.py and apply DRY principle
 - `bf3ea14` - Test: Fix test imports after module restructuring
 - `f6fa587` - Refactor: Apply DRY principle to reportexport module - phase 1
 - `303a99a` - Fix: Address code review feedback - improve docstrings and chart configuration
+
+---
+
+## ✅ Reportexport Module Refactoring - Phase 2 (Refactoring-Expert Agent - 2026-01-07)
+
+### Overview
+Completed comprehensive refactoring of the reportexport module to eliminate remaining code duplication in analysis table creation functions. This builds on Phase 1 work by extracting common patterns from service, account, and year analysis functions.
+
+### Issue
+After Phase 1, the reportexport module still had significant duplication:
+- `_create_service_analysis_tables()` and `_create_account_analysis_tables()` were 90% identical (~250 lines each)
+- Header row creation repeated 4+ times across functions (25 lines per occurrence)
+- Year analysis functions duplicated header formatting patterns
+- Helper functions (`_get_cell_length`, `_auto_adjust_column_widths`, `_add_conditional_formatting`) duplicated from formatting module
+
+### Solution
+Created additional utilities and refactored all analysis functions to use shared patterns.
+
+**Extended `src/amc/reportexport/formatting.py` (130 → 221 lines)**:
+- `add_conditional_formatting()` - 45 lines for reusable conditional formatting
+- `get_cell_length()` - 10 lines for consistent cell width calculation
+- `auto_adjust_column_widths_advanced()` - 15 lines for advanced column sizing
+- Removed 70+ duplicate lines from `__init__.py`
+
+**Created `src/amc/reportexport/analysis_tables.py` (300 lines)**:
+- `get_top_n_items()` - Extract top N items by cost (replaces inline sorting logic)
+- `calculate_other_amount()` - Calculate "Other" category amounts consistently
+- `create_analysis_header_row()` - Standardized header row creation
+- `create_section_title()` - Standardized section title formatting
+- `write_data_row()` - Standardized data row writing with formatting
+- `create_monthly_totals_table()` - Full monthly totals table creation
+- `create_daily_average_table()` - Full daily average table creation
+- `create_pie_chart_with_data()` - Complete pie chart generation with data
+
+### Refactored Functions
+
+**1. `_create_service_analysis_tables()`**:
+- Removed duplicate header formatting variables (Font, PatternFill, Alignment)
+- Replaced 25-line header creation with `create_analysis_header_row()` call
+- Using `get_top_n_items()` instead of inline sorting (9 lines → 1 function call)
+- Using `create_section_title()` for consistent title formatting
+- **Result**: Cleaner, more maintainable code with 40+ lines removed
+
+**2. `_create_account_analysis_tables()`**:
+- Identical refactoring to service analysis (functions were 90% the same)
+- Removed duplicate header formatting variables
+- Replaced 25-line header creation with utility calls
+- Using `get_top_n_items()` for top account selection
+- **Result**: 40+ lines removed, consistent with service analysis
+
+**3. `_create_year_comparison_sheet()`**:
+- Removed duplicate header formatting variables
+- Replaced 30-line header creation with utility calls
+- Using `create_section_title()` and `create_analysis_header_row()`
+- **Result**: 34 lines removed, consistent with analysis patterns
+
+**4. `_export_to_excel()`**:
+- Replaced inline header styling with `EXPORT_HEADER_FONT` and `EXPORT_HEADER_FILL` constants
+- Removed duplicate Font and PatternFill definitions
+- **Result**: 8 lines removed, consistent styling
+
+### Code Metrics
+
+**Before Phase 2**:
+- `__init__.py`: 1678 lines
+- `formatting.py`: 130 lines
+- Total: 1808 lines (excluding other modules)
+
+**After Phase 2**:
+- `__init__.py`: 1482 lines (-196 lines, -11.7%)
+- `formatting.py`: 221 lines (+91 lines of utilities)
+- `analysis_tables.py`: 300 lines (new module)
+- Total: 2003 lines (+195 from utilities, net -210 duplicate lines)
+
+**Duplication Eliminated**:
+- Header formatting definitions: 4 functions × 3 variables = 12 occurrences removed
+- Header row creation: 4 functions × 25 lines = 100 lines → 8 function calls
+- Top-N item selection: 2 functions × 9 lines = 18 lines → 2 function calls
+- Helper functions: 70 lines moved to formatting module
+- **Total**: ~210 lines of duplicate code eliminated
+
+### Impact
+
+1. **Maintainability** ⬆️
+   - Single source of truth for header formatting
+   - Changes to table structure now propagate automatically
+   - Easier to add new analysis sheets
+
+2. **Consistency** ⬆️
+   - All analysis tables use identical header styling
+   - All tables use same column width calculation
+   - All tables use same conditional formatting
+
+3. **Readability** ⬆️
+   - Business logic no longer cluttered with formatting details
+   - Function intent clearer with descriptive utility names
+   - Easier to understand table creation flow
+
+4. **Testability** ⬆️
+   - Utility functions can be unit tested independently
+   - Easier to test edge cases in isolation
+   - Better coverage of formatting logic
+
+5. **DRY Principle** ⬆️
+   - Zero duplication in header creation
+   - Zero duplication in helper functions
+   - Consistent patterns across all analysis functions
+
+### Test Results
+
+- **All 225 tests passing** ✅
+- **No functionality changes** (behavior-preserving refactoring)
+- **Ruff linting passes** with no errors
+- Test execution time: ~1.29 seconds (no performance regression)
+
+### Files Changed
+
+**Created**:
+- `src/amc/reportexport/analysis_tables.py` - 300 lines of reusable table utilities
+
+**Modified**:
+- `src/amc/reportexport/__init__.py` - 1678 → 1482 lines (-196 lines)
+- `src/amc/reportexport/formatting.py` - 130 → 221 lines (+91 lines of utilities)
+
+**Removed**:
+- Duplicate `_add_conditional_formatting()` - moved to formatting.py
+- Duplicate `_get_cell_length()` - moved to formatting.py
+- Duplicate `_auto_adjust_column_widths()` - moved to formatting.py
+
+### Commits
+- `33069d4` - Refactor: Extract helper functions to formatting module
+- `abb332c` - Refactor: Simplify service and account analysis functions
+- `27a46dd` - Refactor: Clean up year analysis and remove unused imports
+
+### Lessons Learned
+
+1. **Incremental Refactoring Works**: Breaking refactoring into phases (Phase 1 → Phase 2) made it easier to test and verify
+2. **Utilities Pay Off**: Extracting utilities to separate modules improves reusability
+3. **Pattern Recognition**: Once one function is refactored, similar functions become obvious candidates
+4. **Test Coverage Critical**: 95% test coverage gave confidence to refactor aggressively
+5. **Linting Helps**: Ruff caught unused imports and helped keep code clean
 
 ---
 
