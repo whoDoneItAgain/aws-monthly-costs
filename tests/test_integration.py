@@ -156,7 +156,7 @@ class TestEndToEndIntegration:
 
         # Verify analysis_data was populated
         assert analysis_data["account"] is not None
-        assert len(analysis_data["account"]) == 2  # (cost_matrix, account_names)
+        assert len(analysis_data["account"]) == 3  # (cost_matrix, account_names, account_list)
 
     @patch("amc.__main__.boto3.Session")
     def test_integration_bu_mode(self, mock_session, sample_config, tmp_path):

@@ -408,6 +408,13 @@ def _create_bu_analysis_tables(
     row += 1
     data_start_row = row
 
+    # Cache month dictionaries for faster lookups (performance optimization)
+    # These cached references eliminate repeated dictionary traversals in the loops below
+    # for main table, daily average calculations, and chart data processing
+    month1_costs = cost_matrix[last_2_months[0]]
+    month2_costs = cost_matrix[last_2_months[1]]
+    month2_total = month2_costs.get("total", 1)
+
     # Get all BUs from both group_list and cost_matrix (to include "unallocated")
     # Exclude 'total' as it's handled separately
     bus_from_config = set(group_list.keys())
@@ -415,14 +422,7 @@ def _create_bu_analysis_tables(
     all_bus = list(bus_from_config | bus_from_data)
     
     # Sort BUs by most recent month's cost in descending order
-    all_bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
-
-    # Cache month dictionaries for faster lookups (performance optimization)
-    # These cached references eliminate repeated dictionary traversals in the loops below
-    # for main table, daily average calculations, and chart data processing
-    month1_costs = cost_matrix[last_2_months[0]]
-    month2_costs = cost_matrix[last_2_months[1]]
-    month2_total = month2_costs.get("total", 1)
+    all_bus.sort(key=lambda bu: month2_costs.get(bu, 0), reverse=True)
 
     # Display all BUs in the table
     for bu in all_bus:
