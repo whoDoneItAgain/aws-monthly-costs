@@ -268,6 +268,8 @@ def _create_bu_analysis_tables(
     bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
 
     # Cache month dictionaries for faster lookups (performance optimization)
+    # These cached references eliminate repeated dictionary traversals in the loops below
+    # for main table, daily average calculations, and chart data processing
     month1_costs = cost_matrix[last_2_months[0]]
     month2_costs = cost_matrix[last_2_months[1]]
     month2_total = month2_costs.get("total", 1)
@@ -325,7 +327,7 @@ def _create_bu_analysis_tables(
     pie_chart_start_row = helper_row
 
     # Process BUs in single pass: add >= 1% spend, accumulate < 1% for "Other"
-    # Performance optimization: reduced from 2 loops to 1
+    # Performance optimization: Combined 2 loops into 1 (50% reduction in iterations)
     other_total = 0
     for bu in bus:
         val2 = month2_costs.get(bu, 0)
@@ -1580,7 +1582,8 @@ def _create_year_comparison_sheet(
         pie_chart_start_row = helper_row
 
         # Process groups in single pass: add >= 1% spend, accumulate < 1% for "Other"
-        # Performance optimization: reduced from 2 loops to 1 when "Other" not in data
+        # Performance optimization: Combined 2 loops into 1 (50% reduction in iterations)
+        # "Other" accumulation only happens for BU costs (not Services/Accounts with explicit Other)
         other_total = 0
         for group in sorted_groups:
             if group == "total":
