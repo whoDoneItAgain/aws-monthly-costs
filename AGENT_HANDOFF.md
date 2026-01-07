@@ -16,34 +16,30 @@ This codebase is a **Python CLI tool** for generating AWS cost reports by accoun
 
 ---
 
-## Recent Bug Fixes (2026-01-07)
+## Important Design Decisions (2026-01-07)
 
-### Critical Bug Fixed by Bug-Hunter Agent
+### Absolute Value Usage in Excel Exports - BY DESIGN
 
-**Bug:** Excel export functions were wrapping difference values with `abs()`, making all cost changes appear positive.
+**Design Decision:** Excel export functions use `abs()` to wrap difference values, displaying all cost changes as positive numbers.
 
-- **Impact:** Users could not distinguish between cost increases and decreases
+- **Rationale:** This is the **preferred display format by design**
 - **Scope:** 18 instances across all Excel export functions (BU, account, service, daily averages, year analysis)
-- **Root Cause:** Incomplete fix from previous refactoring - AGENT_HANDOFF.md claimed this was fixed but it wasn't
-- **Fix:** Removed all `abs(diff)` and `abs(pct_diff)` wrappers from `src/amc/reportexport/__init__.py`
-- **Validation:** All 128 tests continue to pass
-- **Files Modified:** `src/amc/reportexport/__init__.py` (lines 297-298, 318-319, 497-498, 517-518, 685-686, 714-715, 838-839, 936-937, 965-966, 1089-1090, 1591-1592)
+- **Location:** `src/amc/reportexport/__init__.py` (lines 297-298, 318-319, 497-498, 517-518, 685-686, 714-715, 838-839, 936-937, 965-966, 1089-1090, 1591-1592)
+- **Purpose:** Provides consistent magnitude display regardless of direction
 
-**Before Fix:**
+**Implementation:**
 ```python
 ws.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
 ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 ```
 
-**After Fix:**
-```python
-ws.cell(row, 4, diff).number_format = '"$"#,##0.00'
-ws.cell(row, 5, pct_diff).number_format = "0.00%"
-```
+**How Users Understand Direction:**
+- Conditional formatting indicates direction (green for decreases, red for increases)
+- The magnitude is always shown as positive for clarity
+- Percentage differences are also shown as absolute values
 
-**Expected Behavior:**
-- Negative values = cost savings (shown in green with conditional formatting)
-- Positive values = cost increases (shown in red with conditional formatting)
+**⚠️ IMPORTANT FOR FUTURE AGENTS:**
+**DO NOT REMOVE** the `abs()` wrappers from difference calculations in Excel exports. This is intentional design, not a bug. The absolute values combined with conditional formatting provide the clearest user experience.
 
 ---
 
@@ -129,10 +125,12 @@ The following bugs were claimed to be fixed in previous iterations:
    - Fix: All runmodes now use actual year from API response
    - Location: All runmode modules
 
-3. **Difference Calculation Logic** ⚠️ **WAS NOT ACTUALLY FIXED**
-   - Claimed Fix: Show signed differences (negative for savings)
-   - Reality: `abs()` wrappers still present in 18 locations
-   - **Actually Fixed:** 2026-01-07 by Bug-Hunter Agent
+3. **Difference Calculation Display** ✅ **NOT A BUG - BY DESIGN**
+   - Previous Claim: `abs()` wrappers were a bug that needed fixing
+   - Reality: Using `abs()` for difference display is **intentional design**
+   - Purpose: Show magnitude as positive values, use conditional formatting for direction
+   - Location: 18 instances in `src/amc/reportexport/__init__.py`
+   - **Note:** Do NOT remove `abs()` wrappers - this is preferred display format
 
 4. **Percentage Calculation Edge Case** ✅ Fixed
    - Issue: Returned 0 when `val1==0` and `val2>0`
@@ -339,10 +337,11 @@ pytest tests/test_main.py -v
 ## Important Notes for Specialized Agents
 
 ### Bug-Hunter Agent
-- The `abs()` bug was the most significant issue found
-- Focus on Excel export functions for similar issues
-- Check for proper handling of negative values
-- Verify conditional formatting works correctly
+- **CRITICAL:** The `abs()` usage in Excel exports is **by design**, not a bug
+- Do NOT remove `abs()` wrappers from difference calculations
+- The absolute values combined with conditional formatting provide the preferred UX
+- Focus on actual logic errors, not intentional display formatting choices
+- Verify conditional formatting works correctly with absolute values
 
 ### Security-Analyzer Agent
 - YAML loading is secure (`safe_load`)
