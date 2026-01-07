@@ -19,7 +19,7 @@ See the [Migration Guide](#migration-guide) below for upgrade instructions.
 - 💾 Optional export of individual reports in **CSV** or **Excel** format (XLSX)
 - 🔧 Customizable cost aggregations and groupings
 - 🤝 Shared services cost allocation across business units
-- ✅ Comprehensive test coverage (112 tests, 48% overall, 100% core business logic)
+- ✅ Comprehensive test coverage (128 tests, 48% overall, 100% core business logic)
 - 🔒 Security-focused design (no vulnerabilities)
 - 📝 Well-documented with inline docstrings
 
@@ -406,16 +406,27 @@ The application follows a modular architecture with clear separation of concerns
 ```
 aws-monthly-costs/
 ├── src/amc/
-│   ├── __main__.py              # Entry point & orchestration (610 lines)
-│   ├── constants.py             # Named constants (52 lines)
+│   ├── __main__.py              # Entry point & orchestration (775 lines)
+│   ├── constants.py             # Named constants (56 lines)
+│   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
-│   ├── reportexport/            # Report generation (1031 lines)
-│   │   └── __init__.py          # CSV/Excel export, charts, formatting
+│   ├── reportexport/            # Report generation (1663 lines + utilities)
+│   │   ├── __init__.py          # CSV/Excel export, charts, formatting
+│   │   ├── calculations.py     # Calculation utilities (58 lines)
+│   │   ├── formatting.py       # Formatting utilities (129 lines)
+│   │   └── charts.py           # Chart creation utilities (95 lines)
 │   └── runmodes/                # Cost calculation modules
-│       ├── account/             # Account cost calculations (152 lines)
-│       ├── bu/                  # Business unit calculations (140 lines)
-│       └── service/             # Service cost calculations (161 lines)
-└── tests/                       # Comprehensive test suite (112 tests)
+│       ├── common.py            # Shared utilities (133 lines)
+│       ├── account/             # Account cost calculations
+│       │   ├── __init__.py     # Imports/exports only (8 lines)
+│       │   └── calculator.py   # Business logic (168 lines)
+│       ├── bu/                  # Business unit calculations
+│       │   ├── __init__.py     # Imports/exports only (9 lines)
+│       │   └── calculator.py   # Business logic (169 lines)
+│       └── service/             # Service cost calculations
+│           ├── __init__.py     # Imports/exports only (9 lines)
+│           └── calculator.py   # Business logic (191 lines)
+└── tests/                       # Comprehensive test suite (128 tests)
 ```
 
 ### Key Components
@@ -802,7 +813,7 @@ amc --profile your-profile-name --config-file your-config.yaml
 5. 🔒 Secure error messages
 
 **Code Quality**:
-1. 📝 100% test coverage on core logic (112 tests)
+1. 📝 100% test coverage on core logic (128 tests)
 2. 📝 Comprehensive docstrings
 3. 📝 Named constants instead of magic values
 4. 📝 Extracted helper functions
@@ -842,10 +853,10 @@ open htmlcov/index.html
 
 ### Test Statistics
 
-- **Total Tests**: 112 (all passing ✅)
+- **Total Tests**: 128 (all passing ✅)
 - **Coverage**: 48% overall, 100% core business logic (runmodes, main orchestration)
 - **Execution Time**: < 2 seconds
-- **Test Types**: Unit tests (100) + Integration tests (12)
+- **Test Types**: Unit tests (116) + Integration tests (12)
 
 See `tests/README.md` for detailed test documentation.
 
@@ -871,6 +882,14 @@ Contributions are welcome! Please ensure:
 3. **Linting passes**: Run `ruff check .`
 4. **Documentation updated**: Update README if adding features
 5. **Security**: No new vulnerabilities introduced
+
+### API Documentation
+
+For developers working with the codebase, see [API_REFERENCE.md](API_REFERENCE.md) for detailed API documentation including:
+- Function signatures and parameters
+- Module organization
+- Usage examples
+- Type hints and return values
 
 ### Release Process
 
@@ -950,7 +969,7 @@ See CHANGELOG.md for recent updates.
 - No vulnerable dependencies
 - Comprehensive security review completed
 
-See `AGENT_HANDOFF.md`, `REFACTORING_SUMMARY.md`, `TEST_IMPLEMENTATION_SUMMARY.md`, and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
+See `AGENT_HANDOFF.md` and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
 
 ## Acknowledgments
 
@@ -959,5 +978,5 @@ This project was comprehensively refactored and tested by specialized agents:
 - **Bug-Hunter Agent**: Fixed 7 critical bugs
 - **Security-Analyzer Agent**: Security review and hardening
 - **Performance-Optimizer Agent**: Performance optimizations
-- **Test-Generator Agent**: Comprehensive test suite (112 tests)
+- **Test-Generator Agent**: Comprehensive test suite (128 tests)
 - **Documentation-Writer Agent**: Documentation updates

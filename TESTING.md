@@ -16,8 +16,8 @@ open htmlcov/index.html
 
 ## Test Results
 
-✅ **112 tests passing**
-- 100 unit tests
+✅ **128 tests passing**
+- 116 unit tests
 - 12 integration tests
 
 📊 **48% code coverage**
@@ -65,13 +65,14 @@ All bugs fixed by previous agents are now covered:
 tests/
 ├── README.md              # Detailed test documentation
 ├── conftest.py           # Shared fixtures
-├── test_main.py          # Main module tests (33 tests)
-├── test_account.py       # Account runmode tests (15 tests)
+├── test_main.py          # Main module tests (32 tests)
+├── test_account.py       # Account runmode tests (14 tests)
 ├── test_bu.py            # Business unit tests (15 tests)
-├── test_service.py       # Service runmode tests (17 tests)
-├── test_constants.py     # Constants tests (11 tests)
-├── test_reportexport.py  # Export tests (10 tests)
-└── test_integration.py   # Integration tests (12 tests)
+├── test_service.py       # Service runmode tests (18 tests)
+├── test_constants.py     # Constants tests (10 tests)
+├── test_reportexport.py  # Export tests (11 tests)
+├── test_integration.py   # Integration tests (12 tests)
+└── test_year_mode.py     # Year analysis tests (16 tests)
 ```
 
 ## Running Specific Tests
