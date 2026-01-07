@@ -344,7 +344,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, all_account_costs = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -357,6 +357,10 @@ class TestCalculateBusinessUnitCosts:
         assert result["2024-Jan"]["production"] == 1000.00
         assert result["2024-Jan"]["development"] == 800.00  # 500 + 300
         assert result["2024-Jan"]["ss"] == 200.00
+        
+        # Verify all_account_costs is returned
+        assert all_account_costs is not None
+        assert "2024-Jan" in all_account_costs
 
     def test_calculate_business_unit_costs_with_ss_allocation(
         self, mock_cost_explorer_client, sample_config
@@ -396,7 +400,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -433,7 +437,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -458,7 +462,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),

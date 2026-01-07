@@ -33,6 +33,112 @@ from amc.reportexport.charts import (
 LOGGER = logging.getLogger(__name__)
 
 
+def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
+    """Create account group allocation summary sheet.
+    
+    Args:
+        worksheet: openpyxl worksheet object
+        account_groups: Dictionary of business unit account groups
+        all_account_costs: Dictionary of all account costs from API (first month used for account detection)
+    """
+    from openpyxl.styles import Font, PatternFill, Alignment
+    
+    # Get all account IDs that are defined in account_groups
+    assigned_accounts = {}
+    for bu, bu_accounts in account_groups.items():
+        for account_id, account_name in bu_accounts.items():
+            assigned_accounts[account_id] = (bu, account_name)
+    
+    # Get all account IDs from cost data (from the first month)
+    first_month_key = next(iter(all_account_costs.keys()))
+    all_cost_account_ids = set(all_account_costs[first_month_key].keys())
+    
+    # Identify unallocated accounts
+    unallocated_account_ids = all_cost_account_ids - set(assigned_accounts.keys())
+    
+    # Define styles matching existing sheets
+    title_font = Font(bold=True, size=16)
+    section_font = Font(bold=True, size=12)
+    header_font = Font(bold=True, size=14, color="FF000000")
+    header_fill = PatternFill(
+        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
+    )
+    header_alignment = Alignment(horizontal="center")
+    warning_font = Font(bold=True, size=12, color="FF9C0006")
+    warning_fill = PatternFill(
+        start_color="FFFFC7CE", end_color="FFFFC7CE", fill_type="solid"
+    )
+    
+    # Title
+    worksheet["A1"] = "ACCOUNT GROUP ALLOCATION SUMMARY"
+    worksheet["A1"].font = title_font
+    
+    row = 3
+    
+    # Show accounts by BU
+    for bu in sorted(account_groups.keys()):
+        bu_accounts = account_groups[bu]
+        
+        # BU header with styling
+        cell = worksheet.cell(row, 1, f"{bu.upper()}")
+        cell.font = section_font
+        row += 1
+        
+        # Column headers with styling matching existing sheets
+        header_cell_1 = worksheet.cell(row, 1, "Account ID")
+        header_cell_1.font = header_font
+        header_cell_1.fill = header_fill
+        header_cell_1.alignment = header_alignment
+        
+        header_cell_2 = worksheet.cell(row, 2, "Account Name")
+        header_cell_2.font = header_font
+        header_cell_2.fill = header_fill
+        header_cell_2.alignment = header_alignment
+        row += 1
+        
+        if bu_accounts:
+            for account_id in sorted(bu_accounts.keys()):
+                account_name = bu_accounts[account_id]
+                worksheet.cell(row, 1, account_id)
+                worksheet.cell(row, 2, account_name)
+                row += 1
+        else:
+            cell = worksheet.cell(row, 1, "(no accounts)")
+            cell.font = Font(italic=True, color="999999")
+            row += 1
+        
+        row += 1  # Add blank line between BUs
+    
+    # Show unallocated accounts if any with warning styling
+    unalloc_header = worksheet.cell(row, 1, f"UNALLOCATED ACCOUNTS ({len(unallocated_account_ids)})")
+    if unallocated_account_ids:
+        unalloc_header.font = warning_font
+        unalloc_header.fill = warning_fill
+    else:
+        unalloc_header.font = section_font
+    row += 1
+    
+    if unallocated_account_ids:
+        # Column header with styling
+        header_cell = worksheet.cell(row, 1, "Account ID")
+        header_cell.font = header_font
+        header_cell.fill = header_fill
+        header_cell.alignment = header_alignment
+        row += 1
+        
+        for account_id in sorted(unallocated_account_ids):
+            worksheet.cell(row, 1, account_id)
+            row += 1
+    else:
+        cell = worksheet.cell(row, 1, "None")
+        cell.font = Font(italic=True, color="666666")
+        row += 1
+    
+    # Auto-adjust column widths
+    worksheet.column_dimensions['A'].width = 20
+    worksheet.column_dimensions['B'].width = 40
+
+
 def export_report(
     export_file, cost_matrix, group_list, group_by_type, output_format="csv"
 ):
@@ -153,10 +259,12 @@ def export_analysis_excel(
     service_group_list,
     account_cost_matrix,
     account_group_list,
+    all_account_costs=None,
 ):
     """Export analysis Excel file with formatted tables and pie charts.
 
     Creates analysis tables showing:
+    - Account group allocation summary (first sheet)
     - Monthly totals (last 2 months comparison)
     - Daily average (last 2 months comparison)
     - Pie charts for business units, services, and accounts
@@ -169,6 +277,7 @@ def export_analysis_excel(
         service_group_list: List of services
         account_cost_matrix: Dictionary containing account cost data organized by month
         account_group_list: List of accounts
+        all_account_costs: Dictionary of all account costs (optional, for account summary)
     """
 
     LOGGER.info(f"Creating analysis Excel file: {output_file}")
@@ -176,6 +285,11 @@ def export_analysis_excel(
     # Create a new workbook
     wb = Workbook()
     wb.remove(wb.active)  # Remove default sheet
+
+    # Create Account Summary sheet first (if all_account_costs provided)
+    if all_account_costs:
+        ws_summary = wb.create_sheet("Account Summary", 0)
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs)
 
     # Get last 2 months from the data - sort chronologically
     def get_sort_key(month_str):
@@ -1143,10 +1257,12 @@ def export_year_analysis_excel(
     account_group_list,
     year1_months,
     year2_months,
+    all_account_costs=None,
 ):
     """Export year-level analysis Excel file with formatted tables and charts.
 
     Creates year analysis tables showing:
+    - Account group allocation summary (first sheet)
     - Yearly totals (last 2 complete 12-month periods comparison)
     - Daily average (for year periods)
     - Monthly average (for year periods)
@@ -1162,12 +1278,18 @@ def export_year_analysis_excel(
         account_group_list: List of accounts
         year1_months: List of month names for first year period
         year2_months: List of month names for second year period
+        all_account_costs: Dictionary of all account costs (optional, for account summary)
     """
     LOGGER.info(f"Creating year analysis Excel file: {output_file}")
 
     # Create a new workbook
     wb = Workbook()
     wb.remove(wb.active)
+
+    # Create Account Summary sheet first (if all_account_costs provided)
+    if all_account_costs:
+        ws_summary = wb.create_sheet("Account Summary", 0)
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs)
 
     # Aggregate data into yearly totals
     bu_year1 = _aggregate_year_costs(bu_cost_matrix, year1_months)

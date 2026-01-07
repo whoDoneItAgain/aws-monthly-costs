@@ -456,7 +456,7 @@ def _process_business_unit_mode(
     """
     is_daily = run_mode == RUN_MODE_BUSINESS_UNIT_DAILY
 
-    cost_matrix = calculate_business_unit_costs(
+    cost_matrix, all_account_costs = calculate_business_unit_costs(
         cost_explorer_client,
         start_date,
         end_date,
@@ -467,7 +467,7 @@ def _process_business_unit_mode(
 
     # Store for analysis file (only for non-daily mode)
     if run_mode == RUN_MODE_BUSINESS_UNIT:
-        analysis_data[RUN_MODE_BUSINESS_UNIT] = (cost_matrix, account_groups)
+        analysis_data[RUN_MODE_BUSINESS_UNIT] = (cost_matrix, account_groups, all_account_costs)
 
     # Generate individual reports if requested
     for file_format in output_formats:
@@ -559,7 +559,7 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
 
     analysis_file = output_dir / f"{DEFAULT_OUTPUT_PREFIX}-analysis.xlsx"
 
-    bu_matrix, bu_groups = analysis_data[RUN_MODE_BUSINESS_UNIT]
+    bu_matrix, bu_groups, all_account_costs = analysis_data[RUN_MODE_BUSINESS_UNIT]
     service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
     account_matrix, account_names = analysis_data[RUN_MODE_ACCOUNT]
 
@@ -571,6 +571,7 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
         service_list,
         account_matrix,
         account_names,
+        all_account_costs,
     )
 
     LOGGER.info(f"Analysis file created: {analysis_file}")
@@ -616,7 +617,7 @@ def _generate_year_analysis_file(
     LOGGER.info("Generating year-level analysis Excel file")
 
     # Extract the cost matrices from analysis_data
-    bu_matrix, bu_groups = analysis_data[RUN_MODE_BUSINESS_UNIT]
+    bu_matrix, bu_groups, all_account_costs = analysis_data[RUN_MODE_BUSINESS_UNIT]
     service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
     account_matrix, account_names = analysis_data[RUN_MODE_ACCOUNT]
 
@@ -647,6 +648,7 @@ def _generate_year_analysis_file(
         account_names,
         year1_months,
         year2_months,
+        all_account_costs,
     )
 
     LOGGER.info(f"Year analysis file created: {year_analysis_file}")
