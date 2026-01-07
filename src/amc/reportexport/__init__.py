@@ -267,10 +267,17 @@ def _create_bu_analysis_tables(
     bus = list(group_list.keys())
     bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
 
+    # Cache month dictionaries for faster lookups (performance optimization)
+    # These cached references eliminate repeated dictionary traversals in the loops below
+    # for main table, daily average calculations, and chart data processing
+    month1_costs = cost_matrix[last_2_months[0]]
+    month2_costs = cost_matrix[last_2_months[1]]
+    month2_total = month2_costs.get("total", 1)
+
     # Display all BUs in the table
     for bu in bus:
-        val1 = cost_matrix[last_2_months[0]].get(bu, 0)
-        val2 = cost_matrix[last_2_months[1]].get(bu, 0)
+        val1 = month1_costs.get(bu, 0)
+        val2 = month2_costs.get(bu, 0)
 
         # Skip this BU if both current and previous months are zero
         if val1 == 0 and val2 == 0:
@@ -281,9 +288,7 @@ def _create_bu_analysis_tables(
         # Use calculation utilities
         diff = calculate_difference(val1, val2)
         pct_diff = calculate_percentage_difference(val1, val2)
-        pct_spend = calculate_percentage_spend(
-            val2, cost_matrix[last_2_months[1]].get("total", 1)
-        )
+        pct_spend = calculate_percentage_spend(val2, month2_total)
 
         # Apply formatting using utility functions
         apply_currency_format(ws.cell(row, 2, val1))
@@ -295,8 +300,8 @@ def _create_bu_analysis_tables(
         row += 1
 
     # Total row
-    total1 = cost_matrix[last_2_months[0]].get("total", 0)
-    total2 = cost_matrix[last_2_months[1]].get("total", 0)
+    total1 = month1_costs.get("total", 0)
+    total2 = month2_costs.get("total", 0)
     diff = calculate_difference(total1, total2)
     pct_diff = calculate_percentage_difference(total1, total2)
 
@@ -318,13 +323,15 @@ def _create_bu_analysis_tables(
     helper_row = 1
     helper_col = 1  # Column A in helper sheet
 
-    total_for_pct = cost_matrix[last_2_months[1]].get("total", 1)
+    total_for_pct = month2_total  # Reuse cached value
     pie_chart_start_row = helper_row
 
-    # Add BUs with >= 1% spend
+    # Process BUs in single pass: add >= 1% spend, accumulate < 1% for "Other"
+    # Performance optimization: Combined 2 loops into 1 (50% reduction in iterations)
+    other_total = 0
     for bu in bus:
-        val2 = cost_matrix[last_2_months[1]].get(bu, 0)
-        val1 = cost_matrix[last_2_months[0]].get(bu, 0)
+        val2 = month2_costs.get(bu, 0)
+        val1 = month1_costs.get(bu, 0)
 
         # Skip if zero
         if val1 == 0 and val2 == 0:
@@ -335,19 +342,7 @@ def _create_bu_analysis_tables(
             ws_helper.cell(helper_row, helper_col, bu)
             ws_helper.cell(helper_row, helper_col + 1, val2)
             helper_row += 1
-
-    # Calculate and add "Other" if there are BUs with < 1% spend
-    other_total = 0
-    for bu in bus:
-        val2 = cost_matrix[last_2_months[1]].get(bu, 0)
-        val1 = cost_matrix[last_2_months[0]].get(bu, 0)
-
-        # Skip if zero
-        if val1 == 0 and val2 == 0:
-            continue
-
-        pct_spend = val2 / total_for_pct
-        if pct_spend < 0.01:  # < 1%
+        else:  # < 1%
             other_total += val2
 
     if other_total > 0:
@@ -431,8 +426,8 @@ def _create_bu_analysis_tables(
     row += 1
     daily_start_row = row
     for bu in bus:
-        val1_monthly = cost_matrix[last_2_months[0]].get(bu, 0)
-        val2_monthly = cost_matrix[last_2_months[1]].get(bu, 0)
+        val1_monthly = month1_costs.get(bu, 0)
+        val2_monthly = month2_costs.get(bu, 0)
 
         # Skip this BU if both current and previous months are zero
         if val1_monthly == 0 and val2_monthly == 0:
@@ -458,9 +453,9 @@ def _create_bu_analysis_tables(
 
         row += 1
 
-    # Total row for daily average
-    total1_daily = cost_matrix[last_2_months[0]].get("total", 0) / days1
-    total2_daily = cost_matrix[last_2_months[1]].get("total", 0) / days2
+    # Total row for daily average (reuse cached values)
+    total1_daily = total1 / days1
+    total2_daily = total2 / days2
     diff = total2_daily - total1_daily
     # Handle percentage calculation properly
     if total1_daily > 0:
@@ -575,9 +570,13 @@ def _create_service_analysis_tables(
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
+    # Cache month dictionaries for faster lookups (performance optimization)
+    month1_costs = cost_matrix[last_2_months[0]]
+    month2_costs = cost_matrix[last_2_months[1]]
+
     # Get top 10 services by latest month cost (excluding 'total')
     service_costs = [
-        (svc, cost_matrix[last_2_months[1]].get(svc, 0))
+        (svc, month2_costs.get(svc, 0))
         for svc in group_list
         if svc != "total"
     ]
@@ -585,9 +584,7 @@ def _create_service_analysis_tables(
     top_10_services = [svc for svc, _ in service_costs[:10]]
 
     # Calculate "Other" - difference between BU total and sum of top 10 services
-    top_10_total = sum(
-        cost_matrix[last_2_months[1]].get(svc, 0) for svc in top_10_services
-    )
+    top_10_total = sum(month2_costs.get(svc, 0) for svc in top_10_services)
     other_amount = bu_total - top_10_total
 
     # Monthly Totals section
@@ -627,8 +624,8 @@ def _create_service_analysis_tables(
     for service in top_10_services:
         ws.cell(row, 1, service)
 
-        val1 = cost_matrix[last_2_months[0]].get(service, 0)
-        val2 = cost_matrix[last_2_months[1]].get(service, 0)
+        val1 = month1_costs.get(service, 0)
+        val2 = month2_costs.get(service, 0)
         diff = val2 - val1
         # Handle percentage calculation properly
         if val1 > 0:
@@ -650,10 +647,8 @@ def _create_service_analysis_tables(
     # Add "Other" row (for pie chart data, not a total)
     if other_amount > 0:
         ws.cell(row, 1, "Other")
-        # Calculate Other values for previous month too
-        top_10_total_prev = sum(
-            cost_matrix[last_2_months[0]].get(svc, 0) for svc in top_10_services
-        )
+        # Calculate Other values for previous month too (reuse cached sum)
+        top_10_total_prev = sum(month1_costs.get(svc, 0) for svc in top_10_services)
         other_amount_prev = (
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
@@ -826,9 +821,13 @@ def _create_account_analysis_tables(
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
+    # Cache month dictionaries for faster lookups (performance optimization)
+    month1_costs = cost_matrix[last_2_months[0]]
+    month2_costs = cost_matrix[last_2_months[1]]
+
     # Get top 10 accounts by latest month cost (excluding 'total')
     account_costs = [
-        (acc, cost_matrix[last_2_months[1]].get(acc, 0))
+        (acc, month2_costs.get(acc, 0))
         for acc in group_list
         if acc != "total"
     ]
@@ -836,9 +835,7 @@ def _create_account_analysis_tables(
     top_10_accounts = [acc for acc, _ in account_costs[:10]]
 
     # Calculate "Other" - difference between BU total and sum of top 10 accounts
-    top_10_total = sum(
-        cost_matrix[last_2_months[1]].get(acc, 0) for acc in top_10_accounts
-    )
+    top_10_total = sum(month2_costs.get(acc, 0) for acc in top_10_accounts)
     other_amount = bu_total - top_10_total
 
     # Monthly Totals section
@@ -878,8 +875,8 @@ def _create_account_analysis_tables(
     for account in top_10_accounts:
         ws.cell(row, 1, account)
 
-        val1 = cost_matrix[last_2_months[0]].get(account, 0)
-        val2 = cost_matrix[last_2_months[1]].get(account, 0)
+        val1 = month1_costs.get(account, 0)
+        val2 = month2_costs.get(account, 0)
         diff = val2 - val1
         # Handle percentage calculation properly
         if val1 > 0:
@@ -901,10 +898,8 @@ def _create_account_analysis_tables(
     # Add "Other" row (for pie chart data, not a total)
     if other_amount > 0:
         ws.cell(row, 1, "Other")
-        # Calculate Other values for previous month too
-        top_10_total_prev = sum(
-            cost_matrix[last_2_months[0]].get(acc, 0) for acc in top_10_accounts
-        )
+        # Calculate Other values for previous month too (reuse cached lookups)
+        top_10_total_prev = sum(month1_costs.get(acc, 0) for acc in top_10_accounts)
         other_amount_prev = (
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
@@ -1586,7 +1581,10 @@ def _create_year_comparison_sheet(
         helper_col = 1
         pie_chart_start_row = helper_row
 
-        # Add groups with >= 1% spend (or "Other" if explicitly in the data)
+        # Process groups in single pass: add >= 1% spend, accumulate < 1% for "Other"
+        # Performance optimization: Combined 2 loops into 1 (50% reduction in iterations)
+        # "Other" accumulation only happens for BU costs (not Services/Accounts with explicit Other)
+        other_total = 0
         for group in sorted_groups:
             if group == "total":
                 continue
@@ -1612,30 +1610,16 @@ def _create_year_comparison_sheet(
                 ws_helper.cell(helper_row, helper_col, group)
                 ws_helper.cell(helper_row, helper_col + 1, val2)
                 helper_row += 1
+            elif "Other" not in year2_data:
+                # Only accumulate "Other" if not already in the data
+                # (i.e., only calculate for BU costs, not for Services/Accounts which have explicit Other)
+                other_total += val2
 
-        # Calculate and add "Other" ONLY if not already in the data
-        # (i.e., only calculate for BU costs, not for Services/Accounts which have explicit Other)
-        if "Other" not in year2_data:
-            other_total = 0
-            for group in sorted_groups:
-                if group == "total":
-                    continue
-
-                val2 = year2_data.get(group, 0)
-                val1 = year1_data.get(group, 0)
-
-                # Skip if zero
-                if val1 == 0 and val2 == 0:
-                    continue
-
-                pct_spend = val2 / total_val2 if total_val2 > 0 else 0
-                if pct_spend < 0.01:  # < 1%
-                    other_total += val2
-
-            if other_total > 0:
-                ws_helper.cell(helper_row, helper_col, "Other")
-                ws_helper.cell(helper_row, helper_col + 1, other_total)
-                helper_row += 1
+        # Add accumulated "Other" if needed
+        if "Other" not in year2_data and other_total > 0:
+            ws_helper.cell(helper_row, helper_col, "Other")
+            ws_helper.cell(helper_row, helper_col + 1, other_total)
+            helper_row += 1
 
         pie_chart_end_row = helper_row - 1
 
