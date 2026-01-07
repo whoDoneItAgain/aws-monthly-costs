@@ -9,7 +9,7 @@
 
 This codebase is a **Python CLI tool** for generating AWS cost reports by account, business unit, and service using the AWS Cost Explorer API. The application has been through multiple refactoring and improvement cycles, achieving:
 
-- ✅ **100% test coverage** on core business logic (128 tests, 48% overall coverage)
+- ✅ **100% test coverage** on core business logic (130 tests, 48% overall coverage)
 - ✅ **No security vulnerabilities** (verified by Security-Analyzer Agent)
 - ✅ **Optimized performance** (50% reduction in API calls for BU mode)
 - ✅ **Proper module organization** (business logic removed from `__init__.py` files)
@@ -29,6 +29,12 @@ Fixed a critical NameError in the `_create_bu_analysis_tables` function that was
 
 ### Root Cause
 During the refactoring to eliminate code duplication in PR #141, the Monthly Totals section of `_create_bu_analysis_tables` (lines 256-260) was successfully updated to use the `apply_header_style()` utility function. However, the Daily Average section (lines 373-391) was not updated and still referenced the old local variables `header_font`, `header_fill`, and `header_alignment` that were no longer defined.
+
+**Why wasn't this caught during refactoring?**
+1. **No tests existed** for `export_analysis_excel()` or `_create_bu_analysis_tables()`
+2. The reportexport module had only **16% test coverage**
+3. The function is complex (200+ lines) and wasn't exercised during testing
+4. The refactoring was incomplete - only the first section was updated, not the second
 
 ### Solution
 Replaced the manual header styling in the Daily Average section with the `apply_header_style()` utility function, consistent with the refactoring pattern used in the Monthly Totals section.
@@ -61,16 +67,50 @@ for col, header_text in enumerate(
 - **Bug Fixed:** BU analysis Excel exports now generate successfully
 - **DRY Principle:** Completed the refactoring that was partially done in PR #141
 
+### Prevention Measures - This Cannot Happen Again
+
+**Tests Added** (2 new tests in `tests/test_reportexport.py`):
+1. **`test_export_analysis_excel_bu_tables`** - Full integration test that:
+   - Exercises `export_analysis_excel()` function
+   - Tests `_create_bu_analysis_tables()` indirectly
+   - Verifies all sheets are created correctly
+   - Checks header styling is applied (would catch NameError immediately)
+   - Validates workbook structure
+
+2. **`test_export_analysis_excel_insufficient_months`** - Edge case test for insufficient data
+
+**Test Coverage Impact:**
+- Reportexport tests increased from **11 tests to 13 tests** (+18%)
+- Total test suite increased from **128 tests to 130 tests**
+- **Critical gap closed:** Analysis Excel generation is now tested
+
+**Lesson Learned:**
+- ⚠️ **Always test refactored code**, especially when updating patterns across multiple sections
+- ⚠️ **Run tests during refactoring**, not just after
+- ⚠️ **Add smoke tests for critical functions** that have low/no coverage
+- ⚠️ **Test coverage gaps are bug magnets** - this function had 0% coverage before
+
+**For Future Refactoring Agents:**
+- Before refactoring, check test coverage of target functions
+- Add basic smoke tests BEFORE refactoring if coverage is low
+- Test after each logical change, not just at the end
+- Look for patterns across entire function, not just first occurrence
+- Use `pytest tests/ -v` frequently during refactoring work
+
 ### Files Changed
 - `src/amc/reportexport/__init__.py` - Fixed Daily Average header styling
+- `tests/test_reportexport.py` - Added 2 comprehensive tests to prevent regression
 
 ### Verification
 - ✅ Ruff formatting applied
+- ✅ Ruff linting passed
 - ✅ Code follows existing refactoring patterns
 - ✅ Consistent with the utility function approach from PR #141
+- ✅ All 130 tests passing (up from 128)
+- ✅ New tests specifically catch this type of bug
 
 ### Commits
-- Initial fix for NameError in _create_bu_analysis_tables function
+- `df50d6a` - Fix NameError in _create_bu_analysis_tables and add tests to prevent regression
 
 ---
 
@@ -687,20 +727,20 @@ The following bugs were claimed to be fixed in previous iterations:
 ## Testing Infrastructure
 
 ### Test Statistics
-- **Total Tests:** 128 (all passing)
+- **Total Tests:** 130 (all passing)
 - **Coverage:** 48% overall, 100% core business logic
 - **Execution Time:** < 2 seconds
 - **Framework:** pytest with tox for automation
 
 ### Test Categories
 
-**Unit Tests (116 tests):**
+**Unit Tests (118 tests):**
 - Main module: 33 tests
 - Account runmode: 15 tests
 - Business unit runmode: 15 tests
 - Service runmode: 17 tests
 - Constants: 11 tests
-- Report export: 11 tests
+- Report export: 13 tests
 - Year mode: 14 tests
 
 **Integration Tests (12 tests):**
