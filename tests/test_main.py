@@ -15,6 +15,7 @@ from amc.__main__ import (
     load_configuration,
     parse_arguments,
     parse_time_period,
+    resolve_config_file_path,
 )
 from amc.constants import (
     OUTPUT_FORMAT_BOTH,
@@ -64,6 +65,7 @@ class TestParseArguments:
             assert args.debug_logging is False
             assert args.info_logging is False
             assert args.time_period == TIME_PERIOD_MONTH
+            assert args.config_file is None
 
     def test_parse_arguments_with_run_modes(self):
         """Test parsing arguments with custom run modes."""
@@ -322,3 +324,44 @@ class TestGenerateOutputFilePath:
         """Test generating business unit output file path."""
         result = generate_output_file_path(temp_output_dir, "bu", OUTPUT_FORMAT_CSV)
         assert result == temp_output_dir / "aws-monthly-costs-bu.csv"
+
+
+class TestResolveConfigFilePath:
+    """Tests for resolve_config_file_path function."""
+
+    def test_resolve_config_file_explicit_path_exists(self, tmp_path):
+        """Test resolving config path when explicit path is provided and exists."""
+        config_file = tmp_path / "custom-config.yaml"
+        config_file.write_text("test: config")
+
+        result = resolve_config_file_path(str(config_file))
+        assert result == config_file.absolute()
+
+    def test_resolve_config_file_explicit_path_not_exists(self, tmp_path):
+        """Test resolving config path when explicit path doesn't exist."""
+        config_file = tmp_path / "nonexistent.yaml"
+
+        with pytest.raises(FileNotFoundError, match="Specified configuration file not found"):
+            resolve_config_file_path(str(config_file))
+
+    @patch("amc.__main__.LOGGER")
+    def test_resolve_config_file_user_rc_exists(self, mock_logger, tmp_path):
+        """Test resolving config path when ~/.amcrc exists."""
+        user_rc_file = tmp_path / ".amcrc"
+        user_rc_file.write_text("test: config")
+
+        with patch("os.path.expanduser", return_value=str(user_rc_file)):
+            result = resolve_config_file_path(None)
+            assert result == user_rc_file.absolute()
+
+    @patch("amc.__main__.LOGGER")
+    def test_resolve_config_file_default(self, mock_logger, tmp_path):
+        """Test resolving config path when no explicit path and no ~/.amcrc."""
+        # Create a non-existent path for user RC file
+        user_rc_file = tmp_path / "nonexistent" / ".amcrc"
+
+        with patch("os.path.expanduser", return_value=str(user_rc_file)):
+            result = resolve_config_file_path(None)
+            # Should return the built-in default config path
+            assert result.name == "aws-monthly-costs-config.yaml"
+            assert "data/config" in str(result)

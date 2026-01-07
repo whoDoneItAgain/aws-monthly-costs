@@ -43,6 +43,7 @@ DEFAULT_AWS_CONFIG_FILE = "~/.aws/config"
 DEFAULT_CONFIG_LOCATION = Path(__file__).parent.joinpath(
     "data/config/aws-monthly-costs-config.yaml"
 )
+USER_RC_FILE = "~/.amcrc"
 
 
 def parse_arguments():
@@ -66,8 +67,8 @@ def parse_arguments():
     parser.add_argument(
         "--config-file",
         type=str,
-        default=DEFAULT_CONFIG_LOCATION,
-        help=f"Path to the configuration YAML file (default: {DEFAULT_CONFIG_LOCATION})",
+        default=None,
+        help=f"Path to the configuration YAML file (default: {USER_RC_FILE} if exists, otherwise {DEFAULT_CONFIG_LOCATION})",
     )
 
     parser.add_argument(
@@ -202,6 +203,45 @@ def load_configuration(config_file_path: Path) -> dict:
         )
 
     return config
+
+
+def resolve_config_file_path(config_file_arg: str | None) -> Path:
+    """Resolve the configuration file path based on priority order.
+
+    Priority order:
+    1. --config-file parameter (highest priority)
+    2. ~/.amcrc file in user's home directory (fallback)
+    3. Built-in default config file (lowest priority)
+
+    Args:
+        config_file_arg: The --config-file argument value (None if not provided)
+
+    Returns:
+        Path to the configuration file to use
+
+    Raises:
+        FileNotFoundError: If explicitly specified config file doesn't exist
+    """
+    # Priority 1: If --config-file was explicitly provided, use it
+    if config_file_arg is not None:
+        config_path = Path(config_file_arg).absolute()
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"Specified configuration file not found: {config_path}"
+            )
+        LOGGER.debug(f"Using configuration from --config-file: {config_path}")
+        return config_path
+
+    # Priority 2: Check for ~/.amcrc in user's home directory
+    user_rc_path = Path(os.path.expanduser(USER_RC_FILE)).absolute()
+    if user_rc_path.exists():
+        LOGGER.debug(f"Using configuration from user RC file: {user_rc_path}")
+        return user_rc_path
+
+    # Priority 3: Use built-in default configuration
+    default_config_path = DEFAULT_CONFIG_LOCATION.absolute()
+    LOGGER.debug(f"Using built-in default configuration: {default_config_path}")
+    return default_config_path
 
 
 def parse_time_period(time_period_str: str) -> tuple[date, date]:
@@ -681,7 +721,7 @@ def main():
 
     # Resolve file paths
     aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
-    config_file_path = Path(args.config_file).absolute()
+    config_file_path = resolve_config_file_path(args.config_file)
 
     # Load configuration
     config_settings = load_configuration(config_file_path)
