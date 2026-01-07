@@ -1279,6 +1279,7 @@ def export_year_analysis_excel(
         list(bu_group_list.keys()) + ["total"],
         year1_label,
         year2_label,
+        include_chart=True,  # Include pie chart for yearly totals
     )
 
     ws_bu_daily = wb.create_sheet("BU Costs - Daily Avg")
@@ -1290,6 +1291,7 @@ def export_year_analysis_excel(
         list(bu_group_list.keys()) + ["total"],
         year1_label,
         year2_label,
+        include_chart=False,  # No chart for daily average
     )
 
     ws_bu_monthly = wb.create_sheet("BU Costs - Monthly Avg")
@@ -1301,6 +1303,7 @@ def export_year_analysis_excel(
         list(bu_group_list.keys()) + ["total"],
         year1_label,
         year2_label,
+        include_chart=False,  # No chart for monthly average
     )
 
     # Create sheets for Service costs
@@ -1313,6 +1316,7 @@ def export_year_analysis_excel(
         service_group_list,
         year1_label,
         year2_label,
+        include_chart=True,  # Include pie chart for yearly totals
     )
 
     ws_service_daily = wb.create_sheet("Top Services - Daily Avg")
@@ -1324,6 +1328,7 @@ def export_year_analysis_excel(
         service_group_list,
         year1_label,
         year2_label,
+        include_chart=False,  # No chart for daily average
     )
 
     ws_service_monthly = wb.create_sheet("Top Services - Monthly Avg")
@@ -1335,6 +1340,7 @@ def export_year_analysis_excel(
         service_group_list,
         year1_label,
         year2_label,
+        include_chart=False,  # No chart for monthly average
     )
 
     # Create sheets for Account costs
@@ -1347,6 +1353,7 @@ def export_year_analysis_excel(
         account_group_list,
         year1_label,
         year2_label,
+        include_chart=True,  # Include pie chart for yearly totals
     )
 
     ws_account_daily = wb.create_sheet("Top Accounts - Daily Avg")
@@ -1358,6 +1365,7 @@ def export_year_analysis_excel(
         account_group_list,
         year1_label,
         year2_label,
+        include_chart=False,  # No chart for daily average
     )
 
     ws_account_monthly = wb.create_sheet("Top Accounts - Monthly Avg")
@@ -1369,6 +1377,7 @@ def export_year_analysis_excel(
         account_group_list,
         year1_label,
         year2_label,
+        include_chart=False,  # No chart for monthly average
     )
 
     # Save the workbook
@@ -1377,7 +1386,14 @@ def export_year_analysis_excel(
 
 
 def _create_year_comparison_sheet(
-    worksheet, title, year1_data, year2_data, group_list, year1_label, year2_label
+    worksheet,
+    title,
+    year1_data,
+    year2_data,
+    group_list,
+    year1_label,
+    year2_label,
+    include_chart=True,
 ):
     """Create a year comparison sheet with formatted table and chart.
 
@@ -1389,21 +1405,22 @@ def _create_year_comparison_sheet(
         group_list: List of groups to include
         year1_label: Label for year 1 column
         year2_label: Label for year 2 column
+        include_chart: Whether to include pie chart (default: True, only for yearly totals)
     """
-    # Define styles
-    header_font = Font(bold=True, color="FFFFFF")
+    # Define styles - match monthly analysis format
+    header_font = Font(bold=True, size=14, color="FF000000")
     header_fill = PatternFill(
-        start_color="4472C4", end_color="4472C4", fill_type="solid"
+        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
     )
-    header_alignment = Alignment(horizontal="center", vertical="center")
+    header_alignment = Alignment(horizontal="center")
 
     # Title
     worksheet["A1"] = title
     worksheet["A1"].font = Font(bold=True, size=16)
 
-    # Headers
+    # Headers - match monthly format with "Month" instead of "Group"
     row = 3
-    worksheet.cell(row, 1, "Group").font = header_font
+    worksheet.cell(row, 1, "Month").font = header_font
     worksheet.cell(row, 1).fill = header_fill
     worksheet.cell(row, 1).alignment = header_alignment
 
@@ -1423,12 +1440,34 @@ def _create_year_comparison_sheet(
     worksheet.cell(row, 5).fill = header_fill
     worksheet.cell(row, 5).alignment = header_alignment
 
+    # Sort groups by year2 (most recent) value in descending order, with 'total' at the end
+    sorted_groups = []
+    total_group = None
+    for group in group_list:
+        if group == "total":
+            total_group = group
+        else:
+            sorted_groups.append(group)
+
+    # Sort by most recent year's value (descending)
+    sorted_groups.sort(key=lambda g: year2_data.get(g, 0), reverse=True)
+
+    # Add total at the end if present
+    if total_group:
+        sorted_groups.append(total_group)
+
     # Data rows
     row += 1
     start_row = row
-    for group in group_list:
+
+    for group in sorted_groups:
         val1 = year1_data.get(group, 0)
         val2 = year2_data.get(group, 0)
+
+        # Skip rows with zero values in both periods (except total)
+        if group != "total" and val1 == 0 and val2 == 0:
+            continue
+
         diff = val2 - val1
 
         # Calculate percentage difference
@@ -1442,8 +1481,9 @@ def _create_year_comparison_sheet(
         worksheet.cell(row, 1, group)
         worksheet.cell(row, 2, val1).number_format = '"$"#,##0.00'
         worksheet.cell(row, 3, val2).number_format = '"$"#,##0.00'
-        worksheet.cell(row, 4, diff).number_format = '"$"#,##0.00'
-        worksheet.cell(row, 5, pct_diff).number_format = "0.00%"
+        # Use absolute value for difference column to match monthly format
+        worksheet.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        worksheet.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
         row += 1
 
@@ -1459,38 +1499,44 @@ def _create_year_comparison_sheet(
     # Auto-adjust column widths
     _auto_adjust_column_widths(worksheet)
 
-    # Add pie chart for year 2 data (most recent)
-    chart = PieChart()
-    chart.title = f"{year2_label} Distribution"
-    chart.height = 12
-    chart.width = 20
+    # Add pie chart for year 2 data (most recent) - only if include_chart is True
+    if include_chart:
+        chart = PieChart()
+        chart.title = f"{year2_label} Distribution"
+        # Use default size to match monthly charts (don't set height/width)
 
-    # Data for chart (exclude 'total' row if present)
-    chart_groups = [g for g in group_list if g != "total" and year2_data.get(g, 0) > 0]
-    if chart_groups:
-        # Create chart data reference
-        labels = Reference(
-            worksheet,
-            min_col=1,
-            min_row=start_row,
-            max_row=start_row + len(chart_groups) - 1,
-        )
-        data = Reference(
-            worksheet,
-            min_col=3,
-            min_row=start_row - 1,
-            max_row=start_row + len(chart_groups) - 1,
-        )
+        # Data for chart (exclude 'total' row if present)
+        chart_groups = [
+            g for g in sorted_groups if g != "total" and year2_data.get(g, 0) > 0
+        ]
+        if chart_groups:
+            # Find the row range for chart data (excluding total)
+            chart_start_row = start_row
+            chart_end_row = start_row + len(chart_groups) - 1
 
-        chart.add_data(data, titles_from_data=True)
-        chart.set_categories(labels)
+            # Create chart data reference
+            labels = Reference(
+                worksheet,
+                min_col=1,
+                min_row=chart_start_row,
+                max_row=chart_end_row,
+            )
+            data = Reference(
+                worksheet,
+                min_col=3,
+                min_row=chart_start_row - 1,
+                max_row=chart_end_row,
+            )
 
-        # Style the chart
-        chart.dataLabels = DataLabelList()
-        chart.dataLabels.showCatName = True
-        chart.dataLabels.showVal = True
-        chart.dataLabels.showPercent = True
-        chart.dataLabels.showSerName = False
-        chart.legend = None
+            chart.add_data(data, titles_from_data=True)
+            chart.set_categories(labels)
 
-        worksheet.add_chart(chart, "G3")
+            # Style the chart
+            chart.dataLabels = DataLabelList()
+            chart.dataLabels.showCatName = True
+            chart.dataLabels.showVal = True
+            chart.dataLabels.showPercent = True
+            chart.dataLabels.showSerName = False
+            chart.legend = None
+
+            worksheet.add_chart(chart, "G3")
