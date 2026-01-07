@@ -33,13 +33,14 @@ from amc.reportexport.charts import (
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
+def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, account_id_to_name=None):
     """Create account group allocation summary sheet.
     
     Args:
         worksheet: openpyxl worksheet object
         account_groups: Dictionary of business unit account groups
         all_account_costs: Dictionary of all account costs from API (first month used for account detection)
+        account_id_to_name: Optional dictionary mapping account IDs to names
     """
     # Get all account IDs that are defined in account_groups
     assigned_accounts = set()
@@ -81,16 +82,24 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
         cell.font = section_font
         row += 1
         
-        # Column header with styling matching existing sheets
-        header_cell = worksheet.cell(row, 1, "Account ID")
-        header_cell.font = header_font
-        header_cell.fill = header_fill
-        header_cell.alignment = header_alignment
+        # Column headers with styling matching existing sheets
+        header_cell_1 = worksheet.cell(row, 1, "Account ID")
+        header_cell_1.font = header_font
+        header_cell_1.fill = header_fill
+        header_cell_1.alignment = header_alignment
+        
+        if account_id_to_name:
+            header_cell_2 = worksheet.cell(row, 2, "Account Name")
+            header_cell_2.font = header_font
+            header_cell_2.fill = header_fill
+            header_cell_2.alignment = header_alignment
         row += 1
         
         if bu_accounts:
             for account_id in sorted(bu_accounts.keys()):
                 worksheet.cell(row, 1, account_id)
+                if account_id_to_name and account_id in account_id_to_name:
+                    worksheet.cell(row, 2, account_id_to_name[account_id])
                 row += 1
         else:
             cell = worksheet.cell(row, 1, "(no accounts)")
@@ -109,15 +118,23 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
     row += 1
     
     if unallocated_account_ids:
-        # Column header with styling
-        header_cell = worksheet.cell(row, 1, "Account ID")
-        header_cell.font = header_font
-        header_cell.fill = header_fill
-        header_cell.alignment = header_alignment
+        # Column headers with styling
+        header_cell_1 = worksheet.cell(row, 1, "Account ID")
+        header_cell_1.font = header_font
+        header_cell_1.fill = header_fill
+        header_cell_1.alignment = header_alignment
+        
+        if account_id_to_name:
+            header_cell_2 = worksheet.cell(row, 2, "Account Name")
+            header_cell_2.font = header_font
+            header_cell_2.fill = header_fill
+            header_cell_2.alignment = header_alignment
         row += 1
         
         for account_id in sorted(unallocated_account_ids):
             worksheet.cell(row, 1, account_id)
+            if account_id_to_name and account_id in account_id_to_name:
+                worksheet.cell(row, 2, account_id_to_name[account_id])
             row += 1
     else:
         cell = worksheet.cell(row, 1, "None")
@@ -126,6 +143,8 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
     
     # Auto-adjust column widths
     worksheet.column_dimensions['A'].width = 20
+    if account_id_to_name:
+        worksheet.column_dimensions['B'].width = 40
 
 
 def export_report(
@@ -166,7 +185,14 @@ def _export_to_csv(export_file, cost_matrix, group_list, group_by_type, months):
                 ]
                 writer.writerow(csv_row)
         elif group_by_type == "bu":
-            bus = list(group_list.keys()) + ["total"]
+            # Get all BUs from config and any additional ones in data (like "unallocated")
+            first_month = list(cost_matrix.keys())[0] if cost_matrix else None
+            if first_month:
+                bus_from_config = set(group_list.keys())
+                bus_from_data = set(cost_matrix[first_month].keys()) - {"total"}
+                bus = list(bus_from_config | bus_from_data) + ["total"]
+            else:
+                bus = list(group_list.keys()) + ["total"]
             for bu in bus:
                 csv_row = [bu] + [cost_matrix[month].get(bu, 0) for month in months]
                 writer.writerow(csv_row)
@@ -207,7 +233,14 @@ def _export_to_excel(export_file, cost_matrix, group_list, group_by_type, months
                 worksheet.cell(row=row_idx, column=col_idx, value=value)
             row_idx += 1
     elif group_by_type == "bu":
-        bus = list(group_list.keys()) + ["total"]
+        # Get all BUs from config and any additional ones in data (like "unallocated")
+        first_month = months[0] if months else None
+        if first_month:
+            bus_from_config = set(group_list.keys())
+            bus_from_data = set(cost_matrix[first_month].keys()) - {"total"}
+            bus = list(bus_from_config | bus_from_data) + ["total"]
+        else:
+            bus = list(group_list.keys()) + ["total"]
         for bu in bus:
             worksheet.cell(row=row_idx, column=1, value=bu)
             for col_idx, month in enumerate(months, start=2):
@@ -249,6 +282,7 @@ def export_analysis_excel(
     account_cost_matrix,
     account_group_list,
     all_account_costs=None,
+    account_id_to_name=None,
 ):
     """Export analysis Excel file with formatted tables and pie charts.
 
@@ -260,6 +294,15 @@ def export_analysis_excel(
 
     Args:
         output_file: Path to the output analysis Excel file
+        bu_cost_matrix: Dictionary containing BU cost data organized by month
+        bu_group_list: Dictionary of BU groups
+        service_cost_matrix: Dictionary containing service cost data organized by month
+        service_group_list: List of services
+        account_cost_matrix: Dictionary containing account cost data organized by month
+        account_group_list: List of accounts
+        all_account_costs: Dictionary of all account costs (optional, for account summary)
+        account_id_to_name: Dictionary mapping account IDs to names (optional, for account summary)
+    """
         bu_cost_matrix: Dictionary containing BU cost data organized by month
         bu_group_list: Dictionary of BU groups
         service_cost_matrix: Dictionary containing service cost data organized by month
@@ -373,9 +416,14 @@ def _create_bu_analysis_tables(
     row += 1
     data_start_row = row
 
+    # Get all BUs from both group_list and cost_matrix (to include "unallocated")
+    # Exclude 'total' as it's handled separately
+    bus_from_config = set(group_list.keys())
+    bus_from_data = set(month2_costs.keys()) - {"total"}
+    all_bus = list(bus_from_config | bus_from_data)
+    
     # Sort BUs by most recent month's cost in descending order
-    bus = list(group_list.keys())
-    bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
+    all_bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
 
     # Cache month dictionaries for faster lookups (performance optimization)
     # These cached references eliminate repeated dictionary traversals in the loops below
@@ -385,7 +433,7 @@ def _create_bu_analysis_tables(
     month2_total = month2_costs.get("total", 1)
 
     # Display all BUs in the table
-    for bu in bus:
+    for bu in all_bus:
         val1 = month1_costs.get(bu, 0)
         val2 = month2_costs.get(bu, 0)
 
@@ -439,7 +487,7 @@ def _create_bu_analysis_tables(
     # Process BUs in single pass: add >= 1% spend, accumulate < 1% for "Other"
     # Performance optimization: Combined 2 loops into 1 (50% reduction in iterations)
     other_total = 0
-    for bu in bus:
+    for bu in all_bus:
         val2 = month2_costs.get(bu, 0)
         val1 = month1_costs.get(bu, 0)
 
@@ -527,7 +575,7 @@ def _create_bu_analysis_tables(
     # Data rows for daily average
     row += 1
     daily_start_row = row
-    for bu in bus:
+    for bu in all_bus:
         val1_monthly = month1_costs.get(bu, 0)
         val2_monthly = month2_costs.get(bu, 0)
 

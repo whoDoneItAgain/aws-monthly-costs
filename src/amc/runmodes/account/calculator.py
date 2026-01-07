@@ -95,7 +95,9 @@ def calculate_account_costs(
         daily_average: If True, calculate daily average costs
 
     Returns:
-        Dictionary of cost data organized by month and account
+        Tuple of (cost_matrix, account_list) where:
+        - cost_matrix: Dictionary of cost data organized by month and account
+        - account_list: List of account information from Organizations API
     """
     account_list: list = []
     list_accounts_response = organizations_client.list_accounts()
@@ -139,7 +141,9 @@ def calculate_account_costs(
     top_sorted_accounts = [acc for acc, _ in sorted_items[:top_cost_count]]
 
     # Build matrix with only top accounts
-    return build_top_n_matrix(account_cost_matrix, top_sorted_accounts)
+    top_matrix = build_top_n_matrix(account_cost_matrix, top_sorted_accounts)
+    
+    return top_matrix, account_list
 
 
 def get_account_names(cost_matrix):

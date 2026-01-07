@@ -403,7 +403,7 @@ def _process_account_mode(
     """
     is_daily = run_mode == RUN_MODE_ACCOUNT_DAILY
 
-    cost_matrix = calculate_account_costs(
+    cost_matrix, account_list = calculate_account_costs(
         cost_explorer_client,
         organizations_client,
         start_date,
@@ -416,7 +416,7 @@ def _process_account_mode(
 
     # Store for analysis file (only for non-daily mode)
     if run_mode == RUN_MODE_ACCOUNT:
-        analysis_data[RUN_MODE_ACCOUNT] = (cost_matrix, account_names)
+        analysis_data[RUN_MODE_ACCOUNT] = (cost_matrix, account_names, account_list)
 
     # Generate individual reports if requested
     for file_format in output_formats:
@@ -561,7 +561,10 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
 
     bu_matrix, bu_groups, all_account_costs = analysis_data[RUN_MODE_BUSINESS_UNIT]
     service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
-    account_matrix, account_names = analysis_data[RUN_MODE_ACCOUNT]
+    account_matrix, account_names, account_list = analysis_data[RUN_MODE_ACCOUNT]
+    
+    # Build account ID to name mapping from Organizations API data
+    account_id_to_name = {acc["Id"]: acc["Name"] for acc in account_list}
 
     export_analysis_excel(
         analysis_file,
@@ -572,6 +575,7 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
         account_matrix,
         account_names,
         all_account_costs,
+        account_id_to_name,
     )
 
     LOGGER.info(f"Analysis file created: {analysis_file}")
@@ -619,7 +623,10 @@ def _generate_year_analysis_file(
     # Extract the cost matrices from analysis_data
     bu_matrix, bu_groups, all_account_costs = analysis_data[RUN_MODE_BUSINESS_UNIT]
     service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
-    account_matrix, account_names = analysis_data[RUN_MODE_ACCOUNT]
+    account_matrix, account_names, account_list = analysis_data[RUN_MODE_ACCOUNT]
+    
+    # Build account ID to name mapping from Organizations API data
+    account_id_to_name = {acc["Id"]: acc["Name"] for acc in account_list}
 
     # Validate and get year periods
     try:
@@ -649,6 +656,7 @@ def _generate_year_analysis_file(
         year1_months,
         year2_months,
         all_account_costs,
+        account_id_to_name,
     )
 
     LOGGER.info(f"Year analysis file created: {year_analysis_file}")
