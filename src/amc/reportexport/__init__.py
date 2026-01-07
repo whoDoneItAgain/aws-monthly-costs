@@ -360,13 +360,10 @@ def _create_bu_analysis_tables(
     # Add pie chart using helper table data from hidden sheet
     # Only add pie chart if there's BU data to display
     if pie_chart_end_row >= pie_chart_start_row:
-        chart = create_pie_chart()
-        chart.legend = None  # Remove the legend - labels are shown on pie slices
+        chart = create_pie_chart(show_legend=False, show_series_name=False)
         chart = add_data_to_pie_chart(
             chart, ws_helper, helper_col + 1, helper_col, pie_chart_start_row, pie_chart_end_row
         )
-        # Note: Additional configuration to hide series name
-        chart.dataLabels.showSerName = False
         add_chart_to_worksheet(ws, chart, "H3")
 
     # Auto-adjust column widths

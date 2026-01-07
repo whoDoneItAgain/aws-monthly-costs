@@ -104,10 +104,15 @@ def apply_percentage_format(cell):
 def auto_adjust_column_widths(worksheet, max_width=50, min_width=12):
     """Auto-adjust column widths based on content.
 
+    Modifies the worksheet in place by adjusting column widths based on cell content.
+
     Args:
         worksheet: The worksheet to adjust
         max_width: Maximum column width (default: 50)
         min_width: Minimum column width (default: 12)
+
+    Returns:
+        None (modifies worksheet in place)
     """
     for col_idx, column in enumerate(worksheet.columns, start=1):
         try:

@@ -16,6 +16,8 @@ def create_pie_chart(
     show_category_name=True,
     show_percentage=True,
     show_leader_lines=False,
+    show_legend=True,
+    show_series_name=False,
 ):
     """Create a configured pie chart.
 
@@ -27,6 +29,8 @@ def create_pie_chart(
         show_category_name: Whether to show category names on slices
         show_percentage: Whether to show percentages on slices
         show_leader_lines: Whether to show leader lines
+        show_legend: Whether to show legend (default: True)
+        show_series_name: Whether to show series name on labels (default: False)
 
     Returns:
         Configured PieChart object
@@ -43,6 +47,11 @@ def create_pie_chart(
     chart.dataLabels.showPercent = show_percentage
     chart.dataLabels.showLeaderLines = show_leader_lines
     chart.dataLabels.showVal = False  # Don't show raw values
+    chart.dataLabels.showSerName = show_series_name
+
+    # Configure legend
+    if not show_legend:
+        chart.legend = None
 
     return chart
 
@@ -73,9 +82,14 @@ def add_data_to_pie_chart(chart, worksheet, data_col, label_col, start_row, end_
 def add_chart_to_worksheet(worksheet, chart, anchor_cell):
     """Add a chart to a worksheet at specified position.
 
+    Modifies the worksheet in place by adding the chart.
+
     Args:
         worksheet: Worksheet to add chart to
         chart: Chart object to add
         anchor_cell: Cell address for top-left corner of chart (e.g., "H3")
+
+    Returns:
+        None (modifies worksheet in place)
     """
     worksheet.add_chart(chart, anchor_cell)
