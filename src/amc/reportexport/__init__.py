@@ -1282,6 +1282,7 @@ def export_year_analysis_excel(
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
         workbook=wb,
+        chart_helper_name="_BU_Year_Chart",
     )
 
     ws_bu_daily = wb.create_sheet("BU Costs - Daily Avg")
@@ -1322,6 +1323,7 @@ def export_year_analysis_excel(
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
         workbook=wb,
+        chart_helper_name="_Service_Year_Chart",
     )
 
     ws_service_daily = wb.create_sheet("Top Services - Daily Avg")
@@ -1362,6 +1364,7 @@ def export_year_analysis_excel(
         year2_label,
         include_chart=True,  # Include pie chart for yearly totals
         workbook=wb,
+        chart_helper_name="_Account_Year_Chart",
     )
 
     ws_account_daily = wb.create_sheet("Top Accounts - Daily Avg")
@@ -1405,6 +1408,7 @@ def _create_year_comparison_sheet(
     year2_label,
     include_chart=True,
     workbook=None,
+    chart_helper_name=None,
 ):
     """Create a year comparison sheet with formatted table and chart.
 
@@ -1418,6 +1422,7 @@ def _create_year_comparison_sheet(
         year2_label: Label for year 2 column
         include_chart: Whether to include pie chart (default: True, only for yearly totals)
         workbook: Workbook object for creating helper sheet (needed for pie chart with "Other" grouping)
+        chart_helper_name: Short name for hidden helper sheet (max 31 chars, default: auto-generated)
     """
     # Define styles - match monthly analysis format
     header_font = Font(bold=True, size=14, color="FF000000")
@@ -1529,7 +1534,13 @@ def _create_year_comparison_sheet(
     # Add pie chart for year 2 data (most recent) - only if include_chart is True
     if include_chart and workbook:
         # Create helper sheet for pie chart data (groups items < 1% into "Other")
-        helper_sheet_name = f"_{worksheet.title}_Chart_Data"
+        # Use provided name or generate a short one to stay under 31 char limit
+        if chart_helper_name:
+            helper_sheet_name = chart_helper_name
+        else:
+            # Fallback to a shortened name if none provided
+            helper_sheet_name = f"_Chart_{worksheet.title[:20]}"
+
         ws_helper = workbook.create_sheet(helper_sheet_name)
         ws_helper.sheet_state = "hidden"
 
