@@ -41,8 +41,6 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
         account_groups: Dictionary of business unit account groups
         all_account_costs: Dictionary of all account costs from API (first month used for account detection)
     """
-    from openpyxl.styles import Font, PatternFill, Alignment
-    
     # Get all account IDs that are defined in account_groups
     assigned_accounts = set()
     for bu, bu_accounts in account_groups.items():
@@ -96,7 +94,7 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
                 row += 1
         else:
             cell = worksheet.cell(row, 1, "(no accounts)")
-            cell.font = Font(italic=True, color="999999")
+            cell.font = Font(italic=True, color="FF999999")
             row += 1
         
         row += 1  # Add blank line between BUs
@@ -123,7 +121,7 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs):
             row += 1
     else:
         cell = worksheet.cell(row, 1, "None")
-        cell.font = Font(italic=True, color="666666")
+        cell.font = Font(italic=True, color="FF666666")
         row += 1
     
     # Auto-adjust column widths

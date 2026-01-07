@@ -17,60 +17,6 @@ from amc.runmodes.common import (
 LOGGER = logging.getLogger(__name__)
 
 
-def generate_account_group_summary(account_groups, all_account_costs):
-    """Generate a summary of account assignments for review.
-    
-    Args:
-        account_groups: Dictionary of business unit account groups
-        all_account_costs: Dictionary of all account costs from API
-        
-    Returns:
-        String containing formatted account group summary
-    """
-    # Get all account IDs that are defined in account_groups
-    assigned_accounts = {}
-    for bu, bu_accounts in account_groups.items():
-        for account_id, account_name in bu_accounts.items():
-            assigned_accounts[account_id] = (bu, account_name)
-    
-    # Get all account IDs from cost data (from the first month)
-    first_month_key = next(iter(all_account_costs.keys()))
-    all_cost_account_ids = set(all_account_costs[first_month_key].keys())
-    
-    # Identify unallocated accounts
-    unallocated_account_ids = all_cost_account_ids - set(assigned_accounts.keys())
-    
-    # Build summary
-    summary_lines = [
-        "\n" + "="*80,
-        "ACCOUNT GROUP ALLOCATION SUMMARY",
-        "="*80,
-    ]
-    
-    # Show accounts by BU
-    for bu in sorted(account_groups.keys()):
-        bu_accounts = account_groups[bu]
-        if bu_accounts:
-            summary_lines.append(f"\n{bu.upper()}:")
-            for account_id in sorted(bu_accounts.keys()):
-                account_name = bu_accounts[account_id]
-                summary_lines.append(f"  - {account_id}: {account_name}")
-        else:
-            summary_lines.append(f"\n{bu.upper()}: (no accounts)")
-    
-    # Show unallocated accounts if any
-    if unallocated_account_ids:
-        summary_lines.append(f"\nUNALLOCATED ACCOUNTS ({len(unallocated_account_ids)}):")
-        for account_id in sorted(unallocated_account_ids):
-            summary_lines.append(f"  - {account_id}")
-    else:
-        summary_lines.append("\nUNALLOCATED ACCOUNTS: None")
-    
-    summary_lines.append("\n" + "="*80 + "\n")
-    
-    return "\n".join(summary_lines)
-
-
 def _build_costs(cost_and_usage, daily_average=False):
     """Build cost dictionary from AWS Cost Explorer response.
 
