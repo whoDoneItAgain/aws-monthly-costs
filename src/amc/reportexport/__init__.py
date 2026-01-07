@@ -568,9 +568,13 @@ def _create_service_analysis_tables(
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
+    # Cache month dictionaries for faster lookups (performance optimization)
+    month1_costs = cost_matrix[last_2_months[0]]
+    month2_costs = cost_matrix[last_2_months[1]]
+
     # Get top 10 services by latest month cost (excluding 'total')
     service_costs = [
-        (svc, cost_matrix[last_2_months[1]].get(svc, 0))
+        (svc, month2_costs.get(svc, 0))
         for svc in group_list
         if svc != "total"
     ]
@@ -578,9 +582,7 @@ def _create_service_analysis_tables(
     top_10_services = [svc for svc, _ in service_costs[:10]]
 
     # Calculate "Other" - difference between BU total and sum of top 10 services
-    top_10_total = sum(
-        cost_matrix[last_2_months[1]].get(svc, 0) for svc in top_10_services
-    )
+    top_10_total = sum(month2_costs.get(svc, 0) for svc in top_10_services)
     other_amount = bu_total - top_10_total
 
     # Monthly Totals section
@@ -620,8 +622,8 @@ def _create_service_analysis_tables(
     for service in top_10_services:
         ws.cell(row, 1, service)
 
-        val1 = cost_matrix[last_2_months[0]].get(service, 0)
-        val2 = cost_matrix[last_2_months[1]].get(service, 0)
+        val1 = month1_costs.get(service, 0)
+        val2 = month2_costs.get(service, 0)
         diff = val2 - val1
         # Handle percentage calculation properly
         if val1 > 0:
@@ -643,10 +645,8 @@ def _create_service_analysis_tables(
     # Add "Other" row (for pie chart data, not a total)
     if other_amount > 0:
         ws.cell(row, 1, "Other")
-        # Calculate Other values for previous month too
-        top_10_total_prev = sum(
-            cost_matrix[last_2_months[0]].get(svc, 0) for svc in top_10_services
-        )
+        # Calculate Other values for previous month too (reuse cached sum)
+        top_10_total_prev = sum(month1_costs.get(svc, 0) for svc in top_10_services)
         other_amount_prev = (
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
@@ -819,9 +819,13 @@ def _create_account_analysis_tables(
     # Get total from BU costs for calculating "Other"
     bu_total = bu_cost_matrix[last_2_months[1]].get("total", 1)
 
+    # Cache month dictionaries for faster lookups (performance optimization)
+    month1_costs = cost_matrix[last_2_months[0]]
+    month2_costs = cost_matrix[last_2_months[1]]
+
     # Get top 10 accounts by latest month cost (excluding 'total')
     account_costs = [
-        (acc, cost_matrix[last_2_months[1]].get(acc, 0))
+        (acc, month2_costs.get(acc, 0))
         for acc in group_list
         if acc != "total"
     ]
@@ -829,9 +833,7 @@ def _create_account_analysis_tables(
     top_10_accounts = [acc for acc, _ in account_costs[:10]]
 
     # Calculate "Other" - difference between BU total and sum of top 10 accounts
-    top_10_total = sum(
-        cost_matrix[last_2_months[1]].get(acc, 0) for acc in top_10_accounts
-    )
+    top_10_total = sum(month2_costs.get(acc, 0) for acc in top_10_accounts)
     other_amount = bu_total - top_10_total
 
     # Monthly Totals section
@@ -871,8 +873,8 @@ def _create_account_analysis_tables(
     for account in top_10_accounts:
         ws.cell(row, 1, account)
 
-        val1 = cost_matrix[last_2_months[0]].get(account, 0)
-        val2 = cost_matrix[last_2_months[1]].get(account, 0)
+        val1 = month1_costs.get(account, 0)
+        val2 = month2_costs.get(account, 0)
         diff = val2 - val1
         # Handle percentage calculation properly
         if val1 > 0:
@@ -894,10 +896,8 @@ def _create_account_analysis_tables(
     # Add "Other" row (for pie chart data, not a total)
     if other_amount > 0:
         ws.cell(row, 1, "Other")
-        # Calculate Other values for previous month too
-        top_10_total_prev = sum(
-            cost_matrix[last_2_months[0]].get(acc, 0) for acc in top_10_accounts
-        )
+        # Calculate Other values for previous month too (reuse cached lookups)
+        top_10_total_prev = sum(month1_costs.get(acc, 0) for acc in top_10_accounts)
         other_amount_prev = (
             bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
         )
