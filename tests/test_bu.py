@@ -275,6 +275,33 @@ class TestBuildCostMatrix:
 
         assert result["2024-Jan"]["production"] == 100.00
 
+    def test_build_cost_matrix_with_unallocated_accounts(self):
+        """Test building cost matrix with unallocated accounts."""
+        account_groups = {
+            "ss": {},
+            "production": {"123456789012": "Prod Account"},
+            "development": {"123456789013": "Dev Account"},
+        }
+
+        # Include accounts not in any BU
+        account_costs = {
+            "2024-Jan": {
+                "123456789012": 1000.00,
+                "123456789013": 500.00,
+                "888888888888": 64.78,  # Unallocated account 1
+                "777777777777": 100.00,  # Unallocated account 2
+            }
+        }
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=None
+        )
+
+        assert result["2024-Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["development"] == 500.00
+        assert result["2024-Jan"]["unallocated"] == 164.78
+        assert result["2024-Jan"]["total"] == 1664.78
+
 
 class TestCalculateBusinessUnitCosts:
     """Tests for calculate_business_unit_costs function."""
