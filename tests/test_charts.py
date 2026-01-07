@@ -1,6 +1,5 @@
 """Unit tests for amc.reportexport.charts module."""
 
-import pytest
 from openpyxl import Workbook
 from openpyxl.chart import PieChart
 

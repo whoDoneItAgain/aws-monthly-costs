@@ -1,9 +1,6 @@
 """End-to-end tests with minimal mocking - tests actual file I/O and complete workflows."""
 
-from datetime import date
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-import os
 
 import pytest
 import yaml

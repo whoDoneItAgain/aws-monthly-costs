@@ -1,6 +1,5 @@
 """Unit tests for amc.reportexport.formatting module."""
 
-import pytest
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from unittest.mock import MagicMock, PropertyMock, patch

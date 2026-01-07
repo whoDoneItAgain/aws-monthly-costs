@@ -1,10 +1,6 @@
 """Comprehensive tests for amc.reportexport module to prevent future bugs."""
 
-from datetime import date
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from amc.reportexport import (
     export_analysis_excel,

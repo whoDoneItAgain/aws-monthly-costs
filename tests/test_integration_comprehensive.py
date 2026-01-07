@@ -1,11 +1,7 @@
 """Comprehensive integration tests for 100% coverage - separate commit."""
 
-from datetime import date
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-import sys
+from unittest.mock import MagicMock, patch
 
-import pytest
 import yaml
 
 from amc.__main__ import main

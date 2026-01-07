@@ -1,8 +1,7 @@
 """Additional unit tests for amc.__main__ module to achieve 100% coverage."""
 
 from datetime import date
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import patch
 import logging
 
 import pytest

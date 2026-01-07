@@ -1,9 +1,6 @@
 """Additional unit tests for service calculator to achieve 100% coverage."""
 
-from datetime import date
-from unittest.mock import MagicMock
 
-import pytest
 
 from amc.runmodes.service.calculator import _build_cost_matrix
 

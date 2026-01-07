@@ -2,8 +2,7 @@
 
 import sys
 from datetime import date
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,7 +15,6 @@ from amc.constants import (
     RUN_MODE_ACCOUNT,
     RUN_MODE_BUSINESS_UNIT,
     RUN_MODE_SERVICE,
-    TIME_PERIOD_YEAR,
 )
 
 
