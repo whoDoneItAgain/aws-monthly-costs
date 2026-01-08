@@ -6,7 +6,7 @@ import pytest
 
 from amc.__main__ import parse_time_period, validate_year_data
 from amc.constants import TIME_PERIOD_YEAR, MIN_MONTHS_FOR_YEAR_ANALYSIS
-from amc.reportexport import (
+from amc.reportexport.year_analysis import (
     _aggregate_year_costs,
     _calculate_year_daily_average,
     _calculate_year_monthly_average,
