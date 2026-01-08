@@ -357,7 +357,7 @@ class TestCalculateBusinessUnitCosts:
         assert result["2024-Jan"]["production"] == 1000.00
         assert result["2024-Jan"]["development"] == 800.00  # 500 + 300
         assert result["2024-Jan"]["ss"] == 200.00
-        
+
         # Verify all_account_costs is returned
         assert all_account_costs is not None
         assert "2024-Jan" in all_account_costs

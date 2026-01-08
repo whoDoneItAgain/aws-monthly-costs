@@ -40,9 +40,15 @@ from amc.reportexport.analysis_tables import (
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, account_id_to_name=None, comparison_months=None):
+def _create_account_summary_sheet(
+    worksheet,
+    account_groups,
+    all_account_costs,
+    account_id_to_name=None,
+    comparison_months=None,
+):
     """Create account group allocation summary sheet.
-    
+
     Args:
         worksheet: openpyxl worksheet object
         account_groups: Dictionary of business unit account groups
@@ -54,7 +60,7 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
     assigned_accounts = set()
     for bu, bu_accounts in account_groups.items():
         assigned_accounts.update(bu_accounts.keys())
-    
+
     # Get account IDs from cost data, filtered by comparison months if provided
     if comparison_months:
         # Only include accounts that have costs in at least one of the comparison months
@@ -66,10 +72,10 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
         # Use first month as before for backward compatibility
         first_month_key = next(iter(all_account_costs.keys()))
         all_cost_account_ids = set(all_account_costs[first_month_key].keys())
-    
+
     # Identify unallocated accounts
     unallocated_account_ids = all_cost_account_ids - assigned_accounts
-    
+
     # Define styles matching existing sheets
     title_font = Font(bold=True, size=16)
     section_font = Font(bold=True, size=12)
@@ -82,35 +88,35 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
     warning_fill = PatternFill(
         start_color="FFFFC7CE", end_color="FFFFC7CE", fill_type="solid"
     )
-    
+
     # Title
     worksheet["A1"] = "ACCOUNT GROUP ALLOCATION SUMMARY"
     worksheet["A1"].font = title_font
-    
+
     row = 3
-    
+
     # Show accounts by BU
     for bu in sorted(account_groups.keys()):
         bu_accounts = account_groups[bu]
-        
+
         # BU header with styling
         cell = worksheet.cell(row, 1, f"{bu.upper()}")
         cell.font = section_font
         row += 1
-        
+
         # Column headers with styling matching existing sheets
         header_cell_1 = worksheet.cell(row, 1, "Account ID")
         header_cell_1.font = header_font
         header_cell_1.fill = header_fill
         header_cell_1.alignment = header_alignment
-        
+
         if account_id_to_name:
             header_cell_2 = worksheet.cell(row, 2, "Account Name")
             header_cell_2.font = header_font
             header_cell_2.fill = header_fill
             header_cell_2.alignment = header_alignment
         row += 1
-        
+
         if bu_accounts:
             # Filter accounts to only show those with costs in comparison periods (if specified)
             accounts_to_show = []
@@ -118,14 +124,15 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
                 # If filtering by comparison months, only show accounts with costs in those months
                 if comparison_months:
                     has_costs = any(
-                        month in all_account_costs and account_id in all_account_costs[month]
+                        month in all_account_costs
+                        and account_id in all_account_costs[month]
                         for month in comparison_months
                     )
                     if has_costs:
                         accounts_to_show.append(account_id)
                 else:
                     accounts_to_show.append(account_id)
-            
+
             if accounts_to_show:
                 for account_id in accounts_to_show:
                     worksheet.cell(row, 1, account_id)
@@ -133,39 +140,43 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
                         worksheet.cell(row, 2, account_id_to_name[account_id])
                     row += 1
             else:
-                cell = worksheet.cell(row, 1, "(no accounts with costs in comparison period)")
+                cell = worksheet.cell(
+                    row, 1, "(no accounts with costs in comparison period)"
+                )
                 cell.font = Font(italic=True, color="FF999999")
                 row += 1
         else:
             cell = worksheet.cell(row, 1, "(no accounts)")
             cell.font = Font(italic=True, color="FF999999")
             row += 1
-        
+
         row += 1  # Add blank line between BUs
-    
+
     # Show unallocated accounts if any with warning styling
-    unalloc_header = worksheet.cell(row, 1, f"UNALLOCATED ACCOUNTS ({len(unallocated_account_ids)})")
+    unalloc_header = worksheet.cell(
+        row, 1, f"UNALLOCATED ACCOUNTS ({len(unallocated_account_ids)})"
+    )
     if unallocated_account_ids:
         unalloc_header.font = warning_font
         unalloc_header.fill = warning_fill
     else:
         unalloc_header.font = section_font
     row += 1
-    
+
     if unallocated_account_ids:
         # Column headers with styling
         header_cell_1 = worksheet.cell(row, 1, "Account ID")
         header_cell_1.font = header_font
         header_cell_1.fill = header_fill
         header_cell_1.alignment = header_alignment
-        
+
         if account_id_to_name:
             header_cell_2 = worksheet.cell(row, 2, "Account Name")
             header_cell_2.font = header_font
             header_cell_2.fill = header_fill
             header_cell_2.alignment = header_alignment
         row += 1
-        
+
         for account_id in sorted(unallocated_account_ids):
             worksheet.cell(row, 1, account_id)
             if account_id_to_name and account_id in account_id_to_name:
@@ -175,11 +186,11 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
         cell = worksheet.cell(row, 1, "None")
         cell.font = Font(italic=True, color="FF666666")
         row += 1
-    
+
     # Auto-adjust column widths
-    worksheet.column_dimensions['A'].width = 20
+    worksheet.column_dimensions["A"].width = 20
     if account_id_to_name:
-        worksheet.column_dimensions['B'].width = 40
+        worksheet.column_dimensions["B"].width = 40
 
 
 def export_analysis_excel(
@@ -249,7 +260,13 @@ def export_analysis_excel(
     # Create Account Summary sheet first (if all_account_costs provided)
     if all_account_costs:
         ws_summary = wb.create_sheet("Account Summary", 0)
-        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name, last_2_months)
+        _create_account_summary_sheet(
+            ws_summary,
+            bu_group_list,
+            all_account_costs,
+            account_id_to_name,
+            last_2_months,
+        )
 
     # Create analysis sheets
     ws_bu = wb.create_sheet("BU Costs")
@@ -329,7 +346,7 @@ def _create_bu_analysis_tables(
     bus_from_config = set(group_list.keys())
     bus_from_data = set(month2_costs.keys()) - {"total"}
     all_bus = list(bus_from_config | bus_from_data)
-    
+
     # Sort BUs by most recent month's cost in descending order
     all_bus.sort(key=lambda bu: month2_costs.get(bu, 0), reverse=True)
 
@@ -557,7 +574,14 @@ def _create_service_analysis_tables(
     create_section_title(ws, "Top Services Monthly Totals")
 
     row = 3
-    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"]
+    headers = [
+        "Month",
+        last_2_months[0],
+        last_2_months[1],
+        "Difference",
+        "% Difference",
+        "% Spend",
+    ]
     create_analysis_header_row(ws, row, headers)
 
     # Data rows for monthly totals (top 10 only)
@@ -692,7 +716,13 @@ def _create_service_analysis_tables(
     create_section_title(ws_daily, "Top Services Daily Average")
 
     row = 3
-    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"]
+    headers = [
+        "Month",
+        last_2_months[0],
+        last_2_months[1],
+        "Difference",
+        "% Difference",
+    ]
     create_analysis_header_row(ws_daily, row, headers)
 
     # Data rows for daily average (top 10 only)
@@ -780,7 +810,14 @@ def _create_account_analysis_tables(
     create_section_title(ws, "Top Accounts Monthly Totals")
 
     row = 3
-    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"]
+    headers = [
+        "Month",
+        last_2_months[0],
+        last_2_months[1],
+        "Difference",
+        "% Difference",
+        "% Spend",
+    ]
     create_analysis_header_row(ws, row, headers)
 
     # Data rows for monthly totals (top 10 only)
@@ -915,7 +952,13 @@ def _create_account_analysis_tables(
     create_section_title(ws_daily, "Top Accounts Daily Average")
 
     row = 3
-    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"]
+    headers = [
+        "Month",
+        last_2_months[0],
+        last_2_months[1],
+        "Difference",
+        "% Difference",
+    ]
     create_analysis_header_row(ws_daily, row, headers)
 
     # Data rows for daily average (top 10 only)
@@ -979,5 +1022,3 @@ def _create_account_analysis_tables(
 
     # Auto-adjust column widths
     auto_adjust_column_widths_advanced(ws_daily)
-
-

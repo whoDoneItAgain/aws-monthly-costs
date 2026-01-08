@@ -467,7 +467,11 @@ def _process_business_unit_mode(
 
     # Store for analysis file (only for non-daily mode)
     if run_mode == RUN_MODE_BUSINESS_UNIT:
-        analysis_data[RUN_MODE_BUSINESS_UNIT] = (cost_matrix, account_groups, all_account_costs)
+        analysis_data[RUN_MODE_BUSINESS_UNIT] = (
+            cost_matrix,
+            account_groups,
+            all_account_costs,
+        )
 
     # Generate individual reports if requested
     for file_format in output_formats:
@@ -562,7 +566,7 @@ def _generate_analysis_file(output_dir: Path, analysis_data: dict):
     bu_matrix, bu_groups, all_account_costs = analysis_data[RUN_MODE_BUSINESS_UNIT]
     service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
     account_matrix, account_names, account_list = analysis_data[RUN_MODE_ACCOUNT]
-    
+
     # Build account ID to name mapping from Organizations API data
     account_id_to_name = {acc["Id"]: acc["Name"] for acc in account_list}
 
@@ -624,7 +628,7 @@ def _generate_year_analysis_file(
     bu_matrix, bu_groups, all_account_costs = analysis_data[RUN_MODE_BUSINESS_UNIT]
     service_matrix, service_list = analysis_data[RUN_MODE_SERVICE]
     account_matrix, account_names, account_list = analysis_data[RUN_MODE_ACCOUNT]
-    
+
     # Build account ID to name mapping from Organizations API data
     account_id_to_name = {acc["Id"]: acc["Name"] for acc in account_list}
 

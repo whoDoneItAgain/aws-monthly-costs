@@ -142,7 +142,7 @@ def calculate_account_costs(
 
     # Build matrix with only top accounts
     top_matrix = build_top_n_matrix(account_cost_matrix, top_sorted_accounts)
-    
+
     return top_matrix, account_list
 
 

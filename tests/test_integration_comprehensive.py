@@ -272,20 +272,25 @@ class TestYearModeIntegration:
         # Create 24 months of mock data
         mock_results = []
         for i in range(24):
-            mock_results.append({
-                "TimePeriod": {
-                    "Start": f"2024-{(i % 12) + 1:02d}-01",
-                    "End": f"2024-{((i + 1) % 12) + 1:02d}-01",
-                },
-                "Groups": [
-                    {
-                        "Keys": ["123456789012"],
-                        "Metrics": {
-                            "UnblendedCost": {"Amount": f"{1000 + i * 10}.00", "Unit": "USD"}
-                        },
-                    }
-                ],
-            })
+            mock_results.append(
+                {
+                    "TimePeriod": {
+                        "Start": f"2024-{(i % 12) + 1:02d}-01",
+                        "End": f"2024-{((i + 1) % 12) + 1:02d}-01",
+                    },
+                    "Groups": [
+                        {
+                            "Keys": ["123456789012"],
+                            "Metrics": {
+                                "UnblendedCost": {
+                                    "Amount": f"{1000 + i * 10}.00",
+                                    "Unit": "USD",
+                                }
+                            },
+                        }
+                    ],
+                }
+            )
 
         mock_ce = MagicMock()
         mock_ce.get_cost_and_usage.return_value = {"ResultsByTime": mock_results}

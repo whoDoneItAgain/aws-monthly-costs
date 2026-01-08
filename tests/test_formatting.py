@@ -96,7 +96,7 @@ class TestApplyHeaderStyle:
         ws = wb.active
         cell = ws["A1"]
         result = apply_header_style(cell)
-        
+
         assert result.font.bold is True
         assert result.fill.fill_type == "solid"
         assert result.alignment.horizontal == "center"
@@ -106,13 +106,17 @@ class TestApplyHeaderStyle:
         wb = Workbook()
         ws = wb.active
         cell = ws["A1"]
-        
+
         custom_font = Font(bold=False, size=16)
-        custom_fill = PatternFill(start_color="FFFFFFFF", end_color="FFFFFFFF", fill_type="solid")
+        custom_fill = PatternFill(
+            start_color="FFFFFFFF", end_color="FFFFFFFF", fill_type="solid"
+        )
         custom_alignment = Alignment(horizontal="left")
-        
-        result = apply_header_style(cell, font=custom_font, fill=custom_fill, alignment=custom_alignment)
-        
+
+        result = apply_header_style(
+            cell, font=custom_font, fill=custom_fill, alignment=custom_alignment
+        )
+
         assert result.font.bold is False
         assert result.fill.start_color.rgb == "FFFFFFFF"
         assert result.alignment.horizontal == "left"
@@ -127,7 +131,7 @@ class TestApplyCurrencyFormat:
         ws = wb.active
         cell = ws["A1"]
         cell.value = 1234.56
-        
+
         result = apply_currency_format(cell)
         assert result.number_format == CURRENCY_FORMAT
 
@@ -141,7 +145,7 @@ class TestApplyPercentageFormat:
         ws = wb.active
         cell = ws["A1"]
         cell.value = 0.1234
-        
+
         result = apply_percentage_format(cell)
         assert result.number_format == PERCENTAGE_FORMAT
 
@@ -156,13 +160,13 @@ class TestAutoAdjustColumnWidths:
         ws["A1"] = "Short"
         ws["A2"] = "This is a much longer text"
         ws["B1"] = "Medium text"
-        
+
         auto_adjust_column_widths(ws, max_width=50, min_width=12)
-        
+
         # Column A should be wider due to longer text
         col_a_width = ws.column_dimensions["A"].width
         col_b_width = ws.column_dimensions["B"].width
-        
+
         assert col_a_width >= 12  # At least min_width
         assert col_a_width <= 50  # At most max_width
         assert col_b_width >= 12
@@ -171,9 +175,9 @@ class TestAutoAdjustColumnWidths:
         """Test auto-adjusting with empty columns."""
         wb = Workbook()
         ws = wb.active
-        
+
         auto_adjust_column_widths(ws, max_width=50, min_width=12)
-        
+
         # Should apply min_width to empty columns
         col_a_width = ws.column_dimensions["A"].width
         assert col_a_width >= 12
@@ -183,9 +187,9 @@ class TestAutoAdjustColumnWidths:
         wb = Workbook()
         ws = wb.active
         ws["A1"] = "A" * 100  # Very long text
-        
+
         auto_adjust_column_widths(ws, max_width=50, min_width=12)
-        
+
         # Should be capped at max_width
         col_a_width = ws.column_dimensions["A"].width
         assert col_a_width == 50
@@ -197,9 +201,9 @@ class TestAutoAdjustColumnWidths:
         ws["A1"] = "Text"
         ws["A2"] = None
         ws["A3"] = "More text"
-        
+
         auto_adjust_column_widths(ws, max_width=50, min_width=12)
-        
+
         col_a_width = ws.column_dimensions["A"].width
         assert col_a_width >= 12
 
@@ -209,9 +213,9 @@ class TestAutoAdjustColumnWidths:
         ws = wb.active
         ws["A1"] = 12345.67
         ws["A2"] = 1000000
-        
+
         auto_adjust_column_widths(ws, max_width=50, min_width=12)
-        
+
         col_a_width = ws.column_dimensions["A"].width
         assert col_a_width >= 12
 
@@ -219,22 +223,24 @@ class TestAutoAdjustColumnWidths:
         """Test auto-adjusting when an exception occurs during width calculation."""
         wb = Workbook()
         ws = wb.active
-        
+
         # Create a scenario that might cause an exception
         # Add a cell with a problematic value
         ws["A1"] = "Normal text"
-        
+
         # Manually create a column with missing attributes to trigger exception
-        with patch.object(type(ws), 'columns', new_callable=PropertyMock) as mock_columns:
+        with patch.object(
+            type(ws), "columns", new_callable=PropertyMock
+        ) as mock_columns:
             # Create a mock column that will raise an exception
             mock_column = [MagicMock()]
             mock_column[0].column_letter = "A"
             mock_column[0].value = "Test"
             # Make the generator expression fail
             mock_columns.return_value = [mock_column]
-            
+
             # This should catch the exception and use default width
             auto_adjust_column_widths(ws, max_width=50, min_width=12)
-            
+
             # Should have set default width despite exception
             assert ws.column_dimensions["A"].width == 12

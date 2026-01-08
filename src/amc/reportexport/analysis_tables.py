@@ -132,7 +132,13 @@ def write_data_row(worksheet, row, item_name, val1, val2, bu_total):
 
 
 def create_monthly_totals_table(
-    worksheet, cost_matrix, items, last_2_months, bu_cost_matrix, title, include_other=True
+    worksheet,
+    cost_matrix,
+    items,
+    last_2_months,
+    bu_cost_matrix,
+    title,
+    include_other=True,
 ):
     """Create a monthly totals table with top items.
 
@@ -159,7 +165,14 @@ def create_monthly_totals_table(
 
     # Header row
     row = 3
-    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference", "% Spend"]
+    headers = [
+        "Month",
+        last_2_months[0],
+        last_2_months[1],
+        "Difference",
+        "% Difference",
+        "% Spend",
+    ]
     create_analysis_header_row(worksheet, row, headers)
 
     # Data rows
@@ -219,7 +232,13 @@ def create_daily_average_table(
 
     # Header row
     row = 3
-    headers = ["Month", last_2_months[0], last_2_months[1], "Difference", "% Difference"]
+    headers = [
+        "Month",
+        last_2_months[0],
+        last_2_months[1],
+        "Difference",
+        "% Difference",
+    ]
     create_analysis_header_row(worksheet, row, headers)
 
     # Data rows
@@ -251,7 +270,13 @@ def create_daily_average_table(
 
 
 def create_pie_chart_with_data(
-    worksheet_chart, worksheet_data, items, cost_matrix, last_month, title, chart_position
+    worksheet_chart,
+    worksheet_data,
+    items,
+    cost_matrix,
+    last_month,
+    title,
+    chart_position,
 ):
     """Create a pie chart with helper data for top items.
 
@@ -275,7 +300,9 @@ def create_pie_chart_with_data(
 
     for item in items:
         cost = month_costs.get(item, 0)
-        pct_spend = cost / month_costs.get("total", 1) if month_costs.get("total", 0) > 0 else 0
+        pct_spend = (
+            cost / month_costs.get("total", 1) if month_costs.get("total", 0) > 0 else 0
+        )
 
         if pct_spend >= 0.01:  # Include items >= 1%
             chart_data.append((item, cost))

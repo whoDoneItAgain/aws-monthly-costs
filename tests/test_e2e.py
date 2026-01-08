@@ -109,7 +109,7 @@ class TestEndToEndFileGeneration:
         # Verify CSV file was created
         csv_file = output_dir / "aws-monthly-costs-account.csv"
         assert csv_file.exists(), "CSV file should be created"
-        
+
         # Verify file has content
         content = csv_file.read_text()
         assert len(content) > 0, "CSV file should have content"
@@ -197,12 +197,12 @@ class TestEndToEndFileGeneration:
         # Verify Excel file was created
         excel_file = output_dir / "aws-monthly-costs-bu.xlsx"
         assert excel_file.exists(), "Excel file should be created"
-        
+
         # Verify it's a valid Excel file by checking magic bytes
         with open(excel_file, "rb") as f:
             magic = f.read(4)
             # Excel files start with PK (zip format)
-            assert magic[:2] == b'PK', "Excel file should be valid"
+            assert magic[:2] == b"PK", "Excel file should be valid"
 
     @patch("amc.__main__.boto3.Session")
     @patch("amc.__main__.configparser.RawConfigParser")
@@ -286,7 +286,7 @@ class TestEndToEndFileGeneration:
         # Verify both files were created
         csv_file = output_dir / "aws-monthly-costs-service.csv"
         excel_file = output_dir / "aws-monthly-costs-service.xlsx"
-        
+
         assert csv_file.exists(), "CSV file should be created"
         assert excel_file.exists(), "Excel file should be created"
 
@@ -377,7 +377,9 @@ class TestEndToEndFileGeneration:
 
         # Verify analysis file was created
         analysis_file = output_dir / "aws-monthly-costs-analysis.xlsx"
-        assert analysis_file.exists(), "Analysis file should be created when all three modes are run"
+        assert analysis_file.exists(), (
+            "Analysis file should be created when all three modes are run"
+        )
 
 
 class TestEndToEndErrorScenarios:
@@ -386,7 +388,7 @@ class TestEndToEndErrorScenarios:
     def test_e2e_missing_config_file(self, tmp_path):
         """Test that missing config file raises appropriate error."""
         nonexistent_config = tmp_path / "nonexistent.yaml"
-        
+
         test_args = [
             "amc",
             "--profile",
@@ -403,7 +405,7 @@ class TestEndToEndErrorScenarios:
         """Test that invalid YAML raises appropriate error."""
         config_file = tmp_path / "invalid.yaml"
         config_file.write_text("invalid: yaml: content: [unclosed")
-        
+
         test_args = [
             "amc",
             "--profile",
@@ -420,7 +422,7 @@ class TestEndToEndErrorScenarios:
         """Test that empty config file raises appropriate error."""
         config_file = tmp_path / "empty.yaml"
         config_file.write_text("")
-        
+
         test_args = [
             "amc",
             "--profile",

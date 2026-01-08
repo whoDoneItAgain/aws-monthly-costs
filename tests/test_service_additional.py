@@ -1,7 +1,5 @@
 """Additional unit tests for service calculator to achieve 100% coverage."""
 
-
-
 from amc.runmodes.service.calculator import _build_cost_matrix
 
 
@@ -11,7 +9,7 @@ class TestServiceCalculatorCoverage:
     def test_build_cost_matrix_with_exclusions(self):
         """Test building cost matrix when services match exclusion list."""
         service_list = ["AWS Lambda", "Amazon S3", "AWS Support"]
-        
+
         cost_matrix_raw = {
             "2024-01": {
                 "AWS Lambda": 100.0,
@@ -36,7 +34,7 @@ class TestServiceCalculatorCoverage:
         # Check that AWS Support was excluded
         assert "AWS Support" not in result["2024-01"]
         assert "AWS Support" not in result["2024-02"]
-        
+
         # Check that other services are included
         assert result["2024-01"]["AWS Lambda"] == 100.0
         assert result["2024-01"]["Amazon S3"] == 200.0
@@ -46,7 +44,7 @@ class TestServiceCalculatorCoverage:
     def test_build_cost_matrix_all_services_excluded(self):
         """Test building cost matrix when all services are excluded."""
         service_list = ["AWS Support", "AWS Tax"]
-        
+
         cost_matrix_raw = {
             "2024-01": {
                 "AWS Support": 50.0,
@@ -70,7 +68,7 @@ class TestServiceCalculatorCoverage:
     def test_build_cost_matrix_exclusion_not_in_service_list(self):
         """Test building cost matrix when exclusion doesn't match any service."""
         service_list = ["AWS Lambda", "Amazon S3"]
-        
+
         cost_matrix_raw = {
             "2024-01": {
                 "AWS Lambda": 100.0,
@@ -93,7 +91,7 @@ class TestServiceCalculatorCoverage:
     def test_build_cost_matrix_with_aggregation_and_exclusion(self):
         """Test building cost matrix with both aggregation and exclusions."""
         service_list = ["Amazon EC2", "AWS Lambda", "AWS Support"]
-        
+
         cost_matrix_raw = {
             "2024-01": {
                 "Amazon EC2": 100.0,
@@ -102,9 +100,7 @@ class TestServiceCalculatorCoverage:
             },
         }
 
-        service_aggregations = {
-            "Compute": ["Amazon EC2", "AWS Lambda"]
-        }
+        service_aggregations = {"Compute": ["Amazon EC2", "AWS Lambda"]}
         exclusions = ["AWS Support"]
 
         result = _build_cost_matrix(
@@ -113,11 +109,11 @@ class TestServiceCalculatorCoverage:
 
         # Support should be excluded
         assert "AWS Support" not in result["2024-01"]
-        
+
         # Compute aggregation should be created
         assert "Compute" in result["2024-01"]
         assert result["2024-01"]["Compute"] == 150.0
-        
+
         # Individual services should not be in result (they're aggregated)
         assert "Amazon EC2" not in result["2024-01"]
         assert "AWS Lambda" not in result["2024-01"]

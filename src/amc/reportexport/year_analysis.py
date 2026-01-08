@@ -150,7 +150,13 @@ def export_year_analysis_excel(
         ws_summary = wb.create_sheet("Account Summary", 0)
         # For year analysis, use both year periods for filtering
         comparison_months = year1_months + year2_months
-        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name, comparison_months)
+        _create_account_summary_sheet(
+            ws_summary,
+            bu_group_list,
+            all_account_costs,
+            account_id_to_name,
+            comparison_months,
+        )
 
     # Aggregate data into yearly totals
     bu_year1 = _aggregate_year_costs(bu_cost_matrix, year1_months)
@@ -445,13 +451,13 @@ def _create_year_comparison_sheet(
     # Headers - match monthly format with "Month" instead of "Group"
     row = 3
     headers = ["Month", year1_label, year2_label, "Difference", "% Difference"]
-    
+
     # Add % Spend column header (only for sheets with totals or Other, not for daily/monthly averages)
     has_totals = "total" in group_list
     has_other = "Other" in group_list
     if (has_totals or has_other) and include_chart:
         headers.append("% Spend")
-    
+
     create_analysis_header_row(worksheet, row, headers)
 
     # Sort groups by year2 (most recent) value in descending order, with 'Other' and 'total' at the end

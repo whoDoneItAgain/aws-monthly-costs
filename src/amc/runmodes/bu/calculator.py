@@ -67,7 +67,7 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
 
     for cost_month, costs_for_month in account_costs.items():
         bu_month_costs: dict = {}
-        
+
         # Track which accounts have been assigned to a BU
         assigned_accounts = set()
 
@@ -78,7 +78,7 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
                 costs_for_month.get(account_id, 0.0)
                 for account_id in bu_accounts.keys()
             )
-            
+
             # Track assigned accounts
             assigned_accounts.update(bu_accounts.keys())
 
@@ -91,18 +91,18 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
         # Add shared services as separate line item if not allocated
         if ss_percentages is None and ss_costs is not None:
             bu_month_costs["ss"] = ss_costs[cost_month]["ss"]
-        
+
         # Include costs from unallocated accounts
         unallocated_accounts = {
             account_id: cost
             for account_id, cost in costs_for_month.items()
             if account_id not in assigned_accounts
         }
-        
+
         if unallocated_accounts:
             unallocated_total = sum(unallocated_accounts.values())
             bu_month_costs["unallocated"] = unallocated_total
-            
+
             # Log unallocated accounts for review
             LOGGER.warning(
                 f"Unallocated accounts found for {cost_month}: "
