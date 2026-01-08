@@ -6,7 +6,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.chart import PieChart, Reference
 from openpyxl.chart.label import DataLabelList
-from openpyxl.styles import Font
+from openpyxl.styles import Alignment, Font, PatternFill
 
 from amc.reportexport.calculations import (
     calculate_difference,
