@@ -93,7 +93,7 @@ class TestGenerateAnalysisFile:
         caplog.set_level(logging.INFO)
         
         analysis_data = {
-            RUN_MODE_ACCOUNT: ({"Jan": {"acc1": 100}}, ["acc1"]),
+            RUN_MODE_ACCOUNT: ({"Jan": {"acc1": 100}}, ["acc1"], []),
             RUN_MODE_SERVICE: ({"Jan": {"svc1": 200}}, ["svc1"]),
             RUN_MODE_BUSINESS_UNIT: None,  # Missing
         }
@@ -112,7 +112,7 @@ class TestGenerateAnalysisFile:
         analysis_data = {
             RUN_MODE_ACCOUNT: None,
             RUN_MODE_SERVICE: None,
-            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}),
+            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}, {}),
         }
 
         _generate_analysis_file(tmp_path, analysis_data)
@@ -130,9 +130,9 @@ class TestGenerateAnalysisFile:
         caplog.set_level(logging.INFO)
         
         analysis_data = {
-            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}),
+            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}, {}),
             RUN_MODE_SERVICE: ({"Jan": {"svc1": 200}}, ["svc1"]),
-            RUN_MODE_ACCOUNT: ({"Jan": {"acc1": 100}}, ["acc1"]),
+            RUN_MODE_ACCOUNT: ({"Jan": {"acc1": 100}}, ["acc1"], []),
         }
 
         _generate_analysis_file(tmp_path, analysis_data)
@@ -154,7 +154,7 @@ class TestGenerateYearAnalysisFile:
         analysis_data = {
             RUN_MODE_ACCOUNT: None,
             RUN_MODE_SERVICE: ({"Jan": {"svc1": 200}}, ["svc1"]),
-            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}),
+            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}, {}),
         }
 
         mock_ce_client = MagicMock()
@@ -185,9 +185,9 @@ class TestGenerateYearAnalysisFile:
         caplog.set_level(logging.ERROR)
         
         analysis_data = {
-            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}),
+            RUN_MODE_BUSINESS_UNIT: ({"Jan": {"bu1": 300}}, {"bu1": []}, {}),
             RUN_MODE_SERVICE: ({"Jan": {"svc1": 200}}, ["svc1"]),
-            RUN_MODE_ACCOUNT: ({"Jan": {"acc1": 100}}, ["acc1"]),
+            RUN_MODE_ACCOUNT: ({"Jan": {"acc1": 100}}, ["acc1"], []),
         }
 
         # Mock validation to raise error
@@ -235,9 +235,9 @@ class TestGenerateYearAnalysisFile:
                 "2025-Jul": {"bu1": 280}, "2025-Aug": {"bu1": 290},
                 "2025-Sep": {"bu1": 300}, "2025-Oct": {"bu1": 310},
                 "2025-Nov": {"bu1": 320}, "2025-Dec": {"bu1": 330},
-            }, {"bu1": []}),
+            }, {"bu1": []}, {}),
             RUN_MODE_SERVICE: ({"2024-Jan": {"svc1": 200}}, ["svc1"]),
-            RUN_MODE_ACCOUNT: ({"2024-Jan": {"acc1": 100}}, ["acc1"]),
+            RUN_MODE_ACCOUNT: ({"2024-Jan": {"acc1": 100}}, ["acc1"], []),
         }
 
         # Mock validation to return year splits

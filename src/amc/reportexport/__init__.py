@@ -33,6 +33,148 @@ from amc.reportexport.charts import (
 LOGGER = logging.getLogger(__name__)
 
 
+def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, account_id_to_name=None, comparison_months=None):
+    """Create account group allocation summary sheet.
+    
+    Args:
+        worksheet: openpyxl worksheet object
+        account_groups: Dictionary of business unit account groups
+        all_account_costs: Dictionary of all account costs from API
+        account_id_to_name: Optional dictionary mapping account IDs to names
+        comparison_months: Optional list of months to filter accounts by (show only accounts with costs in these months)
+    """
+    # Get all account IDs that are defined in account_groups
+    assigned_accounts = set()
+    for bu, bu_accounts in account_groups.items():
+        assigned_accounts.update(bu_accounts.keys())
+    
+    # Get account IDs from cost data, filtered by comparison months if provided
+    if comparison_months:
+        # Only include accounts that have costs in at least one of the comparison months
+        all_cost_account_ids = set()
+        for month in comparison_months:
+            if month in all_account_costs:
+                all_cost_account_ids.update(all_account_costs[month].keys())
+    else:
+        # Use first month as before for backward compatibility
+        first_month_key = next(iter(all_account_costs.keys()))
+        all_cost_account_ids = set(all_account_costs[first_month_key].keys())
+    
+    # Identify unallocated accounts
+    unallocated_account_ids = all_cost_account_ids - assigned_accounts
+    
+    # Define styles matching existing sheets
+    title_font = Font(bold=True, size=16)
+    section_font = Font(bold=True, size=12)
+    header_font = Font(bold=True, size=14, color="FF000000")
+    header_fill = PatternFill(
+        start_color="FFD9E1F2", end_color="FFD9E1F2", fill_type="solid"
+    )
+    header_alignment = Alignment(horizontal="center")
+    warning_font = Font(bold=True, size=12, color="FF9C0006")
+    warning_fill = PatternFill(
+        start_color="FFFFC7CE", end_color="FFFFC7CE", fill_type="solid"
+    )
+    
+    # Title
+    worksheet["A1"] = "ACCOUNT GROUP ALLOCATION SUMMARY"
+    worksheet["A1"].font = title_font
+    
+    row = 3
+    
+    # Show accounts by BU
+    for bu in sorted(account_groups.keys()):
+        bu_accounts = account_groups[bu]
+        
+        # BU header with styling
+        cell = worksheet.cell(row, 1, f"{bu.upper()}")
+        cell.font = section_font
+        row += 1
+        
+        # Column headers with styling matching existing sheets
+        header_cell_1 = worksheet.cell(row, 1, "Account ID")
+        header_cell_1.font = header_font
+        header_cell_1.fill = header_fill
+        header_cell_1.alignment = header_alignment
+        
+        if account_id_to_name:
+            header_cell_2 = worksheet.cell(row, 2, "Account Name")
+            header_cell_2.font = header_font
+            header_cell_2.fill = header_fill
+            header_cell_2.alignment = header_alignment
+        row += 1
+        
+        if bu_accounts:
+            # Filter accounts to only show those with costs in comparison periods (if specified)
+            accounts_to_show = []
+            for account_id in sorted(bu_accounts.keys()):
+                # If filtering by comparison months, only show accounts with costs in those months
+                if comparison_months:
+                    has_costs = any(
+                        month in all_account_costs and account_id in all_account_costs[month]
+                        for month in comparison_months
+                    )
+                    if has_costs:
+                        accounts_to_show.append(account_id)
+                else:
+                    accounts_to_show.append(account_id)
+            
+            if accounts_to_show:
+                for account_id in accounts_to_show:
+                    worksheet.cell(row, 1, account_id)
+                    if account_id_to_name and account_id in account_id_to_name:
+                        worksheet.cell(row, 2, account_id_to_name[account_id])
+                    row += 1
+            else:
+                cell = worksheet.cell(row, 1, "(no accounts with costs in comparison period)")
+                cell.font = Font(italic=True, color="FF999999")
+                row += 1
+        else:
+            cell = worksheet.cell(row, 1, "(no accounts)")
+            cell.font = Font(italic=True, color="FF999999")
+            row += 1
+        
+        row += 1  # Add blank line between BUs
+    
+    # Show unallocated accounts if any with warning styling
+    unalloc_header = worksheet.cell(row, 1, f"UNALLOCATED ACCOUNTS ({len(unallocated_account_ids)})")
+    if unallocated_account_ids:
+        unalloc_header.font = warning_font
+        unalloc_header.fill = warning_fill
+    else:
+        unalloc_header.font = section_font
+    row += 1
+    
+    if unallocated_account_ids:
+        # Column headers with styling
+        header_cell_1 = worksheet.cell(row, 1, "Account ID")
+        header_cell_1.font = header_font
+        header_cell_1.fill = header_fill
+        header_cell_1.alignment = header_alignment
+        
+        if account_id_to_name:
+            header_cell_2 = worksheet.cell(row, 2, "Account Name")
+            header_cell_2.font = header_font
+            header_cell_2.fill = header_fill
+            header_cell_2.alignment = header_alignment
+        row += 1
+        
+        for account_id in sorted(unallocated_account_ids):
+            worksheet.cell(row, 1, account_id)
+            if account_id_to_name and account_id in account_id_to_name:
+                worksheet.cell(row, 2, account_id_to_name[account_id])
+            row += 1
+    else:
+        cell = worksheet.cell(row, 1, "None")
+        cell.font = Font(italic=True, color="FF666666")
+        row += 1
+    
+    # Auto-adjust column widths
+    worksheet.column_dimensions['A'].width = 20
+    if account_id_to_name:
+        worksheet.column_dimensions['B'].width = 40
+
+
 def export_report(
     export_file, cost_matrix, group_list, group_by_type, output_format="csv"
 ):
@@ -71,7 +213,14 @@ def _export_to_csv(export_file, cost_matrix, group_list, group_by_type, months):
                 ]
                 writer.writerow(csv_row)
         elif group_by_type == "bu":
-            bus = list(group_list.keys()) + ["total"]
+            # Get all BUs from config and any additional ones in data (like "unallocated")
+            first_month = list(cost_matrix.keys())[0] if cost_matrix else None
+            if first_month:
+                bus_from_config = set(group_list.keys())
+                bus_from_data = set(cost_matrix[first_month].keys()) - {"total"}
+                bus = list(bus_from_config | bus_from_data) + ["total"]
+            else:
+                bus = list(group_list.keys()) + ["total"]
             for bu in bus:
                 csv_row = [bu] + [cost_matrix[month].get(bu, 0) for month in months]
                 writer.writerow(csv_row)
@@ -112,7 +261,14 @@ def _export_to_excel(export_file, cost_matrix, group_list, group_by_type, months
                 worksheet.cell(row=row_idx, column=col_idx, value=value)
             row_idx += 1
     elif group_by_type == "bu":
-        bus = list(group_list.keys()) + ["total"]
+        # Get all BUs from config and any additional ones in data (like "unallocated")
+        first_month = months[0] if months else None
+        if first_month:
+            bus_from_config = set(group_list.keys())
+            bus_from_data = set(cost_matrix[first_month].keys()) - {"total"}
+            bus = list(bus_from_config | bus_from_data) + ["total"]
+        else:
+            bus = list(group_list.keys()) + ["total"]
         for bu in bus:
             worksheet.cell(row=row_idx, column=1, value=bu)
             for col_idx, month in enumerate(months, start=2):
@@ -153,10 +309,13 @@ def export_analysis_excel(
     service_group_list,
     account_cost_matrix,
     account_group_list,
+    all_account_costs=None,
+    account_id_to_name=None,
 ):
     """Export analysis Excel file with formatted tables and pie charts.
 
     Creates analysis tables showing:
+    - Account group allocation summary (first sheet)
     - Monthly totals (last 2 months comparison)
     - Daily average (last 2 months comparison)
     - Pie charts for business units, services, and accounts
@@ -169,6 +328,8 @@ def export_analysis_excel(
         service_group_list: List of services
         account_cost_matrix: Dictionary containing account cost data organized by month
         account_group_list: List of accounts
+        all_account_costs: Dictionary of all account costs (optional, for account summary)
+        account_id_to_name: Dictionary mapping account IDs to names (optional, for account summary)
     """
 
     LOGGER.info(f"Creating analysis Excel file: {output_file}")
@@ -203,6 +364,11 @@ def export_analysis_excel(
         return
 
     last_2_months = months[-2:]
+
+    # Create Account Summary sheet first (if all_account_costs provided)
+    if all_account_costs:
+        ws_summary = wb.create_sheet("Account Summary", 0)
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name, last_2_months)
 
     # Create analysis sheets
     ws_bu = wb.create_sheet("BU Costs")
@@ -270,10 +436,6 @@ def _create_bu_analysis_tables(
     row += 1
     data_start_row = row
 
-    # Sort BUs by most recent month's cost in descending order
-    bus = list(group_list.keys())
-    bus.sort(key=lambda bu: cost_matrix[last_2_months[1]].get(bu, 0), reverse=True)
-
     # Cache month dictionaries for faster lookups (performance optimization)
     # These cached references eliminate repeated dictionary traversals in the loops below
     # for main table, daily average calculations, and chart data processing
@@ -281,8 +443,17 @@ def _create_bu_analysis_tables(
     month2_costs = cost_matrix[last_2_months[1]]
     month2_total = month2_costs.get("total", 1)
 
+    # Get all BUs from both group_list and cost_matrix (to include "unallocated")
+    # Exclude 'total' as it's handled separately
+    bus_from_config = set(group_list.keys())
+    bus_from_data = set(month2_costs.keys()) - {"total"}
+    all_bus = list(bus_from_config | bus_from_data)
+    
+    # Sort BUs by most recent month's cost in descending order
+    all_bus.sort(key=lambda bu: month2_costs.get(bu, 0), reverse=True)
+
     # Display all BUs in the table
-    for bu in bus:
+    for bu in all_bus:
         val1 = month1_costs.get(bu, 0)
         val2 = month2_costs.get(bu, 0)
 
@@ -336,7 +507,7 @@ def _create_bu_analysis_tables(
     # Process BUs in single pass: add >= 1% spend, accumulate < 1% for "Other"
     # Performance optimization: Combined 2 loops into 1 (50% reduction in iterations)
     other_total = 0
-    for bu in bus:
+    for bu in all_bus:
         val2 = month2_costs.get(bu, 0)
         val1 = month1_costs.get(bu, 0)
 
@@ -424,7 +595,7 @@ def _create_bu_analysis_tables(
     # Data rows for daily average
     row += 1
     daily_start_row = row
-    for bu in bus:
+    for bu in all_bus:
         val1_monthly = month1_costs.get(bu, 0)
         val2_monthly = month2_costs.get(bu, 0)
 
@@ -1143,10 +1314,13 @@ def export_year_analysis_excel(
     account_group_list,
     year1_months,
     year2_months,
+    all_account_costs=None,
+    account_id_to_name=None,
 ):
     """Export year-level analysis Excel file with formatted tables and charts.
 
     Creates year analysis tables showing:
+    - Account group allocation summary (first sheet)
     - Yearly totals (last 2 complete 12-month periods comparison)
     - Daily average (for year periods)
     - Monthly average (for year periods)
@@ -1162,12 +1336,21 @@ def export_year_analysis_excel(
         account_group_list: List of accounts
         year1_months: List of month names for first year period
         year2_months: List of month names for second year period
+        all_account_costs: Dictionary of all account costs (optional, for account summary)
+        account_id_to_name: Dictionary mapping account IDs to names (optional, for account summary)
     """
     LOGGER.info(f"Creating year analysis Excel file: {output_file}")
 
     # Create a new workbook
     wb = Workbook()
     wb.remove(wb.active)
+
+    # Create Account Summary sheet first (if all_account_costs provided)
+    if all_account_costs:
+        ws_summary = wb.create_sheet("Account Summary", 0)
+        # For year analysis, use both year periods for filtering
+        comparison_months = year1_months + year2_months
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name, comparison_months)
 
     # Aggregate data into yearly totals
     bu_year1 = _aggregate_year_costs(bu_cost_matrix, year1_months)
@@ -1277,8 +1460,8 @@ def export_year_analysis_excel(
     bu_year1_total = bu_year1.get("total", 0)
     bu_year2_total = bu_year2.get("total", 0)
 
-    service_other_year1 = bu_year1_total - top_10_year1_total
-    service_other_year2 = bu_year2_total - top_10_year2_total
+    service_other_year1 = round(bu_year1_total - top_10_year1_total, 2)
+    service_other_year2 = round(bu_year2_total - top_10_year2_total, 2)
 
     # Add Other to year1 and year2 data
     service_year1_with_other = {**service_year1, "Other": service_other_year1}
@@ -1356,8 +1539,8 @@ def export_year_analysis_excel(
     top_10_acc_year1_total = sum(account_year1.get(acc, 0) for acc in top_10_accounts)
     top_10_acc_year2_total = sum(account_year2.get(acc, 0) for acc in top_10_accounts)
 
-    account_other_year1 = bu_year1_total - top_10_acc_year1_total
-    account_other_year2 = bu_year2_total - top_10_acc_year2_total
+    account_other_year1 = round(bu_year1_total - top_10_acc_year1_total, 2)
+    account_other_year2 = round(bu_year2_total - top_10_acc_year2_total, 2)
 
     # Add Other to year1 and year2 data
     account_year1_with_other = {**account_year1, "Other": account_other_year1}

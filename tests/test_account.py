@@ -187,7 +187,7 @@ class TestCalculateAccountCosts:
             sample_cost_and_usage_response
         )
 
-        result = calculate_account_costs(
+        result, _ = calculate_account_costs(
             mock_cost_explorer_client,
             mock_organizations_client,
             date(2024, 1, 1),
@@ -248,7 +248,7 @@ class TestCalculateAccountCosts:
             ]
         }
 
-        result = calculate_account_costs(
+        result, _ = calculate_account_costs(
             mock_cost_explorer_client,
             mock_organizations_client,
             date(2024, 1, 1),
@@ -287,7 +287,7 @@ class TestCalculateAccountCosts:
             ]
         }
 
-        result = calculate_account_costs(
+        result, _ = calculate_account_costs(
             mock_cost_explorer_client,
             mock_organizations_client,
             date(2024, 1, 1),

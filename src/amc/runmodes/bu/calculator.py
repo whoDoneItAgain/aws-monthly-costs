@@ -67,6 +67,9 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
 
     for cost_month, costs_for_month in account_costs.items():
         bu_month_costs: dict = {}
+        
+        # Track which accounts have been assigned to a BU
+        assigned_accounts = set()
 
         # Aggregate costs by BU
         for bu, bu_accounts in account_list.items():
@@ -75,6 +78,9 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
                 costs_for_month.get(account_id, 0.0)
                 for account_id in bu_accounts.keys()
             )
+            
+            # Track assigned accounts
+            assigned_accounts.update(bu_accounts.keys())
 
             # Add shared services allocation if applicable
             if ss_percentages and ss_costs and bu in ss_percentages:
@@ -85,6 +91,24 @@ def _build_cost_matrix(account_list, account_costs, ss_percentages=None, ss_cost
         # Add shared services as separate line item if not allocated
         if ss_percentages is None and ss_costs is not None:
             bu_month_costs["ss"] = ss_costs[cost_month]["ss"]
+        
+        # Include costs from unallocated accounts
+        unallocated_accounts = {
+            account_id: cost
+            for account_id, cost in costs_for_month.items()
+            if account_id not in assigned_accounts
+        }
+        
+        if unallocated_accounts:
+            unallocated_total = sum(unallocated_accounts.values())
+            bu_month_costs["unallocated"] = unallocated_total
+            
+            # Log unallocated accounts for review
+            LOGGER.warning(
+                f"Unallocated accounts found for {cost_month}: "
+                f"{list(unallocated_accounts.keys())} "
+                f"(total: ${unallocated_total:.2f})"
+            )
 
         # Round all values and add total
         bu_month_costs = round_cost_values(bu_month_costs)
@@ -112,7 +136,9 @@ def calculate_business_unit_costs(
         daily_average: If True, calculate daily average costs
 
     Returns:
-        Dictionary of cost data organized by month and business unit
+        Tuple of (bu_cost_matrix, all_account_costs) where:
+        - bu_cost_matrix: Dictionary of cost data organized by month and business unit
+        - all_account_costs: Dictionary of all account costs by month
     """
     # Make single API call for all accounts (optimization: reduced from 2 calls to 1)
     all_costs_response = cost_explorer_client.get_cost_and_usage(
@@ -166,4 +192,4 @@ def calculate_business_unit_costs(
     LOGGER.debug(ss_cost_matrix)
     LOGGER.debug(bu_cost_matrix)
 
-    return bu_cost_matrix
+    return bu_cost_matrix, all_account_costs
