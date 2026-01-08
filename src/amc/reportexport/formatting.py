@@ -127,3 +127,95 @@ def auto_adjust_column_widths(worksheet, max_width=50, min_width=12):
         except (AttributeError, TypeError, ValueError):
             # Set default width if calculation fails
             worksheet.column_dimensions[column[0].column_letter].width = min_width
+
+
+def get_cell_length(cell):
+    """Calculate cell length for column width adjustment.
+
+    Args:
+        cell: The cell to measure
+
+    Returns:
+        The calculated length for width adjustment
+    """
+    if cell.value is None:
+        return 0
+    # For numeric values with formatting, use a reasonable width
+    if isinstance(cell.value, (int, float)):
+        return 15  # Fixed width for currency/percentage
+    return len(str(cell.value))
+
+
+def auto_adjust_column_widths_advanced(worksheet):
+    """Auto-adjust column widths based on content with advanced sizing.
+
+    Uses get_cell_length for more accurate width calculations.
+
+    Args:
+        worksheet: The worksheet to adjust
+
+    Returns:
+        None (modifies worksheet in place)
+    """
+    for column in worksheet.columns:
+        try:
+            # Use generator expression with max() for efficiency
+            max_length = max((get_cell_length(cell) for cell in column), default=0)
+            # Add extra padding and ensure minimum width
+            adjusted_width = min(max(max_length + 3, 12), 50)
+            worksheet.column_dimensions[column[0].column_letter].width = adjusted_width
+        except (AttributeError, TypeError, ValueError):
+            # Set default width if calculation fails
+            worksheet.column_dimensions[column[0].column_letter].width = 12
+
+
+def add_conditional_formatting(worksheet, diff_range, pct_range):
+    """Add conditional formatting to difference and percentage difference columns.
+
+    Green is applied when current month (column C) is less than previous month (column B),
+    indicating cost savings. Red is applied when current month is greater than previous month.
+
+    Args:
+        worksheet: The worksheet to apply formatting to
+        diff_range: Cell range for Difference column (e.g., "D4:D10")
+        pct_range: Cell range for % Difference column (e.g., "E4:E10")
+
+    Returns:
+        None (modifies worksheet in place)
+    """
+    from openpyxl.formatting.rule import Rule
+    from openpyxl.styles import Font as CFFont
+    from openpyxl.styles import PatternFill as CFPatternFill
+    from openpyxl.styles.differential import DifferentialStyle
+
+    # Green for decrease (current < previous) - good, saving money
+    green_fill = CFPatternFill(bgColor="FFC6EFCE")
+    green_font = CFFont(color="FF006100")
+    green_dxf = DifferentialStyle(fill=green_fill, font=green_font)
+
+    # Red for increase (current > previous) - bad, spending more
+    red_fill = CFPatternFill(bgColor="FFFFC7CE")
+    red_font = CFFont(color="FF9C0006")
+    red_dxf = DifferentialStyle(fill=red_fill, font=red_font)
+
+    # For difference columns: Green when current (C) < previous (B), Red when current > previous
+    start_row = int(diff_range.split(":")[0][1:])
+
+    green_rule_diff = Rule(type="expression", dxf=green_dxf)
+    green_rule_diff.formula = [f"C{start_row}<B{start_row}"]
+
+    red_rule_diff = Rule(type="expression", dxf=red_dxf)
+    red_rule_diff.formula = [f"C{start_row}>B{start_row}"]
+
+    worksheet.conditional_formatting.add(diff_range, green_rule_diff)
+    worksheet.conditional_formatting.add(diff_range, red_rule_diff)
+
+    # Same for % difference columns
+    green_rule_pct = Rule(type="expression", dxf=green_dxf)
+    green_rule_pct.formula = [f"C{start_row}<B{start_row}"]
+
+    red_rule_pct = Rule(type="expression", dxf=red_dxf)
+    red_rule_pct.formula = [f"C{start_row}>B{start_row}"]
+
+    worksheet.conditional_formatting.add(pct_range, green_rule_pct)
+    worksheet.conditional_formatting.add(pct_range, red_rule_pct)
