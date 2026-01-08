@@ -938,7 +938,7 @@ def _create_service_analysis_tables(
     ws_daily.cell(row, 5).fill = header_fill
     ws_daily.cell(row, 5).alignment = header_alignment
 
-    # Data rows for daily average (top 10 only, no Other)
+    # Data rows for daily average (top 10 only)
     row += 1
     daily_start_row = row
     for service in top_10_services:
@@ -946,6 +946,32 @@ def _create_service_analysis_tables(
 
         val1 = cost_matrix[last_2_months[0]].get(service, 0) / days1
         val2 = cost_matrix[last_2_months[1]].get(service, 0) / days2
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
+
+        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+
+        row += 1
+
+    # Add "Other" row for daily average
+    if other_amount > 0:
+        ws_daily.cell(row, 1, "Other")
+        # Calculate Other daily average values for both months
+        top_10_total_prev = sum(month1_costs.get(svc, 0) for svc in top_10_services)
+        other_amount_prev = (
+            bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
+        )
+        val1 = other_amount_prev / days1
+        val2 = other_amount / days2
         diff = val2 - val1
         # Handle percentage calculation properly
         if val1 > 0:
@@ -1187,7 +1213,7 @@ def _create_account_analysis_tables(
     ws_daily.cell(row, 5).fill = header_fill
     ws_daily.cell(row, 5).alignment = header_alignment
 
-    # Data rows for daily average (top 10 only, no Other)
+    # Data rows for daily average (top 10 only)
     row += 1
     daily_start_row = row
     for account in top_10_accounts:
@@ -1195,6 +1221,32 @@ def _create_account_analysis_tables(
 
         val1 = cost_matrix[last_2_months[0]].get(account, 0) / days1
         val2 = cost_matrix[last_2_months[1]].get(account, 0) / days2
+        diff = val2 - val1
+        # Handle percentage calculation properly
+        if val1 > 0:
+            pct_diff = (val2 - val1) / val1
+        elif val1 == 0 and val2 != 0:
+            pct_diff = 1.0 if val2 > 0 else 0
+        else:
+            pct_diff = 0
+
+        ws_daily.cell(row, 2, val1).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 3, val2).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
+        ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
+
+        row += 1
+
+    # Add "Other" row for daily average
+    if other_amount > 0:
+        ws_daily.cell(row, 1, "Other")
+        # Calculate Other daily average values for both months
+        top_10_total_prev = sum(month1_costs.get(acc, 0) for acc in top_10_accounts)
+        other_amount_prev = (
+            bu_cost_matrix[last_2_months[0]].get("total", 0) - top_10_total_prev
+        )
+        val1 = other_amount_prev / days1
+        val2 = other_amount / days2
         diff = val2 - val1
         # Handle percentage calculation properly
         if val1 > 0:
