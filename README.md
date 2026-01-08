@@ -19,7 +19,7 @@ See the [Migration Guide](#migration-guide) below for upgrade instructions.
 - 💾 Optional export of individual reports in **CSV** or **Excel** format (XLSX)
 - 🔧 Customizable cost aggregations and groupings
 - 🤝 Shared services cost allocation across business units
-- ✅ Comprehensive test coverage (128 tests, 48% overall, 100% core business logic)
+- ✅ Comprehensive test coverage (226 tests, 93% overall coverage)
 - 🔒 Security-focused design (no vulnerabilities)
 - 📝 Well-documented with inline docstrings
 
@@ -406,15 +406,19 @@ The application follows a modular architecture with clear separation of concerns
 ```
 aws-monthly-costs/
 ├── src/amc/
-│   ├── __main__.py              # Entry point & orchestration (775 lines)
+│   ├── __main__.py              # Entry point & orchestration (785 lines)
 │   ├── constants.py             # Named constants (56 lines)
 │   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
-│   ├── reportexport/            # Report generation (1663 lines + utilities)
-│   │   ├── __init__.py          # CSV/Excel export, charts, formatting
-│   │   ├── calculations.py     # Calculation utilities (58 lines)
-│   │   ├── formatting.py       # Formatting utilities (129 lines)
-│   │   └── charts.py           # Chart creation utilities (95 lines)
+│   ├── reportexport/            # Report generation (2438 lines total)
+│   │   ├── __init__.py          # Imports/exports only (16 lines)
+│   │   ├── exporters.py         # CSV/Excel export functions (130 lines)
+│   │   ├── analysis.py          # Analysis table creation (983 lines)
+│   │   ├── year_analysis.py     # Year-level analysis (635 lines)
+│   │   ├── analysis_tables.py   # Table utilities (300 lines)
+│   │   ├── calculations.py      # Calculation utilities (58 lines)
+│   │   ├── formatting.py        # Formatting utilities (221 lines)
+│   │   └── charts.py            # Chart creation utilities (95 lines)
 │   └── runmodes/                # Cost calculation modules
 │       ├── common.py            # Shared utilities (133 lines)
 │       ├── account/             # Account cost calculations
@@ -426,7 +430,7 @@ aws-monthly-costs/
 │       └── service/             # Service cost calculations
 │           ├── __init__.py     # Imports/exports only (9 lines)
 │           └── calculator.py   # Business logic (191 lines)
-└── tests/                       # Comprehensive test suite (128 tests)
+└── tests/                       # Comprehensive test suite (226 tests)
 ```
 
 ### Key Components
@@ -481,16 +485,19 @@ Each runmode is a separate module that:
 - Handles service name variations
 
 #### 4. Report Export (`reportexport/`)
-- **Purpose**: Generate output files
-- **Capabilities**:
-  - CSV export with proper formatting
-  - Excel export with styled headers, auto-width columns
-  - Analysis Excel file with multiple worksheets, charts, conditional formatting
-  - Pie charts for cost distribution visualization
-- **Key Functions**:
-  - `export_report()` - Generate individual CSV/Excel reports
-  - `export_analysis_excel()` - Generate comprehensive analysis workbook
-  - Helper functions for chart creation, formatting, width calculation
+- **Purpose**: Generate output files (CSV, Excel, analysis workbooks)
+- **Export Modules**:
+  - `exporters.py` - CSV/Excel export functions
+  - `analysis.py` - Analysis Excel workbook creation
+  - `year_analysis.py` - Year-level analysis Excel workbook
+  
+- **Utility Modules**:
+  - `analysis_tables.py` - Table creation utilities
+  - `calculations.py` - Percentage and difference calculations
+  - `formatting.py` - Excel styling and formatting utilities
+  - `charts.py` - Pie chart creation and configuration
+  
+- **Main API** (`__init__.py`): Imports/exports only (following Python best practices)
 
 ### Data Flow
 
@@ -813,7 +820,7 @@ amc --profile your-profile-name --config-file your-config.yaml
 5. 🔒 Secure error messages
 
 **Code Quality**:
-1. 📝 100% test coverage on core logic (128 tests)
+1. 📝 93% test coverage (226 tests)
 2. 📝 Comprehensive docstrings
 3. 📝 Named constants instead of magic values
 4. 📝 Extracted helper functions
@@ -853,10 +860,10 @@ open htmlcov/index.html
 
 ### Test Statistics
 
-- **Total Tests**: 128 (all passing ✅)
-- **Coverage**: 48% overall, 100% core business logic (runmodes, main orchestration)
+- **Total Tests**: 226 (all passing ✅)
+- **Coverage**: 93% overall, 100% core business logic (runmodes, calculators)
 - **Execution Time**: < 2 seconds
-- **Test Types**: Unit tests (116) + Integration tests (12)
+- **Test Types**: Unit tests (200+) + Integration tests (17) + End-to-End tests (7)
 
 See `tests/README.md` for detailed test documentation.
 
@@ -978,5 +985,5 @@ This project was comprehensively refactored and tested by specialized agents:
 - **Bug-Hunter Agent**: Fixed 7 critical bugs
 - **Security-Analyzer Agent**: Security review and hardening
 - **Performance-Optimizer Agent**: Performance optimizations
-- **Test-Generator Agent**: Comprehensive test suite (128 tests)
+- **Test-Generator Agent**: Comprehensive test suite (226 tests)
 - **Documentation-Writer Agent**: Documentation updates

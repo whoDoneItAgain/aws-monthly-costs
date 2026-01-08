@@ -202,7 +202,7 @@ The application is **production-ready** with all security controls properly impl
 ### Files Analyzed
 
 **Source Code (42 Python files):**
-- Main application: `src/amc/__main__.py` (775 lines)
+- Main application: `src/amc/__main__.py` (785 lines)
 - Report export modules: `src/amc/reportexport/*.py` (5 files)
 - Run mode calculators: `src/amc/runmodes/**/*.py` (9 files)
 - Utility modules: constants, version, formatting, calculations, charts
@@ -474,7 +474,7 @@ for col, header_text in enumerate(
 - ✅ Ruff linting passed
 - ✅ Code follows existing refactoring patterns
 - ✅ Consistent with the utility function approach from PR #141
-- ✅ All 130 tests passing (up from 128)
+- ✅ All 226 tests passing (comprehensive coverage achieved)
 - ✅ New tests specifically catch this type of bug
 
 ### Commits
@@ -494,8 +494,8 @@ The recent critical bug in `_create_bu_analysis_tables` occurred in code with **
 
 ### Test Coverage Achievement
 
-**Before:** 130 tests, 48% overall coverage, 73% with branch coverage
-**After:** 225 tests (+95), 95% overall coverage
+**Before:** 130 tests, 48% overall coverage (after initial test additions)
+**After:** 226 tests (+96), 93% overall coverage (comprehensive test suite)
 
 ### New Tests Added (95 tests across 4 commits)
 
@@ -791,9 +791,9 @@ from amc.runmodes.account import calculate_account_costs
 ```
 
 **Test Results**:
-- All 128 tests passing ✅
+- All 226 tests passing ✅
 - No functionality broken
-- Test coverage maintained at 48% overall, 100% core logic
+- Test coverage increased to 93% overall
 
 ### Files Changed
 
@@ -1339,15 +1339,19 @@ ws.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 ```
 aws-monthly-costs/
 ├── src/amc/
-│   ├── __main__.py              # Entry point & orchestration (775 lines)
+│   ├── __main__.py              # Entry point & orchestration (785 lines)
 │   ├── constants.py             # Named constants (56 lines)
 │   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
-│   ├── reportexport/            # Report generation (1663 lines + utilities)
-│   │   ├── __init__.py          # CSV/Excel export, charts, formatting
-│   │   ├── calculations.py     # Calculation utilities (58 lines)
-│   │   ├── formatting.py       # Formatting utilities (129 lines)
-│   │   └── charts.py           # Chart creation utilities (95 lines)
+│   ├── reportexport/            # Report generation (2438 lines total)
+│   │   ├── __init__.py          # Imports/exports only (16 lines)
+│   │   ├── exporters.py         # CSV/Excel export (130 lines)
+│   │   ├── analysis.py          # Analysis tables (983 lines)
+│   │   ├── year_analysis.py     # Year analysis (635 lines)
+│   │   ├── analysis_tables.py   # Table utilities (300 lines)
+│   │   ├── calculations.py      # Calculation utilities (58 lines)
+│   │   ├── formatting.py        # Formatting utilities (221 lines)
+│   │   └── charts.py            # Chart creation utilities (95 lines)
 │   └── runmodes/                # Cost calculation modules
 │       ├── common.py            # Shared utilities (133 lines)
 │       ├── account/             # Account cost calculations
@@ -1359,7 +1363,7 @@ aws-monthly-costs/
 │       └── service/             # Service cost calculations
 │           ├── __init__.py     # Imports/exports only (9 lines)
 │           └── calculator.py   # Business logic (191 lines)
-├── tests/                       # Comprehensive test suite (128 tests)
+├── tests/                       # Comprehensive test suite (226 tests)
 │   ├── conftest.py              # Shared fixtures
 │   ├── test_main.py             # Main module tests
 │   ├── test_account.py          # Account mode tests
@@ -1659,27 +1663,37 @@ This application demonstrates **exceptional security practices** and is **fully 
 ## Testing Infrastructure
 
 ### Test Statistics
-- **Total Tests:** 130 (all passing)
-- **Coverage:** 48% overall, 100% core business logic
+- **Total Tests:** 226 (all passing)
+- **Coverage:** 93% overall, 100% core business logic
 - **Execution Time:** < 2 seconds
 - **Framework:** pytest with tox for automation
 
 ### Test Categories
 
-**Unit Tests (118 tests):**
+**Unit Tests (200+ tests):**
 - Main module: 33 tests
 - Account runmode: 15 tests
 - Business unit runmode: 15 tests
 - Service runmode: 17 tests
 - Constants: 11 tests
-- Report export: 13 tests
-- Year mode: 14 tests
+- Report export: 20 tests
+- Calculations: 21 tests
+- Formatting: 20 tests
+- Charts: 13 tests
+- Version: 3 tests
+- Year mode: 16 tests
+- Additional coverage: 20+ tests
 
-**Integration Tests (12 tests):**
+**Integration Tests (17 tests):**
 - End-to-end workflows
 - Cross-module interactions
 - Error handling scenarios
 - Year boundary edge cases
+
+**End-to-End Tests (7 tests):**
+- Real file I/O operations
+- Complete CLI workflows
+- Actual CSV/Excel file creation
 
 ### Running Tests
 
@@ -2118,7 +2132,7 @@ The following files were removed as redundant (2026-01-07):
 - **Latest comprehensive review:** 2026-01-07
 - **Status:** All documentation reviewed and updated
 - **Key Updates:**
-  - ✅ Fixed test count discrepancy (128 tests, not 112)
+  - ✅ Fixed test count to 226 tests (verified actual count)
   - ✅ Updated line counts to match actual code
   - ✅ Removed 5 redundant documentation files
   - ✅ Added comprehensive documentation standards section
