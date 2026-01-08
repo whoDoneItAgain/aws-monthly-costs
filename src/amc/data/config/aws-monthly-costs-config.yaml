@@ -38,6 +38,8 @@ account-groups:
       cost-class: opex #sand ss2
     '490765019698':
       cost-class: opex #sandbox
+    '981363322886':
+      cost-class: opex #onetech
   asp:
     '767307296409':
       cost-class: opex
