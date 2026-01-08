@@ -941,7 +941,6 @@ def _create_service_analysis_tables(
     # Data rows for daily average (top 10 only)
     row += 1
     daily_start_row = row
-    pie_chart_start_row = row
     for service in top_10_services:
         ws_daily.cell(row, 1, service)
 
@@ -987,12 +986,9 @@ def _create_service_analysis_tables(
         ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
-        pie_chart_end_row = row
         row += 1
-    else:
-        pie_chart_end_row = row - 1
 
-    daily_end_row = pie_chart_end_row
+    daily_end_row = row - 1
 
     # Add conditional formatting for service daily average difference and % difference columns
     _add_conditional_formatting(
@@ -1000,36 +996,6 @@ def _create_service_analysis_tables(
         f"D{daily_start_row}:D{daily_end_row}",
         f"E{daily_start_row}:E{daily_end_row}",
     )
-
-    # Add pie chart for daily average (using column C data, which is the latest month)
-    chart_daily = PieChart()
-    chart_daily.title = None  # Remove title to prevent label overlap
-    chart_daily.style = 10
-    chart_daily.height = 15  # Increase height to show all labels
-    chart_daily.width = 20  # Increase width to show all labels
-
-    # Use data from daily average including "Other" (not including column headers)
-    labels_daily = Reference(
-        ws_daily, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
-    )
-    data_daily = Reference(
-        ws_daily, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
-    )
-
-    chart_daily.add_data(data_daily, titles_from_data=False)
-    chart_daily.set_categories(labels_daily)
-
-    # Configure data labels to show category name and percentage only on the pie slices
-    chart_daily.dataLabels = DataLabelList()
-    chart_daily.dataLabels.showCatName = True
-    chart_daily.dataLabels.showVal = False  # Don't show value
-    chart_daily.dataLabels.showPercent = True
-    chart_daily.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
-
-    # Remove the legend - labels are shown on pie slices
-    chart_daily.legend = None
-
-    ws_daily.add_chart(chart_daily, "G3")
 
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws_daily)
@@ -1250,7 +1216,6 @@ def _create_account_analysis_tables(
     # Data rows for daily average (top 10 only)
     row += 1
     daily_start_row = row
-    pie_chart_start_row = row
     for account in top_10_accounts:
         ws_daily.cell(row, 1, account)
 
@@ -1296,12 +1261,9 @@ def _create_account_analysis_tables(
         ws_daily.cell(row, 4, abs(diff)).number_format = '"$"#,##0.00'
         ws_daily.cell(row, 5, abs(pct_diff)).number_format = "0.00%"
 
-        pie_chart_end_row = row
         row += 1
-    else:
-        pie_chart_end_row = row - 1
 
-    daily_end_row = pie_chart_end_row
+    daily_end_row = row - 1
 
     # Add conditional formatting for account daily average difference and % difference columns
     _add_conditional_formatting(
@@ -1309,36 +1271,6 @@ def _create_account_analysis_tables(
         f"D{daily_start_row}:D{daily_end_row}",
         f"E{daily_start_row}:E{daily_end_row}",
     )
-
-    # Add pie chart for daily average (using column C data, which is the latest month)
-    chart_daily = PieChart()
-    chart_daily.title = None  # Remove title to prevent label overlap
-    chart_daily.style = 10
-    chart_daily.height = 15  # Increase height to show all labels
-    chart_daily.width = 20  # Increase width to show all labels
-
-    # Use data from daily average including "Other" (not including column headers)
-    labels_daily = Reference(
-        ws_daily, min_col=1, min_row=pie_chart_start_row, max_row=pie_chart_end_row
-    )
-    data_daily = Reference(
-        ws_daily, min_col=3, min_row=pie_chart_start_row, max_row=pie_chart_end_row
-    )
-
-    chart_daily.add_data(data_daily, titles_from_data=False)
-    chart_daily.set_categories(labels_daily)
-
-    # Configure data labels to show category name and percentage only on the pie slices
-    chart_daily.dataLabels = DataLabelList()
-    chart_daily.dataLabels.showCatName = True
-    chart_daily.dataLabels.showVal = False  # Don't show value
-    chart_daily.dataLabels.showPercent = True
-    chart_daily.dataLabels.showSerName = False  # Don't show series name (e.g., "Series1")
-
-    # Remove the legend - labels are shown on pie slices
-    chart_daily.legend = None
-
-    ws_daily.add_chart(chart_daily, "G3")
 
     # Auto-adjust column widths
     _auto_adjust_column_widths(ws_daily)
