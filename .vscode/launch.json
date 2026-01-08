@@ -21,6 +21,14 @@
       "args": "--profile ab-root-use1-admin --info-logging"
     },
     {
+      "name": "Run App with info logging - year",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "./src/amc/__main__.py",
+      "console": "integratedTerminal",
+      "args": "--profile ab-root-use1-admin --info-logging --time-period year"
+    },
+    {
       "name": "Run App with info logging - specific period",
       "type": "debugpy",
       "request": "launch",

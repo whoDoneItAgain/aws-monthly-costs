@@ -3,11 +3,11 @@
 from datetime import date
 
 
-from amc.runmodes.bu import (
+from amc.runmodes.bu.calculator import (
     _build_cost_matrix,
     _build_costs,
-    calculate_business_unit_costs,
 )
+from amc.runmodes.bu import calculate_business_unit_costs
 
 
 class TestBuildCosts:
@@ -39,9 +39,9 @@ class TestBuildCosts:
 
         result = _build_costs(response, daily_average=False)
 
-        assert "Jan" in result
-        assert result["Jan"]["123456789012"] == 1000.50
-        assert result["Jan"]["123456789013"] == 500.25
+        assert "2024-Jan" in result
+        assert result["2024-Jan"]["123456789012"] == 1000.50
+        assert result["2024-Jan"]["123456789013"] == 500.25
 
     def test_build_costs_daily_average(self):
         """Test building costs with daily average."""
@@ -65,7 +65,7 @@ class TestBuildCosts:
 
         # January 2024 has 31 days
         expected_daily = 3100.00 / 31
-        assert abs(result["Jan"]["123456789012"] - expected_daily) < 0.01
+        assert abs(result["2024-Jan"]["123456789012"] - expected_daily) < 0.01
 
     def test_build_costs_leap_year_february(self):
         """Test building costs for February in a leap year (2024)."""
@@ -89,7 +89,7 @@ class TestBuildCosts:
 
         # February 2024 has 29 days (leap year)
         expected_daily = 2900.00 / 29
-        assert abs(result["Feb"]["123456789012"] - expected_daily) < 0.01
+        assert abs(result["2024-Feb"]["123456789012"] - expected_daily) < 0.01
 
     def test_build_costs_non_leap_year_february(self):
         """Test building costs for February in a non-leap year (2023)."""
@@ -113,7 +113,7 @@ class TestBuildCosts:
 
         # February 2023 has 28 days (non-leap year)
         expected_daily = 2800.00 / 28
-        assert abs(result["Feb"]["123456789012"] - expected_daily) < 0.01
+        assert abs(result["2023-Feb"]["123456789012"] - expected_daily) < 0.01
 
 
 class TestBuildCostMatrix:
@@ -128,7 +128,7 @@ class TestBuildCostMatrix:
         }
 
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "123456789012": 1000.00,
                 "123456789013": 500.00,
             }
@@ -138,10 +138,10 @@ class TestBuildCostMatrix:
             account_groups, account_costs, ss_percentages=None, ss_costs=None
         )
 
-        assert result["Jan"]["production"] == 1000.00
-        assert result["Jan"]["development"] == 500.00
-        assert result["Jan"]["ss"] == 0.00  # ss is included with 0 cost
-        assert result["Jan"]["total"] == 1500.00
+        assert result["2024-Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["development"] == 500.00
+        assert result["2024-Jan"]["ss"] == 0.00  # ss is included with 0 cost
+        assert result["2024-Jan"]["total"] == 1500.00
 
     def test_build_cost_matrix_with_shared_services_not_allocated(self):
         """Test building cost matrix with shared services as separate line item."""
@@ -151,13 +151,13 @@ class TestBuildCostMatrix:
         }
 
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "123456789012": 1000.00,
             }
         }
 
         ss_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "ss": 200.00,
             }
         }
@@ -166,9 +166,9 @@ class TestBuildCostMatrix:
             account_groups, account_costs, ss_percentages=None, ss_costs=ss_costs
         )
 
-        assert result["Jan"]["production"] == 1000.00
-        assert result["Jan"]["ss"] == 200.00
-        assert result["Jan"]["total"] == 1200.00
+        assert result["2024-Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["ss"] == 200.00
+        assert result["2024-Jan"]["total"] == 1200.00
 
     def test_build_cost_matrix_with_shared_services_allocated(self):
         """Test building cost matrix with shared services allocated to BUs."""
@@ -179,14 +179,14 @@ class TestBuildCostMatrix:
         }
 
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "123456789012": 1000.00,
                 "123456789013": 500.00,
             }
         }
 
         ss_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "ss": 300.00,
             }
         }
@@ -204,11 +204,13 @@ class TestBuildCostMatrix:
         )
 
         # Production: 1000 + (300 * 0.60) = 1180
-        assert result["Jan"]["production"] == 1180.00
+        assert result["2024-Jan"]["production"] == 1180.00
         # Development: 500 + (300 * 0.40) = 620
-        assert result["Jan"]["development"] == 620.00
-        assert result["Jan"]["ss"] == 0.00  # ss is included with 0 cost when allocated
-        assert result["Jan"]["total"] == 1800.00
+        assert result["2024-Jan"]["development"] == 620.00
+        assert (
+            result["2024-Jan"]["ss"] == 0.00
+        )  # ss is included with 0 cost when allocated
+        assert result["2024-Jan"]["total"] == 1800.00
 
     def test_build_cost_matrix_zero_costs(self):
         """Test building cost matrix with zero costs."""
@@ -218,7 +220,7 @@ class TestBuildCostMatrix:
         }
 
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "123456789012": 0.00,
             }
         }
@@ -227,8 +229,8 @@ class TestBuildCostMatrix:
             account_groups, account_costs, ss_percentages=None, ss_costs=None
         )
 
-        assert result["Jan"]["production"] == 0.00
-        assert result["Jan"]["total"] == 0.00
+        assert result["2024-Jan"]["production"] == 0.00
+        assert result["2024-Jan"]["total"] == 0.00
 
     def test_build_cost_matrix_missing_accounts(self):
         """Test building cost matrix with accounts not in cost data."""
@@ -241,7 +243,7 @@ class TestBuildCostMatrix:
         }
 
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "123456789012": 1000.00,
                 # 123456789014 is missing
             }
@@ -252,7 +254,7 @@ class TestBuildCostMatrix:
         )
 
         # Should sum available costs and treat missing as 0
-        assert result["Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["production"] == 1000.00
 
     def test_build_cost_matrix_rounding(self):
         """Test proper rounding in cost matrix."""
@@ -262,7 +264,7 @@ class TestBuildCostMatrix:
         }
 
         account_costs = {
-            "Jan": {
+            "2024-Jan": {
                 "123456789012": 99.999,
             }
         }
@@ -271,7 +273,34 @@ class TestBuildCostMatrix:
             account_groups, account_costs, ss_percentages=None, ss_costs=None
         )
 
-        assert result["Jan"]["production"] == 100.00
+        assert result["2024-Jan"]["production"] == 100.00
+
+    def test_build_cost_matrix_with_unallocated_accounts(self):
+        """Test building cost matrix with unallocated accounts."""
+        account_groups = {
+            "ss": {},
+            "production": {"123456789012": "Prod Account"},
+            "development": {"123456789013": "Dev Account"},
+        }
+
+        # Include accounts not in any BU
+        account_costs = {
+            "2024-Jan": {
+                "123456789012": 1000.00,
+                "123456789013": 500.00,
+                "888888888888": 64.78,  # Unallocated account 1
+                "777777777777": 100.00,  # Unallocated account 2
+            }
+        }
+
+        result = _build_cost_matrix(
+            account_groups, account_costs, ss_percentages=None, ss_costs=None
+        )
+
+        assert result["2024-Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["development"] == 500.00
+        assert result["2024-Jan"]["unallocated"] == 164.78
+        assert result["2024-Jan"]["total"] == 1664.78
 
 
 class TestCalculateBusinessUnitCosts:
@@ -315,7 +344,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, all_account_costs = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -324,10 +353,14 @@ class TestCalculateBusinessUnitCosts:
             daily_average=False,
         )
 
-        assert "Jan" in result
-        assert result["Jan"]["production"] == 1000.00
-        assert result["Jan"]["development"] == 800.00  # 500 + 300
-        assert result["Jan"]["ss"] == 200.00
+        assert "2024-Jan" in result
+        assert result["2024-Jan"]["production"] == 1000.00
+        assert result["2024-Jan"]["development"] == 800.00  # 500 + 300
+        assert result["2024-Jan"]["ss"] == 200.00
+
+        # Verify all_account_costs is returned
+        assert all_account_costs is not None
+        assert "2024-Jan" in all_account_costs
 
     def test_calculate_business_unit_costs_with_ss_allocation(
         self, mock_cost_explorer_client, sample_config
@@ -367,7 +400,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -378,9 +411,11 @@ class TestCalculateBusinessUnitCosts:
 
         # Production: 1000 + (200 * 0.60) = 1120
         # Development: 800 + (200 * 0.40) = 880
-        assert result["Jan"]["production"] == 1120.00
-        assert result["Jan"]["development"] == 880.00
-        assert result["Jan"]["ss"] == 0.00  # ss is included with 0 cost when allocated
+        assert result["2024-Jan"]["production"] == 1120.00
+        assert result["2024-Jan"]["development"] == 880.00
+        assert (
+            result["2024-Jan"]["ss"] == 0.00
+        )  # ss is included with 0 cost when allocated
 
     def test_calculate_business_unit_costs_daily_average(
         self, mock_cost_explorer_client, sample_config
@@ -402,7 +437,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -412,7 +447,7 @@ class TestCalculateBusinessUnitCosts:
         )
 
         # 3100 / 31 days = 100
-        assert abs(result["Jan"]["production"] - 100.0) < 0.01
+        assert abs(result["2024-Jan"]["production"] - 100.0) < 0.01
 
     def test_calculate_business_unit_costs_empty_response(
         self, mock_cost_explorer_client, sample_config
@@ -427,7 +462,7 @@ class TestCalculateBusinessUnitCosts:
             ]
         }
 
-        result = calculate_business_unit_costs(
+        result, _ = calculate_business_unit_costs(
             mock_cost_explorer_client,
             date(2024, 1, 1),
             date(2024, 2, 1),
@@ -436,8 +471,8 @@ class TestCalculateBusinessUnitCosts:
             daily_average=False,
         )
 
-        assert result["Jan"]["production"] == 0.00
-        assert result["Jan"]["development"] == 0.00
+        assert result["2024-Jan"]["production"] == 0.00
+        assert result["2024-Jan"]["development"] == 0.00
 
     def test_calculate_business_unit_costs_single_api_call(
         self, mock_cost_explorer_client, sample_config

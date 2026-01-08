@@ -4,7 +4,7 @@ import csv
 
 from openpyxl import load_workbook
 
-from amc.reportexport import export_report
+from amc.reportexport import export_analysis_excel, export_report
 
 
 class TestExportReport:
@@ -13,8 +13,8 @@ class TestExportReport:
     def test_export_report_csv_account(self, temp_output_dir):
         """Test exporting account report to CSV."""
         cost_matrix = {
-            "Jan": {"Account A": 100.50, "Account B": 200.75, "total": 301.25},
-            "Feb": {"Account A": 150.00, "Account B": 250.00, "total": 400.00},
+            "2024-Jan": {"Account A": 100.50, "Account B": 200.75, "total": 301.25},
+            "2024-Feb": {"Account A": 150.00, "Account B": 250.00, "total": 400.00},
         }
         account_list = ["Account A", "Account B", "total"]
 
@@ -28,7 +28,7 @@ class TestExportReport:
             reader = csv.reader(f)
             rows = list(reader)
 
-            assert rows[0] == ["Month", "Jan", "Feb"]
+            assert rows[0] == ["Month", "2024-Jan", "2024-Feb"]
             assert rows[1] == ["Account A", "100.5", "150.0"]
             assert rows[2] == ["Account B", "200.75", "250.0"]
             assert rows[3] == ["total", "301.25", "400.0"]
@@ -36,7 +36,11 @@ class TestExportReport:
     def test_export_report_csv_bu(self, temp_output_dir, sample_config):
         """Test exporting business unit report to CSV."""
         cost_matrix = {
-            "Jan": {"production": 1000.00, "development": 500.00, "total": 1500.00},
+            "2024-Jan": {
+                "production": 1000.00,
+                "development": 500.00,
+                "total": 1500.00,
+            },
         }
 
         export_file = temp_output_dir / "test-bu.csv"
@@ -50,14 +54,14 @@ class TestExportReport:
             reader = csv.reader(f)
             rows = list(reader)
 
-            assert rows[0] == ["Month", "Jan"]
+            assert rows[0] == ["Month", "2024-Jan"]
             # Should include all BUs + total
             assert len(rows) >= 3
 
     def test_export_report_csv_service(self, temp_output_dir):
         """Test exporting service report to CSV."""
         cost_matrix = {
-            "Jan": {"Amazon EC2": 800.00, "Amazon S3": 200.00, "total": 1000.00},
+            "2024-Jan": {"Amazon EC2": 800.00, "Amazon S3": 200.00, "total": 1000.00},
         }
         service_list = ["Amazon EC2", "Amazon S3", "total"]
 
@@ -70,14 +74,14 @@ class TestExportReport:
             reader = csv.reader(f)
             rows = list(reader)
 
-            assert rows[0] == ["Month", "Jan"]
+            assert rows[0] == ["Month", "2024-Jan"]
             assert rows[1] == ["Amazon EC2", "800.0"]
 
     def test_export_report_excel_account(self, temp_output_dir):
         """Test exporting account report to Excel."""
         cost_matrix = {
-            "Jan": {"Account A": 100.50, "Account B": 200.75, "total": 301.25},
-            "Feb": {"Account A": 150.00, "Account B": 250.00, "total": 400.00},
+            "2024-Jan": {"Account A": 100.50, "Account B": 200.75, "total": 301.25},
+            "2024-Feb": {"Account A": 150.00, "Account B": 250.00, "total": 400.00},
         }
         account_list = ["Account A", "Account B", "total"]
 
@@ -91,15 +95,19 @@ class TestExportReport:
         ws = wb.active
 
         assert ws.cell(1, 1).value == "Month"
-        assert ws.cell(1, 2).value == "Jan"
-        assert ws.cell(1, 3).value == "Feb"
+        assert ws.cell(1, 2).value == "2024-Jan"
+        assert ws.cell(1, 3).value == "2024-Feb"
         assert ws.cell(2, 1).value == "Account A"
         assert ws.cell(2, 2).value == 100.5
 
     def test_export_report_excel_bu(self, temp_output_dir, sample_config):
         """Test exporting business unit report to Excel."""
         cost_matrix = {
-            "Jan": {"production": 1000.00, "development": 500.00, "total": 1500.00},
+            "2024-Jan": {
+                "production": 1000.00,
+                "development": 500.00,
+                "total": 1500.00,
+            },
         }
 
         export_file = temp_output_dir / "test-bu.xlsx"
@@ -113,12 +121,12 @@ class TestExportReport:
         ws = wb.active
 
         assert ws.cell(1, 1).value == "Month"
-        assert ws.cell(1, 2).value == "Jan"
+        assert ws.cell(1, 2).value == "2024-Jan"
 
     def test_export_report_excel_service(self, temp_output_dir):
         """Test exporting service report to Excel."""
         cost_matrix = {
-            "Jan": {"Amazon EC2": 800.00, "Amazon S3": 200.00, "total": 1000.00},
+            "2024-Jan": {"Amazon EC2": 800.00, "Amazon S3": 200.00, "total": 1000.00},
         }
         service_list = ["Amazon EC2", "Amazon S3", "total"]
 
@@ -136,7 +144,7 @@ class TestExportReport:
     def test_export_report_creates_directory(self, tmp_path):
         """Test that export_report creates parent directory if it doesn't exist."""
         cost_matrix = {
-            "Jan": {"Account A": 100.00, "total": 100.00},
+            "2024-Jan": {"Account A": 100.00, "total": 100.00},
         }
         account_list = ["Account A", "total"]
 
@@ -149,7 +157,7 @@ class TestExportReport:
     def test_export_report_zero_costs(self, temp_output_dir):
         """Test exporting report with zero costs."""
         cost_matrix = {
-            "Jan": {"Account A": 0.00, "total": 0.00},
+            "2024-Jan": {"Account A": 0.00, "total": 0.00},
         }
         account_list = ["Account A", "total"]
 
@@ -166,8 +174,8 @@ class TestExportReport:
     def test_export_report_empty_month(self, temp_output_dir):
         """Test exporting report with missing data for some months."""
         cost_matrix = {
-            "Jan": {"Account A": 100.00, "total": 100.00},
-            "Feb": {"Account B": 200.00, "total": 200.00},  # Account A missing
+            "2024-Jan": {"Account A": 100.00, "total": 100.00},
+            "2024-Feb": {"Account B": 200.00, "total": 200.00},  # Account A missing
         }
         account_list = ["Account A", "Account B", "total"]
 
@@ -185,9 +193,9 @@ class TestExportReport:
     def test_export_report_multiple_months(self, temp_output_dir):
         """Test exporting report with multiple months."""
         cost_matrix = {
-            "Jan": {"Account A": 100.00, "total": 100.00},
-            "Feb": {"Account A": 110.00, "total": 110.00},
-            "Mar": {"Account A": 120.00, "total": 120.00},
+            "2024-Jan": {"Account A": 100.00, "total": 100.00},
+            "2024-Feb": {"Account A": 110.00, "total": 110.00},
+            "2024-Mar": {"Account A": 120.00, "total": 120.00},
             "Apr": {"Account A": 130.00, "total": 130.00},
         }
         account_list = ["Account A", "total"]
@@ -201,12 +209,12 @@ class TestExportReport:
             reader = csv.reader(f)
             rows = list(reader)
             # Header should have all months
-            assert rows[0] == ["Month", "Jan", "Feb", "Mar", "Apr"]
+            assert rows[0] == ["Month", "2024-Jan", "2024-Feb", "2024-Mar", "Apr"]
 
     def test_export_report_large_values(self, temp_output_dir):
         """Test exporting report with large cost values."""
         cost_matrix = {
-            "Jan": {"Account A": 999999.99, "total": 999999.99},
+            "2024-Jan": {"Account A": 999999.99, "total": 999999.99},
         }
         account_list = ["Account A", "total"]
 
@@ -219,3 +227,129 @@ class TestExportReport:
             reader = csv.reader(f)
             rows = list(reader)
             assert rows[1] == ["Account A", "999999.99"]
+
+
+class TestExportAnalysisExcel:
+    """Tests for export_analysis_excel function."""
+
+    def test_export_analysis_excel_bu_tables(self, temp_output_dir, sample_config):
+        """Test exporting BU analysis Excel with multiple sheets.
+
+        This test ensures that _create_bu_analysis_tables function works correctly
+        and catches issues like missing variable definitions that could cause NameErrors.
+        """
+        # Create sample cost data with at least 2 months (required for analysis)
+        bu_cost_matrix = {
+            "2024-Jan": {
+                "production": 1000.00,
+                "development": 500.00,
+                "total": 1500.00,
+            },
+            "2024-Feb": {
+                "production": 1200.00,
+                "development": 600.00,
+                "total": 1800.00,
+            },
+        }
+
+        service_cost_matrix = {
+            "2024-Jan": {
+                "Amazon EC2": 800.00,
+                "Amazon S3": 200.00,
+                "total": 1000.00,
+            },
+            "2024-Feb": {
+                "Amazon EC2": 900.00,
+                "Amazon S3": 250.00,
+                "total": 1150.00,
+            },
+        }
+
+        account_cost_matrix = {
+            "2024-Jan": {
+                "Account A": 500.00,
+                "Account B": 300.00,
+                "total": 800.00,
+            },
+            "2024-Feb": {
+                "Account A": 600.00,
+                "Account B": 350.00,
+                "total": 950.00,
+            },
+        }
+
+        export_file = temp_output_dir / "test-analysis.xlsx"
+
+        # This should not raise any NameError or other exceptions
+        export_analysis_excel(
+            export_file,
+            bu_cost_matrix,
+            sample_config["account-groups"],
+            service_cost_matrix,
+            ["Amazon EC2", "Amazon S3"],
+            account_cost_matrix,
+            ["Account A", "Account B"],
+        )
+
+        assert export_file.exists()
+
+        # Verify workbook structure
+        wb = load_workbook(export_file)
+
+        # Check that expected sheets exist
+        assert "BU Costs" in wb.sheetnames
+        assert "BU Daily Average" in wb.sheetnames
+        assert "Top Services" in wb.sheetnames
+        assert "Top Accounts" in wb.sheetnames
+
+        # Verify BU Costs sheet has expected structure
+        ws_bu = wb["BU Costs"]
+        assert ws_bu["A1"].value == "BU Monthly Totals"
+        assert ws_bu["A3"].value == "Month"  # Header row
+        assert ws_bu["B3"].value == "2024-Jan"
+        assert ws_bu["C3"].value == "2024-Feb"
+
+        # Verify BU Daily Average sheet has expected structure
+        ws_bu_daily = wb["BU Daily Average"]
+        assert ws_bu_daily["A1"].value == "BU Daily Average"
+        assert ws_bu_daily["A3"].value == "Month"  # Header row
+        assert ws_bu_daily["B3"].value == "2024-Jan"
+        assert ws_bu_daily["C3"].value == "2024-Feb"
+
+        # Verify header cells have proper styling (should not be None)
+        # This checks that apply_header_style was called correctly
+        assert ws_bu_daily.cell(3, 1).font is not None
+        assert ws_bu_daily.cell(3, 2).font is not None
+
+        wb.close()
+
+    def test_export_analysis_excel_insufficient_months(
+        self, temp_output_dir, sample_config
+    ):
+        """Test that export_analysis_excel handles insufficient months gracefully."""
+        # Only one month of data (need at least 2)
+        bu_cost_matrix = {
+            "2024-Jan": {
+                "production": 1000.00,
+                "total": 1000.00,
+            },
+        }
+
+        service_cost_matrix = {"2024-Jan": {"Amazon EC2": 800.00, "total": 800.00}}
+        account_cost_matrix = {"2024-Jan": {"Account A": 500.00, "total": 500.00}}
+
+        export_file = temp_output_dir / "test-analysis-single-month.xlsx"
+
+        # Should handle this gracefully (logs warning and returns early)
+        export_analysis_excel(
+            export_file,
+            bu_cost_matrix,
+            sample_config["account-groups"],
+            service_cost_matrix,
+            ["Amazon EC2"],
+            account_cost_matrix,
+            ["Account A"],
+        )
+
+        # File should not be created or should be empty/incomplete
+        # The function returns early with only 1 month

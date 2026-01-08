@@ -2,9 +2,9 @@
 
 A Python CLI tool to retrieve and report AWS monthly costs across accounts, business units, and services using AWS Cost Explorer API.
 
-## 🚨 Breaking Changes (v2.0+)
+## 🚨 Recent Breaking Changes (v0.1.0+)
 
-If you're upgrading from an earlier version, please note:
+If you're upgrading from an earlier version (pre-v0.1.0), please note:
 
 - **`--profile` is now REQUIRED**: Previously optional with a hardcoded default, now you must explicitly specify an AWS profile for security
 - **`--include-ss` renamed to `--include-shared-services`**: More descriptive argument name
@@ -19,7 +19,7 @@ See the [Migration Guide](#migration-guide) below for upgrade instructions.
 - 💾 Optional export of individual reports in **CSV** or **Excel** format (XLSX)
 - 🔧 Customizable cost aggregations and groupings
 - 🤝 Shared services cost allocation across business units
-- ✅ Comprehensive test coverage (112 tests, 48% overall, 100% core business logic)
+- ✅ Comprehensive test coverage (226 tests, 93% overall coverage)
 - 🔒 Security-focused design (no vulnerabilities)
 - 📝 Well-documented with inline docstrings
 
@@ -90,8 +90,41 @@ The profile should have the required IAM permissions listed in the [Requirements
 #### Custom Time Periods
 
 ```bash
+# Use month mode for last 2 full months (default)
+amc --profile your-aws-profile --time-period month
+
 # Use a specific date range
 amc --profile your-aws-profile --time-period 2024-01-01_2024-12-31
+
+# Use year mode for two-year comparison (requires 24+ months of data)
+amc --profile your-aws-profile --time-period year
+```
+
+**Month Mode** (default): When you use `--time-period month`, the tool will:
+1. Fetch the last 2 complete months of AWS cost data
+2. Generate comparison tables and charts for these 2 months
+
+**Year Mode**: When you use `--time-period year`, the tool will:
+1. Fetch the last 24 months of AWS cost data
+2. Split the data into two complete 12-month periods for comparison
+3. Generate a separate `year-analysis.xlsx` file with:
+   - Yearly cost totals comparison
+   - Daily average costs for each year period
+   - Monthly average costs for each year period
+   - Comparative charts and formatted tables
+
+**Requirements for Year Mode**:
+- At least 24 consecutive months of AWS cost data
+- Data should be non-overlapping and complete
+- If insufficient data exists, you'll receive an actionable error message
+
+**Example Error Messages**:
+```
+Error: Insufficient data for year analysis. Provide at least 24 consecutive, 
+non-overlapping months for two-year comparison. Currently have 18 months.
+
+To generate year analysis, provide at least 24 consecutive months of data.
+Use a custom date range like: --time-period YYYY-MM-DD_YYYY-MM-DD with 24+ months
 ```
 
 #### Generate Individual Report Files
@@ -146,7 +179,7 @@ amc --profile your-aws-profile --debug-logging
 
 **Security Note**: Debug logs may contain AWS account IDs and cost data. Use with caution in sensitive environments.
 
-#### Complete Example
+#### Complete Examples
 
 ```bash
 # Full command with all options
@@ -157,6 +190,17 @@ amc --profile production-readonly \
     --include-shared-services \
     --run-modes account bu service account-daily bu-daily service-daily \
     --debug-logging
+
+# Year-level analysis with 24 months of data
+amc --profile production-readonly \
+    --time-period 2023-01-01_2024-12-31 \
+    --include-shared-services \
+    --debug-logging
+
+# Year mode (automatically fetches last 24 months)
+amc --profile production-readonly \
+    --time-period year \
+    --include-shared-services
 ```
 
 ### Command-Line Options
@@ -174,7 +218,7 @@ amc --help
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |
-| `--time-period` | No | `previous` | Time period: `previous` for last month or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
+| `--time-period` | No | `month` | Time period: `month` for last 2 months, `year` for year-level analysis (24+ months), or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
 | `--output-format` | No | None | Individual report format: `csv`, `excel`, or `both` (omit for analysis file only) |
 | `--debug-logging` | No | False | Enable debug-level logging |
 
@@ -297,7 +341,63 @@ amc --profile prod --output-format csv
 #          ./outputs/aws-monthly-costs-account.csv
 #          ./outputs/aws-monthly-costs-bu.csv
 #          ./outputs/aws-monthly-costs-service.csv
+
+# Year analysis file (when using --time-period year)
+amc --profile prod --time-period year
+# Creates: ./outputs/aws-monthly-costs-analysis.xlsx
+#          ./outputs/aws-monthly-costs-year-analysis.xlsx
 ```
+
+### Year Analysis Excel File (Year Mode)
+
+**File**: `aws-monthly-costs-year-analysis.xlsx`
+
+Generated when using `--time-period year` option. Requires at least 24 consecutive months of data. This file contains:
+
+#### Worksheets
+
+1. **BU Costs - Yearly** - Business unit yearly totals comparison
+   - Two most recent complete 12-month periods side-by-side
+   - Difference and % Difference columns
+   - Pie chart showing BU cost distribution for most recent year
+   - Conditional formatting (green for savings, red for increases)
+
+2. **BU Costs - Daily Avg** - Business unit daily average comparison
+   - Accounts for different month lengths and leap years
+   - Same comparison format as yearly totals
+
+3. **BU Costs - Monthly Avg** - Business unit monthly average comparison
+   - Average cost per month across each 12-month period
+   - Useful for normalized comparisons
+
+4. **Top Services - Yearly** - Top 10 services yearly totals + "Other"
+   - Yearly totals with pie chart
+   - Aggregated based on configuration rules
+
+5. **Top Services - Daily Avg** - Daily average for top services
+
+6. **Top Services - Monthly Avg** - Monthly average for top services
+
+7. **Top Accounts - Yearly** - Top 10 accounts yearly totals + "Other"
+   - Yearly totals with pie chart
+   - Account names from AWS Organizations
+
+8. **Top Accounts - Daily Avg** - Daily average for top accounts
+
+9. **Top Accounts - Monthly Avg** - Monthly average for top accounts
+
+#### Features
+
+- **Formatted Tables**: Bold headers, blue background (#4472C4)
+- **Conditional Formatting**: 
+  - 🟢 Green for cost decreases (savings)
+  - 🔴 Red for cost increases
+- **Pie Charts**: Large, easy-to-read with data labels on slices
+- **Number Formatting**: 
+  - Currency format with 2 decimal places
+  - Percentage format for differences
+- **Auto-adjusted Columns**: Proper width for immediate readability
+- **Year Labels**: Clear identification of time periods (e.g., "Year 1 (2023-Jan - 2023-Dec)")
 
 ## Architecture Overview
 
@@ -306,16 +406,31 @@ The application follows a modular architecture with clear separation of concerns
 ```
 aws-monthly-costs/
 ├── src/amc/
-│   ├── __main__.py              # Entry point & orchestration (610 lines)
-│   ├── constants.py             # Named constants (52 lines)
+│   ├── __main__.py              # Entry point & orchestration (785 lines)
+│   ├── constants.py             # Named constants (56 lines)
+│   ├── version.py               # Version information
 │   ├── data/config/             # Default configuration files
-│   ├── reportexport/            # Report generation (1031 lines)
-│   │   └── __init__.py          # CSV/Excel export, charts, formatting
+│   ├── reportexport/            # Report generation (2438 lines total)
+│   │   ├── __init__.py          # Imports/exports only (16 lines)
+│   │   ├── exporters.py         # CSV/Excel export functions (130 lines)
+│   │   ├── analysis.py          # Analysis table creation (983 lines)
+│   │   ├── year_analysis.py     # Year-level analysis (635 lines)
+│   │   ├── analysis_tables.py   # Table utilities (300 lines)
+│   │   ├── calculations.py      # Calculation utilities (58 lines)
+│   │   ├── formatting.py        # Formatting utilities (221 lines)
+│   │   └── charts.py            # Chart creation utilities (95 lines)
 │   └── runmodes/                # Cost calculation modules
-│       ├── account/             # Account cost calculations (152 lines)
-│       ├── bu/                  # Business unit calculations (140 lines)
-│       └── service/             # Service cost calculations (161 lines)
-└── tests/                       # Comprehensive test suite (112 tests)
+│       ├── common.py            # Shared utilities (133 lines)
+│       ├── account/             # Account cost calculations
+│       │   ├── __init__.py     # Imports/exports only (8 lines)
+│       │   └── calculator.py   # Business logic (168 lines)
+│       ├── bu/                  # Business unit calculations
+│       │   ├── __init__.py     # Imports/exports only (9 lines)
+│       │   └── calculator.py   # Business logic (169 lines)
+│       └── service/             # Service cost calculations
+│           ├── __init__.py     # Imports/exports only (9 lines)
+│           └── calculator.py   # Business logic (191 lines)
+└── tests/                       # Comprehensive test suite (226 tests)
 ```
 
 ### Key Components
@@ -370,16 +485,19 @@ Each runmode is a separate module that:
 - Handles service name variations
 
 #### 4. Report Export (`reportexport/`)
-- **Purpose**: Generate output files
-- **Capabilities**:
-  - CSV export with proper formatting
-  - Excel export with styled headers, auto-width columns
-  - Analysis Excel file with multiple worksheets, charts, conditional formatting
-  - Pie charts for cost distribution visualization
-- **Key Functions**:
-  - `export_report()` - Generate individual CSV/Excel reports
-  - `export_analysis_excel()` - Generate comprehensive analysis workbook
-  - Helper functions for chart creation, formatting, width calculation
+- **Purpose**: Generate output files (CSV, Excel, analysis workbooks)
+- **Export Modules**:
+  - `exporters.py` - CSV/Excel export functions
+  - `analysis.py` - Analysis Excel workbook creation
+  - `year_analysis.py` - Year-level analysis Excel workbook
+  
+- **Utility Modules**:
+  - `analysis_tables.py` - Table creation utilities
+  - `calculations.py` - Percentage and difference calculations
+  - `formatting.py` - Excel styling and formatting utilities
+  - `charts.py` - Pie chart creation and configuration
+  
+- **Main API** (`__init__.py`): Imports/exports only (following Python best practices)
 
 ### Data Flow
 
@@ -481,8 +599,8 @@ cp src/amc/data/config/aws-monthly-costs-config.yaml my-config.yaml
 
 **Solution**:
 ```bash
-# Use 'previous' for last month (default)
-amc --profile your-profile-name --time-period previous
+# Use 'month' for last 2 months (default)
+amc --profile your-profile-name --time-period month
 
 # Or use correct date format: YYYY-MM-DD_YYYY-MM-DD
 amc --profile your-profile-name --time-period 2024-01-01_2024-12-31
@@ -598,22 +716,22 @@ Do not share debug logs in public forums without sanitizing sensitive data.
 
 ## Migration Guide
 
-### Upgrading from v1.x to v2.0+
+### Upgrading from Earlier Versions to v0.1.0+
 
-Version 2.0 introduced breaking changes to improve security and code quality. Follow these steps to upgrade:
+Version 0.1.0 introduced breaking changes to improve security and code quality. Follow these steps to upgrade:
 
 #### Step 1: Update Command-Line Arguments
 
 **Breaking Change 1: `--profile` is now required**
 
-❌ **Old** (v1.x):
+❌ **Old** (pre-v0.1.0):
 ```bash
 # Profile was optional with hardcoded default
 amc --include-ss
 amc  # Used hardcoded default profile
 ```
 
-✅ **New** (v2.0+):
+✅ **New** (v0.1.0+):
 ```bash
 # Profile is now REQUIRED (more secure)
 amc --profile your-profile-name --include-shared-services
@@ -621,12 +739,12 @@ amc --profile your-profile-name --include-shared-services
 
 **Breaking Change 2: `--include-ss` renamed to `--include-shared-services`**
 
-❌ **Old** (v1.x):
+❌ **Old** (pre-v0.1.0):
 ```bash
 amc --profile prod --include-ss
 ```
 
-✅ **New** (v2.0+):
+✅ **New** (v0.1.0+):
 ```bash
 amc --profile prod --include-shared-services
 ```
@@ -635,17 +753,17 @@ amc --profile prod --include-shared-services
 
 If you have scripts, CI/CD pipelines, or cron jobs calling `amc`, update them:
 
-**Before**:
+**Before** (pre-v0.1.0):
 ```bash
 #!/bin/bash
-# v1.x script
+# Old script
 amc --include-ss --output-format csv
 ```
 
-**After**:
+**After** (v0.1.0+):
 ```bash
 #!/bin/bash
-# v2.0+ script
+# Updated script
 amc --profile production-readonly --include-shared-services --output-format csv
 ```
 
@@ -679,7 +797,7 @@ amc --profile your-profile-name --help
 amc --profile your-profile-name --config-file your-config.yaml
 ```
 
-### What Changed in v2.0
+### What Changed in v0.1.0
 
 **Bug Fixes** (all verified with tests):
 1. ✅ Time period parsing now correctly calculates previous month
@@ -702,7 +820,7 @@ amc --profile your-profile-name --config-file your-config.yaml
 5. 🔒 Secure error messages
 
 **Code Quality**:
-1. 📝 100% test coverage on core logic (112 tests)
+1. 📝 93% test coverage (226 tests)
 2. 📝 Comprehensive docstrings
 3. 📝 Named constants instead of magic values
 4. 📝 Extracted helper functions
@@ -742,10 +860,10 @@ open htmlcov/index.html
 
 ### Test Statistics
 
-- **Total Tests**: 112 (all passing ✅)
-- **Coverage**: 48% overall, 100% core business logic (runmodes, main orchestration)
+- **Total Tests**: 226 (all passing ✅)
+- **Coverage**: 93% overall, 100% core business logic (runmodes, calculators)
 - **Execution Time**: < 2 seconds
-- **Test Types**: Unit tests (100) + Integration tests (12)
+- **Test Types**: Unit tests (200+) + Integration tests (17) + End-to-End tests (7)
 
 See `tests/README.md` for detailed test documentation.
 
@@ -771,6 +889,14 @@ Contributions are welcome! Please ensure:
 3. **Linting passes**: Run `ruff check .`
 4. **Documentation updated**: Update README if adding features
 5. **Security**: No new vulnerabilities introduced
+
+### API Documentation
+
+For developers working with the codebase, see [API_REFERENCE.md](API_REFERENCE.md) for detailed API documentation including:
+- Function signatures and parameters
+- Module organization
+- Usage examples
+- Type hints and return values
 
 ### Release Process
 
@@ -809,7 +935,13 @@ See `LICENSE.md` for license information.
 
 ## Changelog
 
-### Version 2.0.0 (2026-01-02)
+For a complete changelog, see [CHANGELOG.md](CHANGELOG.md).
+
+### Version 0.1.2 (Current)
+
+See CHANGELOG.md for recent updates.
+
+### Version 0.1.0 (2026-01-02)
 
 **Breaking Changes**:
 - `--profile` argument now required (previously optional)
@@ -844,7 +976,7 @@ See `LICENSE.md` for license information.
 - No vulnerable dependencies
 - Comprehensive security review completed
 
-See `AGENT_HANDOFF.md`, `REFACTORING_SUMMARY.md`, `TEST_IMPLEMENTATION_SUMMARY.md`, and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
+See `AGENT_HANDOFF.md` and `SECURITY_REVIEW.md` for detailed change logs and security analysis.
 
 ## Acknowledgments
 
@@ -853,5 +985,5 @@ This project was comprehensively refactored and tested by specialized agents:
 - **Bug-Hunter Agent**: Fixed 7 critical bugs
 - **Security-Analyzer Agent**: Security review and hardening
 - **Performance-Optimizer Agent**: Performance optimizations
-- **Test-Generator Agent**: Comprehensive test suite (112 tests)
+- **Test-Generator Agent**: Comprehensive test suite (226 tests)
 - **Documentation-Writer Agent**: Documentation updates

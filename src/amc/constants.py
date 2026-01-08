@@ -34,8 +34,12 @@ VALID_OUTPUT_FORMATS = [
     OUTPUT_FORMAT_BOTH,
 ]
 
-# Time period constant
-TIME_PERIOD_PREVIOUS = "previous"
+# Time period constants
+TIME_PERIOD_MONTH = "month"
+TIME_PERIOD_YEAR = "year"
+
+# Year analysis requirements
+MIN_MONTHS_FOR_YEAR_ANALYSIS = 24  # Two complete 12-month periods
 
 # Cost aggregation keys
 KEY_TOTAL = "total"

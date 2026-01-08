@@ -38,6 +38,8 @@ account-groups:
       cost-class: opex #sand ss2
     '490765019698':
       cost-class: opex #sandbox
+    '981363322886':
+      cost-class: opex #onetech
   asp:
     '767307296409':
       cost-class: opex
@@ -134,18 +136,16 @@ service-aggregations:
     - 'Amazon Elastic Compute Cloud - Compute'
     - 'EC2 - Other'
     - 'Savings Plans for AWS Compute usage'
-  'Amazon RDS (Database)':
-    - 'Amazon Relational Database Service'
   'Amazon FSx (File Sharing for TCA)':
     - 'Amazon FSx'
   'Amazon OpenSearch Service (Security)':
     - 'Amazon OpenSearch Service'
-  'Amazon VPC (Networking)':
-    - 'Amazon Virtual Private Cloud'
-  'AWS Network Firewall (Security)':
-    - 'AWS Network Firewall'
-  'Amazon CloudWatch (Monitoring)':
-    - 'AmazonCloudWatch'
+  'AWS Support':
+    - 'AWS Support (Business)'
+    - 'AWS Support (Developer)'
+    - 'AWS Support (Enterprise)'
+service-exclusions:
+  - 'Tax'
 top-costs-count:
   account: 10
   service: 10
