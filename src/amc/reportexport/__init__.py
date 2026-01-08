@@ -33,23 +33,32 @@ from amc.reportexport.charts import (
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, account_id_to_name=None):
+def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, account_id_to_name=None, comparison_months=None):
     """Create account group allocation summary sheet.
     
     Args:
         worksheet: openpyxl worksheet object
         account_groups: Dictionary of business unit account groups
-        all_account_costs: Dictionary of all account costs from API (first month used for account detection)
+        all_account_costs: Dictionary of all account costs from API
         account_id_to_name: Optional dictionary mapping account IDs to names
+        comparison_months: Optional list of months to filter accounts by (show only accounts with costs in these months)
     """
     # Get all account IDs that are defined in account_groups
     assigned_accounts = set()
     for bu, bu_accounts in account_groups.items():
         assigned_accounts.update(bu_accounts.keys())
     
-    # Get all account IDs from cost data (from the first month)
-    first_month_key = next(iter(all_account_costs.keys()))
-    all_cost_account_ids = set(all_account_costs[first_month_key].keys())
+    # Get account IDs from cost data, filtered by comparison months if provided
+    if comparison_months:
+        # Only include accounts that have costs in at least one of the comparison months
+        all_cost_account_ids = set()
+        for month in comparison_months:
+            if month in all_account_costs:
+                all_cost_account_ids.update(all_account_costs[month].keys())
+    else:
+        # Use first month as before for backward compatibility
+        first_month_key = next(iter(all_account_costs.keys()))
+        all_cost_account_ids = set(all_account_costs[first_month_key].keys())
     
     # Identify unallocated accounts
     unallocated_account_ids = all_cost_account_ids - assigned_accounts
@@ -96,10 +105,29 @@ def _create_account_summary_sheet(worksheet, account_groups, all_account_costs, 
         row += 1
         
         if bu_accounts:
+            # Filter accounts to only show those with costs in comparison periods (if specified)
+            accounts_to_show = []
             for account_id in sorted(bu_accounts.keys()):
-                worksheet.cell(row, 1, account_id)
-                if account_id_to_name and account_id in account_id_to_name:
-                    worksheet.cell(row, 2, account_id_to_name[account_id])
+                # If filtering by comparison months, only show accounts with costs in those months
+                if comparison_months:
+                    has_costs = any(
+                        month in all_account_costs and account_id in all_account_costs[month]
+                        for month in comparison_months
+                    )
+                    if has_costs:
+                        accounts_to_show.append(account_id)
+                else:
+                    accounts_to_show.append(account_id)
+            
+            if accounts_to_show:
+                for account_id in accounts_to_show:
+                    worksheet.cell(row, 1, account_id)
+                    if account_id_to_name and account_id in account_id_to_name:
+                        worksheet.cell(row, 2, account_id_to_name[account_id])
+                    row += 1
+            else:
+                cell = worksheet.cell(row, 1, "(no accounts with costs in comparison period)")
+                cell.font = Font(italic=True, color="FF999999")
                 row += 1
         else:
             cell = worksheet.cell(row, 1, "(no accounts)")
@@ -310,11 +338,6 @@ def export_analysis_excel(
     wb = Workbook()
     wb.remove(wb.active)  # Remove default sheet
 
-    # Create Account Summary sheet first (if all_account_costs provided)
-    if all_account_costs:
-        ws_summary = wb.create_sheet("Account Summary", 0)
-        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name)
-
     # Get last 2 months from the data - sort chronologically
     def get_sort_key(month_str):
         """Generate a sortable key for month strings.
@@ -341,6 +364,11 @@ def export_analysis_excel(
         return
 
     last_2_months = months[-2:]
+
+    # Create Account Summary sheet first (if all_account_costs provided)
+    if all_account_costs:
+        ws_summary = wb.create_sheet("Account Summary", 0)
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name, last_2_months)
 
     # Create analysis sheets
     ws_bu = wb.create_sheet("BU Costs")
@@ -1320,7 +1348,9 @@ def export_year_analysis_excel(
     # Create Account Summary sheet first (if all_account_costs provided)
     if all_account_costs:
         ws_summary = wb.create_sheet("Account Summary", 0)
-        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name)
+        # For year analysis, use both year periods for filtering
+        comparison_months = year1_months + year2_months
+        _create_account_summary_sheet(ws_summary, bu_group_list, all_account_costs, account_id_to_name, comparison_months)
 
     # Aggregate data into yearly totals
     bu_year1 = _aggregate_year_costs(bu_cost_matrix, year1_months)
