@@ -162,28 +162,52 @@ amc --profile your-aws-profile --run-modes account bu service account-daily bu-d
 
 **Note**: The analysis Excel file is only generated when all three main modes (`account`, `bu`, `service`) are run.
 
-#### Custom Configuration File
+#### Configuration Options
 
-The tool supports multiple ways to specify your configuration file, with the following priority order:
+The tool supports multiple ways to provide configuration, with the following priority order (highest to lowest):
 
-1. **Explicit `--config-file` parameter** (highest priority)
-2. **`~/.amcrc` file in your home directory** (fallback if no parameter specified)
-3. **Built-in default configuration** (lowest priority)
+1. **`--config` inline YAML string** (highest priority) - Pass configuration directly
+2. **`--config-file` parameter** - Path to a configuration file
+3. **`~/.amcrc` file** - User configuration in home directory
+4. **Skeleton configuration** (lowest priority) - Minimal built-in defaults
 
 ```bash
-# Use a custom configuration file (highest priority)
-amc --profile your-aws-profile --config-file /path/to/custom-config.yaml
+# Priority 1: Inline YAML configuration (highest priority)
+amc --profile prod --config "$(cat config.yaml)"
 
-# Use ~/.amcrc from your home directory (create this file to set your default config)
-# No --config-file parameter needed
-cp my-config.yaml ~/.amcrc
-amc --profile your-aws-profile
+# Priority 2: Explicit config file path
+amc --profile prod --config-file /path/to/custom-config.yaml
 
-# Use built-in default configuration (if no --config-file and no ~/.amcrc exists)
-amc --profile your-aws-profile
+# Priority 3: Use ~/.amcrc (set once, never specify again)
+amc --profile prod --generate-config ~/.amcrc  # Generate skeleton first
+# Edit ~/.amcrc with your configuration
+amc --profile prod  # Will use ~/.amcrc automatically
+
+# Priority 4: Skeleton configuration (if nothing else specified)
+amc --profile prod  # Uses minimal built-in skeleton
 ```
 
-**Security Note**: The `~/.amcrc` file is useful for storing your default configuration with potentially sensitive account mappings in your home directory, rather than specifying it on the command line each time.
+#### Generate Configuration File
+
+Generate a skeleton configuration file to get started:
+
+```bash
+# Generate at a specific path
+amc --profile prod --generate-config /path/to/config.yaml
+
+# Generate as ~/.amcrc for automatic use
+amc --profile prod --generate-config ~/.amcrc
+
+# The skeleton contains all required fields with examples
+```
+
+The skeleton configuration contains:
+- Minimal structure required to run the tool
+- Example business units and account IDs
+- All required keys with sample values
+- Comments explaining each section
+
+**Security Note**: Use `~/.amcrc` to store your configuration with sensitive account mappings in your home directory. This keeps credentials out of command-line history and allows you to run the tool without specifying `--config-file` each time.
 
 #### Debug Logging
 
@@ -230,7 +254,9 @@ amc --help
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
 | `--profile` | **Yes** | None | AWS profile name from `~/.aws/config` |
-| `--config-file` | No | `~/.amcrc` if exists, otherwise built-in default | Path to configuration YAML file |
+| `--config` | No | None | Inline YAML configuration string (highest priority) |
+| `--config-file` | No | `~/.amcrc` if exists, otherwise skeleton | Path to configuration YAML file |
+| `--generate-config` | No | None | Generate skeleton config at specified path and exit |
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |
@@ -242,44 +268,52 @@ amc --help
 
 The configuration file defines business units, shared services, and service aggregation rules.
 
-**Configuration File Priority**:
-The tool looks for configuration in the following order:
-1. **`--config-file` parameter** - Explicit path provided on command line (highest priority)
-2. **`~/.amcrc`** - Configuration file in your home directory (useful for default settings)
-3. **Built-in default** - `src/amc/data/config/aws-monthly-costs-config.yaml` (lowest priority)
+**Configuration Priority** (highest to lowest):
+1. **`--config`** - Inline YAML string
+2. **`--config-file`** - Explicit file path
+3. **`~/.amcrc`** - User RC file in home directory
+4. **Skeleton config** - Minimal built-in defaults
 
-**Tip**: Create a `~/.amcrc` file to set your default configuration without specifying `--config-file` each time. This is especially useful for keeping sensitive account mappings out of command-line history.
+**Getting Started**:
+```bash
+# Generate a skeleton configuration file
+amc --profile prod --generate-config ~/.amcrc
 
-Example structure:
+# Edit the generated file with your AWS account structure
+# Then run without specifying config (uses ~/.amcrc automatically)
+amc --profile prod
+```
+
+**Configuration Structure**:
+
+The configuration file uses the format shown in the generated skeleton. Key sections include:
 
 ```yaml
-# Business unit definitions
-business_units:
-  Engineering:
-    - "123456789012"  # Account IDs
-    - "234567890123"
-  Operations:
-    - "345678901234"
-  Marketing:
-    - "456789012345"
+# Business unit definitions with account IDs
+account-groups:
+  your-business-unit:
+    '123456789012':  # AWS Account ID
+      cost-class: opex  # or 'capex'
+  
+  # Shared services (required)
+  ss:
+    '999999999999':
+      cost-class: capex
 
-# Shared services accounts (optional)
-shared_services:
-  accounts:
-    - "567890123456"
-  allocation:  # Percentage allocation across BUs
-    Engineering: 50
-    Operations: 30
-    Marketing: 20
+# Shared services allocation (optional)
+ss-allocations:
+  your-business-unit: 100
 
-# Service name aggregation rules (optional)
-service_aggregation:
-  "Compute":
-    - "Amazon Elastic Compute Cloud - Compute"
-    - "Amazon EC2 Container Service"
-  "Storage":
-    - "Amazon Simple Storage Service"
-    - "Amazon Elastic Block Store"
+# Service aggregation rules (optional)
+service-aggregations:
+  'Compute':
+    - 'Amazon Elastic Compute Cloud - Compute'
+    - 'EC2 - Other'
+
+# Top N items in reports
+top-costs-count:
+  account: 10
+  service: 10
 ```
 
 For a complete example, see the included `src/amc/data/config/aws-monthly-costs-config.yaml` file.
@@ -609,25 +643,29 @@ aws sso login --profile your-profile-name
 
 **Solution**:
 ```bash
-# Option 1: Use the built-in default config (no arguments needed)
-amc --profile your-profile-name
+# Option 1: Generate a skeleton config file
+amc --profile prod --generate-config ~/.amcrc
+# Edit ~/.amcrc with your AWS account mappings
+amc --profile prod  # Will use ~/.amcrc automatically
 
-# Option 2: Create a ~/.amcrc file in your home directory
-cp src/amc/data/config/aws-monthly-costs-config.yaml ~/.amcrc
-# Edit ~/.amcrc with your configuration
-amc --profile your-profile-name
+# Option 2: Use skeleton configuration (minimal defaults)
+amc --profile prod  # If no ~/.amcrc exists, uses built-in skeleton
 
 # Option 3: Specify an explicit config file path
-amc --profile your-profile-name --config-file /correct/path/to/config.yaml
+amc --profile prod --config-file /correct/path/to/config.yaml
 
-# View which config file is being used (with debug logging)
-amc --profile your-profile-name --debug-logging
+# Option 4: Pass inline configuration
+amc --profile prod --config "$(cat config.yaml)"
+
+# Debug: See which config is being used
+amc --profile prod --debug-logging
 ```
 
-**Configuration Priority**:
-1. Explicit `--config-file` parameter (highest priority)
-2. `~/.amcrc` in your home directory (if exists)
-3. Built-in default configuration (if no other options)
+**Configuration Priority** (highest to lowest):
+1. `--config` inline YAML string
+2. `--config-file` explicit path
+3. `~/.amcrc` in home directory
+4. Skeleton configuration (minimal built-in)
 
 #### "Invalid time period format"
 
