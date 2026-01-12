@@ -122,6 +122,7 @@ class TestParseArguments:
         with patch("sys.argv", ["amc"]):
             with pytest.raises(SystemExit):
                 parse_arguments()
+
     def test_parse_arguments_with_version(self):
         """Test that --version argument displays version and exits without requiring --profile."""
         with patch("sys.argv", ["amc", "--version"]):
