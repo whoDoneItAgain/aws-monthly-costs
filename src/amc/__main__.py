@@ -34,6 +34,7 @@ from amc.reportexport import (
 from amc.runmodes.account import calculate_account_costs, get_account_names
 from amc.runmodes.bu import calculate_business_unit_costs
 from amc.runmodes.service import calculate_service_costs, get_service_list
+from amc.version import __version__
 
 LOGGER = logging.getLogger("amc")
 
@@ -89,6 +90,13 @@ def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Generate AWS monthly cost reports by account, business unit, or service",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show the version number and exit",
     )
 
     parser.add_argument(
