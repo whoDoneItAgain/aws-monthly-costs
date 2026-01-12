@@ -94,7 +94,7 @@ def parse_arguments():
     parser.add_argument(
         "--profile",
         type=str,
-        required=True,
+        required=False,
         help="AWS profile name to use for authentication (from ~/.aws/config)",
     )
 
@@ -114,10 +114,11 @@ def parse_arguments():
 
     parser.add_argument(
         "--generate-config",
-        type=str,
+        nargs="?",
+        const=USER_RC_FILE,
         default=None,
         metavar="PATH",
-        help="Generate a skeleton configuration file at the specified path (use '~/.amcrc' for RC file) and exit",
+        help=f"Generate a skeleton configuration file at the specified path (default: {USER_RC_FILE}) and exit",
     )
 
     parser.add_argument(
@@ -169,7 +170,13 @@ def parse_arguments():
         help="Format for individual report files: 'csv', 'excel', or 'both'. If not specified, only generates the analysis Excel file",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Validate that --profile is provided when not using --generate-config
+    if args.generate_config is None and args.profile is None:
+        parser.error("the following arguments are required: --profile")
+
+    return args
 
 
 def configure_logging(debug_logging: bool = False, info_logging: bool = False):

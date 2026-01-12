@@ -104,6 +104,25 @@ class TestParseArguments:
             args = parse_arguments()
             assert args.generate_config == "/tmp/config.yaml"
 
+    def test_parse_arguments_with_generate_config_default_path(self):
+        """Test parsing arguments with generate-config without path (uses default ~/.amcrc)."""
+        with patch("sys.argv", ["amc", "--generate-config"]):
+            args = parse_arguments()
+            assert args.generate_config == "~/.amcrc"
+
+    def test_parse_arguments_with_generate_config_no_profile_required(self):
+        """Test that --profile is not required when using --generate-config."""
+        with patch("sys.argv", ["amc", "--generate-config", "/tmp/config.yaml"]):
+            args = parse_arguments()
+            assert args.generate_config == "/tmp/config.yaml"
+            assert args.profile is None
+
+    def test_parse_arguments_profile_required_without_generate_config(self):
+        """Test that --profile is still required when not using --generate-config."""
+        with patch("sys.argv", ["amc"]):
+            with pytest.raises(SystemExit):
+                parse_arguments()
+
 
 class TestConfigureLogging:
     """Tests for configure_logging function."""
