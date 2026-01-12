@@ -104,6 +104,14 @@ class TestParseArguments:
             args = parse_arguments()
             assert args.generate_config == "/tmp/config.yaml"
 
+    def test_parse_arguments_with_version(self):
+        """Test that --version argument displays version and exits without requiring --profile."""
+        with patch("sys.argv", ["amc", "--version"]):
+            with pytest.raises(SystemExit) as excinfo:
+                parse_arguments()
+            # argparse exits with code 0 for --version
+            assert excinfo.value.code == 0
+
 
 class TestConfigureLogging:
     """Tests for configure_logging function."""
