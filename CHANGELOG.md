@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-12
+
+### Changed
+- Fix ruff linting errors and formatting issues (93b1e50)
+- Add --test-access argument to test AWS profile and permissions (4a200a1)
+- Add service-exclusions section to skeleton config and documentation (2e325c5)
+- Update README documentation for mix-in configuration and CLI arguments (e1b247b)
+- Implement mix-in style configuration with top-level merge and CLI arguments (9cc429b)
+- Initial plan (6072e05)
+- Adds missing newline for test function (02ea7fc)
+- Make --generate-config default to ~/.amcrc and work without --profile (cce444e)
+- Add --version argument to show application version (7f5e927)
+- Initial plan (e8e9f0a)
+- Initial plan (34c245e)
+- Fix formatting and linting issues to pass CI checks (f04306d)
+- Fix tests to match updated error messages and mocks (e5b0e4e)
+- Update README with new configuration priority and skeleton generation (3cb5b3a)
+- Implement configuration priority with inline config and skeleton generation (6a19568)
+- Changes before error encountered (053bbfd)
+- Update README with configuration file priority documentation (44ddc2d)
+- Add configuration file priority feature with .amcrc fallback (2c93701)
+- Initial plan (9849298)
+- Update Precommit Hook Versions (937e713)
+- Bump boto3 from 1.42.21 to 1.42.25 (081124b)
+
+
 ## [0.2.0] - 2026-01-08
 
 ### Changed
@@ -511,6 +537,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Current version baseline
 
-[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.1.2...v0.2.0
-[0.1.2]: https://github.com/whoDoneItAgain/aws-monthly-costs/releases/tag/v0.1.2
+[Unreleased]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/whoDoneItAgain/aws-monthly-costs/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/whoDoneItAgain/aws-monthly-costs/releases/tag/v0.2.0
