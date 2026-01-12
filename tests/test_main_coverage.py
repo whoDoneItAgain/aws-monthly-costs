@@ -44,6 +44,9 @@ class TestMainFunction:
         mock_args.config_file = "config.yaml"
         mock_args.config = None  # New attribute
         mock_args.generate_config = None  # New attribute
+        mock_args.test_access = False  # New attribute for --test-access
+        mock_args.top_accounts = None  # New attribute for --top-accounts
+        mock_args.top_services = None  # New attribute for --top-services
         mock_args.include_shared_services = False
         mock_args.run_modes = [RUN_MODE_ACCOUNT]
         mock_args.time_period = "month"

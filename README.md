@@ -231,6 +231,56 @@ The skeleton configuration contains:
 
 **Security Note**: Use `~/.amcrc` to store your configuration with sensitive account mappings in your home directory. This keeps credentials out of command-line history and allows you to run the tool without specifying `--config-file` each time.
 
+#### Test AWS Access and Permissions
+
+Before running cost reports, you can test that your AWS profile has the required permissions:
+
+```bash
+# Test profile access and permissions
+amc --profile your-aws-profile --test-access
+```
+
+This command will:
+1. ✓ Verify the profile exists in your AWS config file
+2. ✓ Check if credentials are active (including SSO sessions)
+3. ✓ Test each required IAM permission:
+   - `sts:GetCallerIdentity`
+   - `ce:GetCostAndUsage` 
+   - `organizations:ListAccounts`
+   - `organizations:DescribeAccount`
+
+**Example output:**
+```
+Testing AWS access for profile: prod-readonly
+============================================================
+
+1. Checking if profile exists in config file...
+   ✓ Profile 'prod-readonly' exists in config file
+
+2. Testing if credentials are active...
+   ✓ Credentials are active
+   Account: 123456789012
+   User/Role ARN: arn:aws:iam::123456789012:role/CostExplorerRole
+   User ID: AROA1234567890EXAMPLE
+
+3. Testing required IAM permissions...
+   Testing ce:GetCostAndUsage...
+     ✓ ce:GetCostAndUsage - OK
+   Testing organizations:ListAccounts...
+     ✓ organizations:ListAccounts - OK
+   Testing organizations:DescribeAccount...
+     ✓ organizations:DescribeAccount - OK
+
+============================================================
+SUMMARY
+============================================================
+✓ All tests PASSED
+
+The profile has all required permissions and is ready to use.
+```
+
+**Troubleshooting**: If permissions fail, the command will display the required IAM policy that needs to be attached to your user or role.
+
 #### Debug Logging
 
 Enable detailed logging for troubleshooting:
@@ -279,6 +329,7 @@ amc --help
 | `--config` | No | None | Inline YAML configuration string (highest priority) |
 | `--config-file` | No | None | Path to configuration YAML file (merged with skeleton and ~/.amcrc) |
 | `--generate-config` | No | None | Generate skeleton config at specified path and exit |
+| `--test-access` | No | False | Test AWS profile access and required permissions, then exit |
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |

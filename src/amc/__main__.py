@@ -161,11 +161,21 @@ def parse_arguments():
         help="Number of top services to include in reports (overrides configuration file)",
     )
 
+    parser.add_argument(
+        "--test-access",
+        action="store_true",
+        help="Test AWS profile access and required permissions, then exit",
+    )
+
     args = parser.parse_args()
 
-    # Validate that --profile is provided when not using --generate-config
-    if args.generate_config is None and args.profile is None:
+    # Validate that --profile is provided when not using --generate-config or --test-access
+    if args.generate_config is None and args.test_access is False and args.profile is None:
         parser.error("the following arguments are required: --profile")
+
+    # For --test-access, --profile is required
+    if args.test_access and args.profile is None:
+        parser.error("--test-access requires --profile")
 
     return args
 
@@ -538,6 +548,157 @@ def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Se
     return session
 
 
+def test_aws_access(aws_profile: str, aws_config_file_path: Path):
+    """Test AWS profile access and required permissions.
+    
+    Tests that the profile is:
+    1. Valid and exists in the config file
+    2. Active (credentials are valid, including SSO if applicable)
+    3. Has the required IAM permissions for the tool
+    
+    Args:
+        aws_profile: AWS profile name to test
+        aws_config_file_path: Path to AWS config file
+    
+    Raises:
+        SystemExit: Always exits after testing (success or failure)
+    """
+    print(f"Testing AWS access for profile: {aws_profile}")
+    print("=" * 60)
+    
+    # Test 1: Profile exists in config file
+    print("\n1. Checking if profile exists in config file...")
+    aws_config = configparser.RawConfigParser()
+    aws_config.read(aws_config_file_path)
+    
+    if not aws_config.has_section(f"profile {aws_profile}"):
+        print(f"   ✗ FAIL: Profile '{aws_profile}' not found in {aws_config_file_path}")
+        print(f"\n   Available profiles:")
+        for section in aws_config.sections():
+            if section.startswith("profile "):
+                print(f"     - {section.replace('profile ', '')}")
+        sys.exit(1)
+    
+    print(f"   ✓ Profile '{aws_profile}' exists in config file")
+    
+    # Test 2: Credentials are valid and active (including SSO)
+    print("\n2. Testing if credentials are active...")
+    try:
+        session = boto3.Session(profile_name=aws_profile)
+        sts_client = session.client("sts")
+        identity = sts_client.get_caller_identity()
+        
+        print(f"   ✓ Credentials are active")
+        print(f"   Account: {identity['Account']}")
+        print(f"   User/Role ARN: {identity['Arn']}")
+        print(f"   User ID: {identity['UserId']}")
+    except Exception as e:
+        print(f"   ✗ FAIL: Credentials are not active or invalid")
+        print(f"   Error: {e}")
+        print(f"\n   If using SSO, try running: aws sso login --profile {aws_profile}")
+        sys.exit(1)
+    
+    # Test 3: Required IAM permissions
+    print("\n3. Testing required IAM permissions...")
+    
+    required_permissions = {
+        "sts:GetCallerIdentity": {"tested": True, "result": True},  # Already tested above
+        "ce:GetCostAndUsage": {"tested": False, "result": False},
+        "organizations:ListAccounts": {"tested": False, "result": False},
+        "organizations:DescribeAccount": {"tested": False, "result": False},
+    }
+    
+    # Test Cost Explorer access
+    print("   Testing ce:GetCostAndUsage...")
+    try:
+        ce_client = session.client("ce")
+        # Make a minimal request for a single day
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        ce_client.get_cost_and_usage(
+            TimePeriod={
+                "Start": yesterday.strftime("%Y-%m-%d"),
+                "End": today.strftime("%Y-%m-%d"),
+            },
+            Granularity="DAILY",
+            Metrics=["UnblendedCost"],
+        )
+        required_permissions["ce:GetCostAndUsage"]["tested"] = True
+        required_permissions["ce:GetCostAndUsage"]["result"] = True
+        print("     ✓ ce:GetCostAndUsage - OK")
+    except Exception as e:
+        required_permissions["ce:GetCostAndUsage"]["tested"] = True
+        required_permissions["ce:GetCostAndUsage"]["result"] = False
+        print(f"     ✗ ce:GetCostAndUsage - FAIL")
+        print(f"       Error: {str(e)[:100]}")
+    
+    # Test Organizations access
+    print("   Testing organizations:ListAccounts...")
+    try:
+        orgs_client = session.client("organizations")
+        orgs_client.list_accounts(MaxResults=1)
+        required_permissions["organizations:ListAccounts"]["tested"] = True
+        required_permissions["organizations:ListAccounts"]["result"] = True
+        print("     ✓ organizations:ListAccounts - OK")
+    except Exception as e:
+        required_permissions["organizations:ListAccounts"]["tested"] = True
+        required_permissions["organizations:ListAccounts"]["result"] = False
+        print(f"     ✗ organizations:ListAccounts - FAIL")
+        print(f"       Error: {str(e)[:100]}")
+    
+    print("   Testing organizations:DescribeAccount...")
+    try:
+        # Use the account ID from identity to test DescribeAccount
+        orgs_client.describe_account(AccountId=identity['Account'])
+        required_permissions["organizations:DescribeAccount"]["tested"] = True
+        required_permissions["organizations:DescribeAccount"]["result"] = True
+        print("     ✓ organizations:DescribeAccount - OK")
+    except Exception as e:
+        required_permissions["organizations:DescribeAccount"]["tested"] = True
+        required_permissions["organizations:DescribeAccount"]["result"] = False
+        print(f"     ✗ organizations:DescribeAccount - FAIL")
+        print(f"       Error: {str(e)[:100]}")
+    
+    # Summary
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    
+    all_passed = all(perm["result"] for perm in required_permissions.values())
+    
+    if all_passed:
+        print("✓ All tests PASSED")
+        print("\nThe profile has all required permissions and is ready to use.")
+        sys.exit(0)
+    else:
+        print("✗ Some tests FAILED")
+        print("\nFailed permissions:")
+        for perm_name, perm_info in required_permissions.items():
+            if perm_info["tested"] and not perm_info["result"]:
+                print(f"  - {perm_name}")
+        
+        print("\nRequired IAM policy:")
+        print("""
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ce:GetCostAndUsage",
+        "organizations:ListAccounts",
+        "organizations:DescribeAccount",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+""")
+        sys.exit(1)
+
+
 def determine_output_formats(output_format: str | None) -> list[str]:
     """Determine which output formats to generate.
 
@@ -873,6 +1034,12 @@ def main():
     if args.generate_config:
         generate_skeleton_config(args.generate_config)
         sys.exit(0)
+
+    # Handle --test-access if specified
+    if args.test_access:
+        aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
+        test_aws_access(args.profile, aws_config_file_path)
+        # test_aws_access will exit, so this line is never reached
 
     # Configure logging
     configure_logging(debug_logging=args.debug_logging, info_logging=args.info_logging)
