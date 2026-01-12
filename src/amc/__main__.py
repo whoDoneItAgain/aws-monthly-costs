@@ -170,7 +170,11 @@ def parse_arguments():
     args = parser.parse_args()
 
     # Validate that --profile is provided when not using --generate-config or --test-access
-    if args.generate_config is None and args.test_access is False and args.profile is None:
+    if (
+        args.generate_config is None
+        and args.test_access is False
+        and args.profile is None
+    ):
         parser.error("the following arguments are required: --profile")
 
     # For --test-access, --profile is required
@@ -210,23 +214,23 @@ def configure_logging(debug_logging: bool = False, info_logging: bool = False):
 
 def merge_configs(base: dict, override: dict) -> dict:
     """Merge two configuration dictionaries with mix-in semantics.
-    
+
     For most top-level keys, values from override completely replace base values.
     Exception: 'top-costs-count' allows partial specification - if override only
     specifies 'account', the 'service' value from base is preserved.
-    
+
     This allows:
     - Skeleton config provides defaults for all keys
     - User config can override entire sections (like account-groups)
     - User config OR CLI can partially override top-costs-count values
-    
+
     Args:
         base: Base configuration dictionary (lower priority)
         override: Override configuration dictionary (higher priority)
-    
+
     Returns:
         Merged configuration dictionary
-    
+
     Example:
         base = {"top-costs-count": {"account": 10, "service": 10}}
         override = {"top-costs-count": {"account": 5}}
@@ -234,16 +238,20 @@ def merge_configs(base: dict, override: dict) -> dict:
         # result["top-costs-count"] == {"account": 5, "service": 10}
     """
     result = base.copy()
-    
+
     for key, value in override.items():
         # Special case for top-costs-count: merge nested values
-        if key == "top-costs-count" and isinstance(value, dict) and isinstance(result.get(key), dict):
+        if (
+            key == "top-costs-count"
+            and isinstance(value, dict)
+            and isinstance(result.get(key), dict)
+        ):
             # Merge nested dict to allow partial specification
             result[key] = {**result[key], **value}
         else:
             # For all other keys: complete replacement
             result[key] = value
-    
+
     return result
 
 
@@ -280,10 +288,10 @@ def load_configuration(config_file_path: Path, validate: bool = True) -> dict:
 
 def validate_configuration(config: dict):
     """Validate that configuration has all required keys and structure.
-    
+
     Args:
         config: Configuration dictionary to validate
-        
+
     Raises:
         ValueError: If configuration is missing required keys or has invalid structure
     """
@@ -359,7 +367,7 @@ def generate_skeleton_config(output_path: str):
     # Read skeleton config from file and write to output
     with open(SKELETON_CONFIG_PATH, "r") as src:
         skeleton_content = src.read()
-    
+
     with open(output_path_resolved, "w") as f:
         f.write(skeleton_content)
 
@@ -550,70 +558,74 @@ def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Se
 
 def test_aws_access(aws_profile: str, aws_config_file_path: Path):
     """Test AWS profile access and required permissions.
-    
+
     Tests that the profile is:
     1. Valid and exists in the config file
     2. Active (credentials are valid, including SSO if applicable)
     3. Has the required IAM permissions for the tool
-    
+
     Args:
         aws_profile: AWS profile name to test
         aws_config_file_path: Path to AWS config file
-    
+
     Raises:
         SystemExit: Always exits after testing (success or failure)
     """
     print(f"Testing AWS access for profile: {aws_profile}")
     print("=" * 60)
-    
+
     # Test 1: Profile exists in config file
     print("\n1. Checking if profile exists in config file...")
     aws_config = configparser.RawConfigParser()
     aws_config.read(aws_config_file_path)
-    
+
     if not aws_config.has_section(f"profile {aws_profile}"):
         print(f"   ✗ FAIL: Profile '{aws_profile}' not found in {aws_config_file_path}")
-        print(f"\n   Available profiles:")
+        print("\n   Available profiles:")
         for section in aws_config.sections():
             if section.startswith("profile "):
                 print(f"     - {section.replace('profile ', '')}")
         sys.exit(1)
-    
+
     print(f"   ✓ Profile '{aws_profile}' exists in config file")
-    
+
     # Test 2: Credentials are valid and active (including SSO)
     print("\n2. Testing if credentials are active...")
     try:
         session = boto3.Session(profile_name=aws_profile)
         sts_client = session.client("sts")
         identity = sts_client.get_caller_identity()
-        
-        print(f"   ✓ Credentials are active")
+
+        print("   ✓ Credentials are active")
         print(f"   Account: {identity['Account']}")
         print(f"   User/Role ARN: {identity['Arn']}")
         print(f"   User ID: {identity['UserId']}")
     except Exception as e:
-        print(f"   ✗ FAIL: Credentials are not active or invalid")
+        print("   ✗ FAIL: Credentials are not active or invalid")
         print(f"   Error: {e}")
         print(f"\n   If using SSO, try running: aws sso login --profile {aws_profile}")
         sys.exit(1)
-    
+
     # Test 3: Required IAM permissions
     print("\n3. Testing required IAM permissions...")
-    
+
     required_permissions = {
-        "sts:GetCallerIdentity": {"tested": True, "result": True},  # Already tested above
+        "sts:GetCallerIdentity": {
+            "tested": True,
+            "result": True,
+        },  # Already tested above
         "ce:GetCostAndUsage": {"tested": False, "result": False},
         "organizations:ListAccounts": {"tested": False, "result": False},
         "organizations:DescribeAccount": {"tested": False, "result": False},
     }
-    
+
     # Test Cost Explorer access
     print("   Testing ce:GetCostAndUsage...")
     try:
         ce_client = session.client("ce")
         # Make a minimal request for a single day
         from datetime import datetime, timedelta
+
         today = datetime.now().date()
         yesterday = today - timedelta(days=1)
         ce_client.get_cost_and_usage(
@@ -630,9 +642,9 @@ def test_aws_access(aws_profile: str, aws_config_file_path: Path):
     except Exception as e:
         required_permissions["ce:GetCostAndUsage"]["tested"] = True
         required_permissions["ce:GetCostAndUsage"]["result"] = False
-        print(f"     ✗ ce:GetCostAndUsage - FAIL")
+        print("     ✗ ce:GetCostAndUsage - FAIL")
         print(f"       Error: {str(e)[:100]}")
-    
+
     # Test Organizations access
     print("   Testing organizations:ListAccounts...")
     try:
@@ -644,29 +656,29 @@ def test_aws_access(aws_profile: str, aws_config_file_path: Path):
     except Exception as e:
         required_permissions["organizations:ListAccounts"]["tested"] = True
         required_permissions["organizations:ListAccounts"]["result"] = False
-        print(f"     ✗ organizations:ListAccounts - FAIL")
+        print("     ✗ organizations:ListAccounts - FAIL")
         print(f"       Error: {str(e)[:100]}")
-    
+
     print("   Testing organizations:DescribeAccount...")
     try:
         # Use the account ID from identity to test DescribeAccount
-        orgs_client.describe_account(AccountId=identity['Account'])
+        orgs_client.describe_account(AccountId=identity["Account"])
         required_permissions["organizations:DescribeAccount"]["tested"] = True
         required_permissions["organizations:DescribeAccount"]["result"] = True
         print("     ✓ organizations:DescribeAccount - OK")
     except Exception as e:
         required_permissions["organizations:DescribeAccount"]["tested"] = True
         required_permissions["organizations:DescribeAccount"]["result"] = False
-        print(f"     ✗ organizations:DescribeAccount - FAIL")
+        print("     ✗ organizations:DescribeAccount - FAIL")
         print(f"       Error: {str(e)[:100]}")
-    
+
     # Summary
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    
+
     all_passed = all(perm["result"] for perm in required_permissions.values())
-    
+
     if all_passed:
         print("✓ All tests PASSED")
         print("\nThe profile has all required permissions and is ready to use.")
@@ -677,7 +689,7 @@ def test_aws_access(aws_profile: str, aws_config_file_path: Path):
         for perm_name, perm_info in required_permissions.items():
             if perm_info["tested"] and not perm_info["result"]:
                 print(f"  - {perm_name}")
-        
+
         print("\nRequired IAM policy:")
         print("""
 {
@@ -1053,18 +1065,18 @@ def main():
     # 3. --config-file (if specified)
     # 4. --config inline string (if specified)
     # 5. Command-line arguments (if specified)
-    
+
     # Start with skeleton configuration as base
     LOGGER.debug(f"Loading skeleton configuration from: {SKELETON_CONFIG_PATH}")
     config_settings = load_configuration(SKELETON_CONFIG_PATH, validate=False)
-    
+
     # Merge ~/.amcrc if it exists
     user_rc_path = Path(os.path.expanduser(USER_RC_FILE)).absolute()
     if user_rc_path.exists():
         LOGGER.debug(f"Merging configuration from user RC file: {user_rc_path}")
         user_config = load_configuration(user_rc_path, validate=False)
         config_settings = merge_configs(config_settings, user_config)
-    
+
     # Merge --config-file if specified
     if args.config_file:
         config_file_path = Path(args.config_file).absolute()
@@ -1075,13 +1087,13 @@ def main():
         LOGGER.debug(f"Merging configuration from --config-file: {config_file_path}")
         file_config = load_configuration(config_file_path, validate=False)
         config_settings = merge_configs(config_settings, file_config)
-    
+
     # Merge --config inline string if specified
     if args.config:
         LOGGER.debug("Merging configuration from --config inline string")
         inline_config = load_configuration_from_string(args.config, validate=False)
         config_settings = merge_configs(config_settings, inline_config)
-    
+
     # Merge command-line arguments if specified (highest priority)
     cli_overrides = {}
     if args.top_accounts is not None or args.top_services is not None:
@@ -1093,7 +1105,7 @@ def main():
             LOGGER.debug(f"Overriding top services count from CLI: {args.top_services}")
             cli_overrides["top-costs-count"]["service"] = args.top_services
         config_settings = merge_configs(config_settings, cli_overrides)
-    
+
     # Validate final merged configuration
     LOGGER.debug("Validating final merged configuration")
     validate_configuration(config_settings)
