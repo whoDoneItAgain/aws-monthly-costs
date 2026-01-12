@@ -164,27 +164,49 @@ amc --profile your-aws-profile --run-modes account bu service account-daily bu-d
 
 #### Configuration Options
 
-The tool supports multiple ways to provide configuration, with the following priority order (highest to lowest):
+The tool uses a **"mix-in" style configuration** where settings from higher priority sources override lower priority ones. This allows you to:
+- Keep defaults from the skeleton configuration
+- Override only specific sections in your `.amcrc` file
+- Further override with command-line arguments
 
-1. **`--config` inline YAML string** (highest priority) - Pass configuration directly
-2. **`--config-file` parameter** - Path to a configuration file
-3. **`~/.amcrc` file** - User configuration in home directory
-4. **Skeleton configuration** (lowest priority) - Minimal built-in defaults
+**Configuration Priority** (lowest to highest):
+
+1. **Skeleton configuration** (lowest priority) - Built-in defaults for all settings
+2. **`~/.amcrc` file** - User configuration in home directory
+3. **`--config-file` parameter** - Explicit path to a configuration file
+4. **`--config` inline YAML string** - Pass configuration directly as a string
+5. **Command-line arguments** (highest priority) - Override specific settings like `--top-accounts`
+
+**How Mix-In Works**:
+- **Top-level keys** (like `account-groups`, `service-aggregations`) are replaced completely when specified
+- **`top-costs-count`** supports partial specification - you can override just `account` or just `service`
+- Missing keys use defaults from lower-priority sources
+
+**Examples**:
 
 ```bash
-# Priority 1: Inline YAML configuration (highest priority)
-amc --profile prod --config "$(cat config.yaml)"
+# Example 1: Partial config with only account-groups
+# Your ~/.amcrc only has account-groups section
+# Result: Uses your account-groups + default top 10 from skeleton
+amc --profile prod
 
-# Priority 2: Explicit config file path
-amc --profile prod --config-file /path/to/custom-config.yaml
+# Example 2: Override top-costs-count partially
+# Your ~/.amcrc says top 15 for both account and service
+# CLI override: --top-accounts 5
+# Result: account=5 (from CLI), service=15 (from .amcrc)
+amc --profile prod --top-accounts 5
 
-# Priority 3: Use ~/.amcrc (set once, never specify again)
-amc --profile prod --generate-config ~/.amcrc  # Generate skeleton first
-# Edit ~/.amcrc with your configuration
-amc --profile prod  # Will use ~/.amcrc automatically
+# Example 3: Use skeleton with CLI overrides only
+# No ~/.amcrc file exists
+# Result: Uses skeleton defaults + your CLI overrides
+amc --profile prod --top-accounts 20 --top-services 15
 
-# Priority 4: Skeleton configuration (if nothing else specified)
-amc --profile prod  # Uses minimal built-in skeleton
+# Example 4: Multiple config layers
+# Skeleton provides base defaults
+# ~/.amcrc overrides account-groups and sets top-costs-count to 15
+# --config-file adds service-aggregations
+# --top-accounts 5 overrides just the account count
+amc --profile prod --config-file extra-services.yaml --top-accounts 5
 ```
 
 #### Generate Configuration File
@@ -255,24 +277,41 @@ amc --help
 |--------|----------|---------|-------------|
 | `--profile` | **Yes** | None | AWS profile name from `~/.aws/config` |
 | `--config` | No | None | Inline YAML configuration string (highest priority) |
-| `--config-file` | No | `~/.amcrc` if exists, otherwise skeleton | Path to configuration YAML file |
+| `--config-file` | No | None | Path to configuration YAML file (merged with skeleton and ~/.amcrc) |
 | `--generate-config` | No | None | Generate skeleton config at specified path and exit |
 | `--aws-config-file` | No | `~/.aws/config` | Path to AWS credentials config file |
 | `--include-shared-services` | No | False | Allocate shared services costs across business units |
 | `--run-modes` | No | `account bu service` | Report types to generate (space-separated) |
 | `--time-period` | No | `month` | Time period: `month` for last 2 months, `year` for year-level analysis (24+ months), or `YYYY-MM-DD_YYYY-MM-DD` for custom range |
 | `--output-format` | No | None | Individual report format: `csv`, `excel`, or `both` (omit for analysis file only) |
+| `--top-accounts` | No | 10 (from config) | Number of top accounts to include in reports (overrides config) |
+| `--top-services` | No | 10 (from config) | Number of top services to include in reports (overrides config) |
 | `--debug-logging` | No | False | Enable debug-level logging |
 
 ### Configuration File
 
 The configuration file defines business units, shared services, and service aggregation rules.
 
-**Configuration Priority** (highest to lowest):
-1. **`--config`** - Inline YAML string
-2. **`--config-file`** - Explicit file path
-3. **`~/.amcrc`** - User RC file in home directory
-4. **Skeleton config** - Minimal built-in defaults
+**Mix-In Configuration System**:
+
+The tool uses a layered "mix-in" approach where configuration is built up from multiple sources:
+1. **Skeleton** provides complete defaults (stored at `src/amc/data/config/skeleton-config.yaml`)
+2. **`~/.amcrc`** overrides specific sections (e.g., only `account-groups`)
+3. **`--config-file`** adds or overrides additional sections
+4. **`--config`** inline YAML for complete custom configuration
+5. **CLI arguments** (`--top-accounts`, `--top-services`) override specific values
+
+**Key Behavior**:
+- **Top-level keys** like `account-groups` and `service-aggregations` are replaced entirely when specified
+- **`top-costs-count`** allows partial updates: you can change just `account` or just `service`
+- **Missing sections** use defaults from lower priority sources (ultimately the skeleton)
+
+**Configuration Priority** (lowest to highest):
+1. Skeleton config - Complete defaults (account: 10, service: 10)
+2. `~/.amcrc` - User's persistent configuration
+3. `--config-file` - Explicit file for this run
+4. `--config` - Inline YAML string for this run
+5. CLI arguments - Highest priority overrides
 
 **Getting Started**:
 ```bash
@@ -280,9 +319,33 @@ The configuration file defines business units, shared services, and service aggr
 amc --profile prod --generate-config ~/.amcrc
 
 # Edit the generated file with your AWS account structure
-# Then run without specifying config (uses ~/.amcrc automatically)
+# You can include only the sections you want to customize
+# Missing sections will use skeleton defaults
 amc --profile prod
+
+# Example: Minimal ~/.amcrc with only account-groups
+# All other settings (top-costs-count, service-aggregations, etc.) 
+# will use skeleton defaults
 ```
+
+**Example: Partial Configuration**:
+
+A minimal `~/.amcrc` might contain only account mappings:
+```yaml
+# Partial config - only customize account-groups
+account-groups:
+  engineering:
+    '123456789012':
+      cost-class: opex
+  ss:
+    '999999999999':
+      cost-class: capex
+```
+
+When you run `amc --profile prod`, the final configuration will be:
+- `account-groups`: From your `.amcrc` (your custom accounts)
+- `service-aggregations`: From skeleton (default aggregations)
+- `top-costs-count`: From skeleton (account: 10, service: 10)
 
 **Configuration Structure**:
 
