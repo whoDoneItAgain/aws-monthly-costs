@@ -25,6 +25,11 @@ service-aggregations:
     - 'Amazon Elastic Compute Cloud - Compute'
     - 'EC2 - Other'
 
+# Services to exclude from reports (optional)
+# List of AWS service names to exclude from cost reports
+service-exclusions:
+  - 'Tax'
+
 # Number of top accounts/services to include in reports
 top-costs-count:
   account: 10

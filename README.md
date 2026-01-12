@@ -290,7 +290,7 @@ amc --help
 
 ### Configuration File
 
-The configuration file defines business units, shared services, and service aggregation rules.
+The configuration file defines business units, shared services, service aggregation rules, and service exclusions.
 
 **Mix-In Configuration System**:
 
@@ -372,6 +372,10 @@ service-aggregations:
   'Compute':
     - 'Amazon Elastic Compute Cloud - Compute'
     - 'EC2 - Other'
+
+# Services to exclude from reports (optional)
+service-exclusions:
+  - 'Tax'
 
 # Top N items in reports
 top-costs-count:
