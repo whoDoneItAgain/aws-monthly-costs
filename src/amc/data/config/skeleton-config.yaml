@@ -1,0 +1,31 @@
+# AWS Monthly Costs Configuration File
+# This is a minimal skeleton configuration. Customize it with your AWS account structure.
+
+# Define your business units and their associated AWS account IDs
+account-groups:
+  # Example business unit
+  your-business-unit:
+    '123456789012':  # Replace with your AWS account ID
+      cost-class: opex  # or 'capex'
+  
+  # Shared services accounts (required key)
+  ss:
+    '999999999999':  # Replace with your shared services account ID(s)
+      cost-class: capex
+
+# Shared services cost allocation percentages (optional)
+# Only used when --include-shared-services flag is set
+ss-allocations:
+  your-business-unit: 100  # Percentage allocation across business units
+
+# Service name aggregation rules (optional)
+# Group related AWS services under custom names
+service-aggregations:
+  'Example Aggregation':
+    - 'Amazon Elastic Compute Cloud - Compute'
+    - 'EC2 - Other'
+
+# Number of top accounts/services to include in reports
+top-costs-count:
+  account: 10
+  service: 10
