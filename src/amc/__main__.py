@@ -44,41 +44,10 @@ DEFAULT_AWS_CONFIG_FILE = "~/.aws/config"
 DEFAULT_CONFIG_LOCATION = Path(__file__).parent.joinpath(
     "data/config/aws-monthly-costs-config.yaml"
 )
+SKELETON_CONFIG_PATH = Path(__file__).parent.joinpath(
+    "data/config/skeleton-config.yaml"
+)
 USER_RC_FILE = "~/.amcrc"
-
-# Skeleton configuration template (minimal structure required to run)
-SKELETON_CONFIG = """# AWS Monthly Costs Configuration File
-# This is a minimal skeleton configuration. Customize it with your AWS account structure.
-
-# Define your business units and their associated AWS account IDs
-account-groups:
-  # Example business unit
-  your-business-unit:
-    '123456789012':  # Replace with your AWS account ID
-      cost-class: opex  # or 'capex'
-  
-  # Shared services accounts (required key)
-  ss:
-    '999999999999':  # Replace with your shared services account ID(s)
-      cost-class: capex
-
-# Shared services cost allocation percentages (optional)
-# Only used when --include-shared-services flag is set
-ss-allocations:
-  your-business-unit: 100  # Percentage allocation across business units
-
-# Service name aggregation rules (optional)
-# Group related AWS services under custom names
-service-aggregations:
-  'Example Aggregation':
-    - 'Amazon Elastic Compute Cloud - Compute'
-    - 'EC2 - Other'
-
-# Number of top accounts/services to include in reports
-top-costs-count:
-  account: 10
-  service: 10
-"""
 
 
 def parse_arguments():
@@ -178,11 +147,39 @@ def parse_arguments():
         help="Format for individual report files: 'csv', 'excel', or 'both'. If not specified, only generates the analysis Excel file",
     )
 
+    parser.add_argument(
+        "--top-accounts",
+        type=int,
+        default=None,
+        help="Number of top accounts to include in reports (overrides configuration file)",
+    )
+
+    parser.add_argument(
+        "--top-services",
+        type=int,
+        default=None,
+        help="Number of top services to include in reports (overrides configuration file)",
+    )
+
+    parser.add_argument(
+        "--test-access",
+        action="store_true",
+        help="Test AWS profile access and required permissions, then exit",
+    )
+
     args = parser.parse_args()
 
-    # Validate that --profile is provided when not using --generate-config
-    if args.generate_config is None and args.profile is None:
+    # Validate that --profile is provided when not using --generate-config or --test-access
+    if (
+        args.generate_config is None
+        and args.test_access is False
+        and args.profile is None
+    ):
         parser.error("the following arguments are required: --profile")
+
+    # For --test-access, --profile is required
+    if args.test_access and args.profile is None:
+        parser.error("--test-access requires --profile")
 
     return args
 
@@ -215,11 +212,55 @@ def configure_logging(debug_logging: bool = False, info_logging: bool = False):
     LOGGER.addHandler(console_handler)
 
 
-def load_configuration(config_file_path: Path) -> dict:
+def merge_configs(base: dict, override: dict) -> dict:
+    """Merge two configuration dictionaries with mix-in semantics.
+
+    For most top-level keys, values from override completely replace base values.
+    Exception: 'top-costs-count' allows partial specification - if override only
+    specifies 'account', the 'service' value from base is preserved.
+
+    This allows:
+    - Skeleton config provides defaults for all keys
+    - User config can override entire sections (like account-groups)
+    - User config OR CLI can partially override top-costs-count values
+
+    Args:
+        base: Base configuration dictionary (lower priority)
+        override: Override configuration dictionary (higher priority)
+
+    Returns:
+        Merged configuration dictionary
+
+    Example:
+        base = {"top-costs-count": {"account": 10, "service": 10}}
+        override = {"top-costs-count": {"account": 5}}
+        result = merge_configs(base, override)
+        # result["top-costs-count"] == {"account": 5, "service": 10}
+    """
+    result = base.copy()
+
+    for key, value in override.items():
+        # Special case for top-costs-count: merge nested values
+        if (
+            key == "top-costs-count"
+            and isinstance(value, dict)
+            and isinstance(result.get(key), dict)
+        ):
+            # Merge nested dict to allow partial specification
+            result[key] = {**result[key], **value}
+        else:
+            # For all other keys: complete replacement
+            result[key] = value
+
+    return result
+
+
+def load_configuration(config_file_path: Path, validate: bool = True) -> dict:
     """Load configuration from YAML file.
 
     Args:
         config_file_path: Path to the configuration YAML file
+        validate: If True, validate required keys (default: True)
 
     Returns:
         Dictionary containing configuration settings
@@ -239,56 +280,21 @@ def load_configuration(config_file_path: Path) -> dict:
     if config is None:
         raise ValueError(f"Configuration file is empty: {config_file_path}")
 
-    # Validate required keys
-    required_keys = ["account-groups", "service-aggregations", "top-costs-count"]
-    missing_keys = [key for key in required_keys if key not in config]
-    if missing_keys:
-        raise ValueError(
-            f"Configuration file missing required keys: {', '.join(missing_keys)}"
-        )
-
-    # Validate account-groups has 'ss' key
-    if "ss" not in config["account-groups"]:
-        raise ValueError(
-            "Configuration file 'account-groups' must contain 'ss' (shared services) key"
-        )
-
-    # Validate top-costs-count has required subkeys
-    if not isinstance(config["top-costs-count"], dict):
-        raise ValueError("Configuration 'top-costs-count' must be a dictionary")
-
-    required_top_costs_keys = ["account", "service"]
-    missing_top_costs_keys = [
-        key for key in required_top_costs_keys if key not in config["top-costs-count"]
-    ]
-    if missing_top_costs_keys:
-        raise ValueError(
-            f"Configuration 'top-costs-count' missing required keys: {', '.join(missing_top_costs_keys)}"
-        )
+    if validate:
+        validate_configuration(config)
 
     return config
 
 
-def load_configuration_from_string(config_string: str) -> dict:
-    """Load configuration from YAML string.
+def validate_configuration(config: dict):
+    """Validate that configuration has all required keys and structure.
 
     Args:
-        config_string: YAML configuration as a string
-
-    Returns:
-        Dictionary containing configuration settings
+        config: Configuration dictionary to validate
 
     Raises:
-        ValueError: If config string is invalid or missing required keys
+        ValueError: If configuration is missing required keys or has invalid structure
     """
-    try:
-        config = yaml.safe_load(config_string)
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in configuration string: {e}")
-
-    if config is None:
-        raise ValueError("Configuration string is empty")
-
     # Validate required keys
     required_keys = ["account-groups", "service-aggregations", "top-costs-count"]
     missing_keys = [key for key in required_keys if key not in config]
@@ -316,6 +322,31 @@ def load_configuration_from_string(config_string: str) -> dict:
             f"Configuration 'top-costs-count' missing required keys: {', '.join(missing_top_costs_keys)}"
         )
 
+
+def load_configuration_from_string(config_string: str, validate: bool = True) -> dict:
+    """Load configuration from YAML string.
+
+    Args:
+        config_string: YAML configuration as a string
+        validate: If True, validate required keys (default: True)
+
+    Returns:
+        Dictionary containing configuration settings
+
+    Raises:
+        ValueError: If config string is invalid or missing required keys
+    """
+    try:
+        config = yaml.safe_load(config_string)
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML in configuration string: {e}")
+
+    if config is None:
+        raise ValueError("Configuration string is empty")
+
+    if validate:
+        validate_configuration(config)
+
     return config
 
 
@@ -333,9 +364,12 @@ def generate_skeleton_config(output_path: str):
     # Create parent directories if they don't exist
     output_path_resolved.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write skeleton config
+    # Read skeleton config from file and write to output
+    with open(SKELETON_CONFIG_PATH, "r") as src:
+        skeleton_content = src.read()
+
     with open(output_path_resolved, "w") as f:
-        f.write(SKELETON_CONFIG)
+        f.write(skeleton_content)
 
     LOGGER.info(f"Generated skeleton configuration file at: {output_path_resolved}")
     print(f"✓ Generated skeleton configuration file at: {output_path_resolved}")
@@ -520,6 +554,161 @@ def create_aws_session(aws_profile: str, aws_config_file_path: Path) -> boto3.Se
 
     LOGGER.debug(f"Successfully authenticated with AWS profile: {aws_profile}")
     return session
+
+
+def test_aws_access(aws_profile: str, aws_config_file_path: Path):
+    """Test AWS profile access and required permissions.
+
+    Tests that the profile is:
+    1. Valid and exists in the config file
+    2. Active (credentials are valid, including SSO if applicable)
+    3. Has the required IAM permissions for the tool
+
+    Args:
+        aws_profile: AWS profile name to test
+        aws_config_file_path: Path to AWS config file
+
+    Raises:
+        SystemExit: Always exits after testing (success or failure)
+    """
+    print(f"Testing AWS access for profile: {aws_profile}")
+    print("=" * 60)
+
+    # Test 1: Profile exists in config file
+    print("\n1. Checking if profile exists in config file...")
+    aws_config = configparser.RawConfigParser()
+    aws_config.read(aws_config_file_path)
+
+    if not aws_config.has_section(f"profile {aws_profile}"):
+        print(f"   ✗ FAIL: Profile '{aws_profile}' not found in {aws_config_file_path}")
+        print("\n   Available profiles:")
+        for section in aws_config.sections():
+            if section.startswith("profile "):
+                print(f"     - {section.replace('profile ', '')}")
+        sys.exit(1)
+
+    print(f"   ✓ Profile '{aws_profile}' exists in config file")
+
+    # Test 2: Credentials are valid and active (including SSO)
+    print("\n2. Testing if credentials are active...")
+    try:
+        session = boto3.Session(profile_name=aws_profile)
+        sts_client = session.client("sts")
+        identity = sts_client.get_caller_identity()
+
+        print("   ✓ Credentials are active")
+        print(f"   Account: {identity['Account']}")
+        print(f"   User/Role ARN: {identity['Arn']}")
+        print(f"   User ID: {identity['UserId']}")
+    except Exception as e:
+        print("   ✗ FAIL: Credentials are not active or invalid")
+        print(f"   Error: {e}")
+        print(f"\n   If using SSO, try running: aws sso login --profile {aws_profile}")
+        sys.exit(1)
+
+    # Test 3: Required IAM permissions
+    print("\n3. Testing required IAM permissions...")
+
+    required_permissions = {
+        "sts:GetCallerIdentity": {
+            "tested": True,
+            "result": True,
+        },  # Already tested above
+        "ce:GetCostAndUsage": {"tested": False, "result": False},
+        "organizations:ListAccounts": {"tested": False, "result": False},
+        "organizations:DescribeAccount": {"tested": False, "result": False},
+    }
+
+    # Test Cost Explorer access
+    print("   Testing ce:GetCostAndUsage...")
+    try:
+        ce_client = session.client("ce")
+        # Make a minimal request for a single day
+        from datetime import datetime, timedelta
+
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        ce_client.get_cost_and_usage(
+            TimePeriod={
+                "Start": yesterday.strftime("%Y-%m-%d"),
+                "End": today.strftime("%Y-%m-%d"),
+            },
+            Granularity="DAILY",
+            Metrics=["UnblendedCost"],
+        )
+        required_permissions["ce:GetCostAndUsage"]["tested"] = True
+        required_permissions["ce:GetCostAndUsage"]["result"] = True
+        print("     ✓ ce:GetCostAndUsage - OK")
+    except Exception as e:
+        required_permissions["ce:GetCostAndUsage"]["tested"] = True
+        required_permissions["ce:GetCostAndUsage"]["result"] = False
+        print("     ✗ ce:GetCostAndUsage - FAIL")
+        print(f"       Error: {str(e)[:100]}")
+
+    # Test Organizations access
+    print("   Testing organizations:ListAccounts...")
+    try:
+        orgs_client = session.client("organizations")
+        orgs_client.list_accounts(MaxResults=1)
+        required_permissions["organizations:ListAccounts"]["tested"] = True
+        required_permissions["organizations:ListAccounts"]["result"] = True
+        print("     ✓ organizations:ListAccounts - OK")
+    except Exception as e:
+        required_permissions["organizations:ListAccounts"]["tested"] = True
+        required_permissions["organizations:ListAccounts"]["result"] = False
+        print("     ✗ organizations:ListAccounts - FAIL")
+        print(f"       Error: {str(e)[:100]}")
+
+    print("   Testing organizations:DescribeAccount...")
+    try:
+        # Use the account ID from identity to test DescribeAccount
+        orgs_client.describe_account(AccountId=identity["Account"])
+        required_permissions["organizations:DescribeAccount"]["tested"] = True
+        required_permissions["organizations:DescribeAccount"]["result"] = True
+        print("     ✓ organizations:DescribeAccount - OK")
+    except Exception as e:
+        required_permissions["organizations:DescribeAccount"]["tested"] = True
+        required_permissions["organizations:DescribeAccount"]["result"] = False
+        print("     ✗ organizations:DescribeAccount - FAIL")
+        print(f"       Error: {str(e)[:100]}")
+
+    # Summary
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+
+    all_passed = all(perm["result"] for perm in required_permissions.values())
+
+    if all_passed:
+        print("✓ All tests PASSED")
+        print("\nThe profile has all required permissions and is ready to use.")
+        sys.exit(0)
+    else:
+        print("✗ Some tests FAILED")
+        print("\nFailed permissions:")
+        for perm_name, perm_info in required_permissions.items():
+            if perm_info["tested"] and not perm_info["result"]:
+                print(f"  - {perm_name}")
+
+        print("\nRequired IAM policy:")
+        print("""
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ce:GetCostAndUsage",
+        "organizations:ListAccounts",
+        "organizations:DescribeAccount",
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+""")
+        sys.exit(1)
 
 
 def determine_output_formats(output_format: str | None) -> list[str]:
@@ -858,26 +1047,68 @@ def main():
         generate_skeleton_config(args.generate_config)
         sys.exit(0)
 
+    # Handle --test-access if specified
+    if args.test_access:
+        aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
+        test_aws_access(args.profile, aws_config_file_path)
+        # test_aws_access will exit, so this line is never reached
+
     # Configure logging
     configure_logging(debug_logging=args.debug_logging, info_logging=args.info_logging)
 
     LOGGER.debug(f"Configuration Arguments: {args}")
 
-    # Load configuration based on priority order
-    # Priority 1: --config (inline YAML string)
+    # Load configuration using mix-in approach
+    # Priority order (lowest to highest):
+    # 1. Skeleton config (base/defaults)
+    # 2. ~/.amcrc file (if exists)
+    # 3. --config-file (if specified)
+    # 4. --config inline string (if specified)
+    # 5. Command-line arguments (if specified)
+
+    # Start with skeleton configuration as base
+    LOGGER.debug(f"Loading skeleton configuration from: {SKELETON_CONFIG_PATH}")
+    config_settings = load_configuration(SKELETON_CONFIG_PATH, validate=False)
+
+    # Merge ~/.amcrc if it exists
+    user_rc_path = Path(os.path.expanduser(USER_RC_FILE)).absolute()
+    if user_rc_path.exists():
+        LOGGER.debug(f"Merging configuration from user RC file: {user_rc_path}")
+        user_config = load_configuration(user_rc_path, validate=False)
+        config_settings = merge_configs(config_settings, user_config)
+
+    # Merge --config-file if specified
+    if args.config_file:
+        config_file_path = Path(args.config_file).absolute()
+        if not config_file_path.exists():
+            raise FileNotFoundError(
+                f"Specified configuration file not found: {config_file_path}"
+            )
+        LOGGER.debug(f"Merging configuration from --config-file: {config_file_path}")
+        file_config = load_configuration(config_file_path, validate=False)
+        config_settings = merge_configs(config_settings, file_config)
+
+    # Merge --config inline string if specified
     if args.config:
-        LOGGER.debug("Using configuration from --config inline string")
-        config_settings = load_configuration_from_string(args.config)
-    else:
-        # Priority 2-4: --config-file, ~/.amcrc, or skeleton
-        config_file_path = resolve_config_file_path(args.config_file)
-        if config_file_path is None:
-            # Use skeleton configuration
-            LOGGER.debug("Using skeleton configuration")
-            config_settings = load_configuration_from_string(SKELETON_CONFIG)
-        else:
-            # Load from file
-            config_settings = load_configuration(config_file_path)
+        LOGGER.debug("Merging configuration from --config inline string")
+        inline_config = load_configuration_from_string(args.config, validate=False)
+        config_settings = merge_configs(config_settings, inline_config)
+
+    # Merge command-line arguments if specified (highest priority)
+    cli_overrides = {}
+    if args.top_accounts is not None or args.top_services is not None:
+        cli_overrides["top-costs-count"] = {}
+        if args.top_accounts is not None:
+            LOGGER.debug(f"Overriding top accounts count from CLI: {args.top_accounts}")
+            cli_overrides["top-costs-count"]["account"] = args.top_accounts
+        if args.top_services is not None:
+            LOGGER.debug(f"Overriding top services count from CLI: {args.top_services}")
+            cli_overrides["top-costs-count"]["service"] = args.top_services
+        config_settings = merge_configs(config_settings, cli_overrides)
+
+    # Validate final merged configuration
+    LOGGER.debug("Validating final merged configuration")
+    validate_configuration(config_settings)
 
     # Resolve AWS config file path
     aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
