@@ -314,17 +314,17 @@ def generate_skeleton_config(output_path: str):
         OSError: If file cannot be written
     """
     output_path_resolved = Path(os.path.expanduser(output_path)).absolute()
-    
+
     # Create parent directories if they don't exist
     output_path_resolved.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Write skeleton config
     with open(output_path_resolved, "w") as f:
         f.write(SKELETON_CONFIG)
-    
+
     LOGGER.info(f"Generated skeleton configuration file at: {output_path_resolved}")
     print(f"✓ Generated skeleton configuration file at: {output_path_resolved}")
-    print(f"\nEdit this file to add your AWS account mappings and run:")
+    print("\nEdit this file to add your AWS account mappings and run:")
     print(f"  amc --profile your-profile --config-file {output_path}")
 
 
@@ -863,10 +863,10 @@ def main():
         else:
             # Load from file
             config_settings = load_configuration(config_file_path)
-    
+
     # Resolve AWS config file path
     aws_config_file_path = Path(os.path.expanduser(args.aws_config_file)).absolute()
-    
+
     account_groups = config_settings["account-groups"]
     shared_services_allocations = (
         config_settings["ss-allocations"] if args.include_shared_services else None

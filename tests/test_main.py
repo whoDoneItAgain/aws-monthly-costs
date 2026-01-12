@@ -91,16 +91,15 @@ class TestParseArguments:
     def test_parse_arguments_with_config_string(self):
         """Test parsing arguments with inline config string."""
         config_yaml = "account-groups: {ss: {}}"
-        with patch(
-            "sys.argv", ["amc", "--profile", "test", "--config", config_yaml]
-        ):
+        with patch("sys.argv", ["amc", "--profile", "test", "--config", config_yaml]):
             args = parse_arguments()
             assert args.config == config_yaml
 
     def test_parse_arguments_with_generate_config(self):
         """Test parsing arguments with generate-config option."""
         with patch(
-            "sys.argv", ["amc", "--profile", "test", "--generate-config", "/tmp/config.yaml"]
+            "sys.argv",
+            ["amc", "--profile", "test", "--generate-config", "/tmp/config.yaml"],
         ):
             args = parse_arguments()
             assert args.generate_config == "/tmp/config.yaml"
@@ -362,7 +361,9 @@ class TestResolveConfigFilePath:
         """Test resolving config path when explicit path doesn't exist."""
         config_file = tmp_path / "nonexistent.yaml"
 
-        with pytest.raises(FileNotFoundError, match="Specified configuration file not found"):
+        with pytest.raises(
+            FileNotFoundError, match="Specified configuration file not found"
+        ):
             resolve_config_file_path(str(config_file))
 
     @patch("amc.__main__.LOGGER")
@@ -424,9 +425,9 @@ class TestGenerateSkeletonConfig:
     def test_generate_skeleton_config_basic(self, mock_logger, tmp_path):
         """Test generating skeleton config file."""
         output_path = tmp_path / "test-config.yaml"
-        
+
         generate_skeleton_config(str(output_path))
-        
+
         assert output_path.exists()
         # Verify the file contains valid YAML
         with open(output_path) as f:
@@ -439,9 +440,9 @@ class TestGenerateSkeletonConfig:
     def test_generate_skeleton_config_with_nested_dirs(self, mock_logger, tmp_path):
         """Test generating skeleton config with nested directories."""
         output_path = tmp_path / "nested" / "dir" / "config.yaml"
-        
+
         generate_skeleton_config(str(output_path))
-        
+
         assert output_path.exists()
         with open(output_path) as f:
             config = yaml.safe_load(f)

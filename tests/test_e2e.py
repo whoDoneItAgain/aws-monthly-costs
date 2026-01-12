@@ -398,7 +398,9 @@ class TestEndToEndErrorScenarios:
         ]
 
         with patch("sys.argv", test_args):
-            with pytest.raises(FileNotFoundError, match="Specified configuration file not found"):
+            with pytest.raises(
+                FileNotFoundError, match="Specified configuration file not found"
+            ):
                 main()
 
     def test_e2e_invalid_yaml_config(self, tmp_path):
