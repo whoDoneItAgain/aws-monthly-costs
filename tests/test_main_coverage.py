@@ -42,6 +42,8 @@ class TestMainFunction:
         mock_args.profile = "test"
         mock_args.aws_config_file = "~/.aws/config"
         mock_args.config_file = "config.yaml"
+        mock_args.config = None  # New attribute
+        mock_args.generate_config = None  # New attribute
         mock_args.include_shared_services = False
         mock_args.run_modes = [RUN_MODE_ACCOUNT]
         mock_args.time_period = "month"

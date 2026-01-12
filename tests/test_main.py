@@ -12,9 +12,12 @@ from amc.__main__ import (
     create_aws_session,
     determine_output_formats,
     generate_output_file_path,
+    generate_skeleton_config,
     load_configuration,
+    load_configuration_from_string,
     parse_arguments,
     parse_time_period,
+    resolve_config_file_path,
 )
 from amc.constants import (
     OUTPUT_FORMAT_BOTH,
@@ -64,6 +67,9 @@ class TestParseArguments:
             assert args.debug_logging is False
             assert args.info_logging is False
             assert args.time_period == TIME_PERIOD_MONTH
+            assert args.config_file is None
+            assert args.config is None
+            assert args.generate_config is None
 
     def test_parse_arguments_with_run_modes(self):
         """Test parsing arguments with custom run modes."""
@@ -81,6 +87,22 @@ class TestParseArguments:
         ):
             args = parse_arguments()
             assert args.output_format == "excel"
+
+    def test_parse_arguments_with_config_string(self):
+        """Test parsing arguments with inline config string."""
+        config_yaml = "account-groups: {ss: {}}"
+        with patch("sys.argv", ["amc", "--profile", "test", "--config", config_yaml]):
+            args = parse_arguments()
+            assert args.config == config_yaml
+
+    def test_parse_arguments_with_generate_config(self):
+        """Test parsing arguments with generate-config option."""
+        with patch(
+            "sys.argv",
+            ["amc", "--profile", "test", "--generate-config", "/tmp/config.yaml"],
+        ):
+            args = parse_arguments()
+            assert args.generate_config == "/tmp/config.yaml"
 
 
 class TestConfigureLogging:
@@ -322,3 +344,106 @@ class TestGenerateOutputFilePath:
         """Test generating business unit output file path."""
         result = generate_output_file_path(temp_output_dir, "bu", OUTPUT_FORMAT_CSV)
         assert result == temp_output_dir / "aws-monthly-costs-bu.csv"
+
+
+class TestResolveConfigFilePath:
+    """Tests for resolve_config_file_path function."""
+
+    def test_resolve_config_file_explicit_path_exists(self, tmp_path):
+        """Test resolving config path when explicit path is provided and exists."""
+        config_file = tmp_path / "custom-config.yaml"
+        config_file.write_text("test: config")
+
+        result = resolve_config_file_path(str(config_file))
+        assert result == config_file.absolute()
+
+    def test_resolve_config_file_explicit_path_not_exists(self, tmp_path):
+        """Test resolving config path when explicit path doesn't exist."""
+        config_file = tmp_path / "nonexistent.yaml"
+
+        with pytest.raises(
+            FileNotFoundError, match="Specified configuration file not found"
+        ):
+            resolve_config_file_path(str(config_file))
+
+    @patch("amc.__main__.LOGGER")
+    def test_resolve_config_file_user_rc_exists(self, mock_logger, tmp_path):
+        """Test resolving config path when ~/.amcrc exists."""
+        user_rc_file = tmp_path / ".amcrc"
+        user_rc_file.write_text("test: config")
+
+        with patch("os.path.expanduser", return_value=str(user_rc_file)):
+            result = resolve_config_file_path(None)
+            assert result == user_rc_file.absolute()
+
+    @patch("amc.__main__.LOGGER")
+    def test_resolve_config_file_default(self, mock_logger, tmp_path):
+        """Test resolving config path when no explicit path and no ~/.amcrc."""
+        # Create a non-existent path for user RC file
+        user_rc_file = tmp_path / "nonexistent" / ".amcrc"
+
+        with patch("os.path.expanduser", return_value=str(user_rc_file)):
+            result = resolve_config_file_path(None)
+            # Should return None to indicate skeleton config should be used
+            assert result is None
+
+
+class TestLoadConfigurationFromString:
+    """Tests for load_configuration_from_string function."""
+
+    def test_load_configuration_from_string_success(self, sample_config):
+        """Test loading valid configuration from YAML string."""
+        config_str = yaml.dump(sample_config)
+        result = load_configuration_from_string(config_str)
+        assert result == sample_config
+        assert "account-groups" in result
+        assert "service-aggregations" in result
+        assert "top-costs-count" in result
+
+    def test_load_configuration_from_string_invalid_yaml(self):
+        """Test loading invalid YAML string."""
+        invalid_yaml = "invalid: yaml: content:\n  - bad\n  syntax"
+        with pytest.raises(ValueError, match="Invalid YAML"):
+            load_configuration_from_string(invalid_yaml)
+
+    def test_load_configuration_from_string_empty(self):
+        """Test loading empty configuration string."""
+        with pytest.raises(ValueError, match="Configuration string is empty"):
+            load_configuration_from_string("")
+
+    def test_load_configuration_from_string_missing_keys(self):
+        """Test loading configuration with missing required keys."""
+        incomplete_config = "account-groups:\n  ss: {}"
+        with pytest.raises(ValueError, match="missing required keys"):
+            load_configuration_from_string(incomplete_config)
+
+
+class TestGenerateSkeletonConfig:
+    """Tests for generate_skeleton_config function."""
+
+    @patch("amc.__main__.LOGGER")
+    def test_generate_skeleton_config_basic(self, mock_logger, tmp_path):
+        """Test generating skeleton config file."""
+        output_path = tmp_path / "test-config.yaml"
+
+        generate_skeleton_config(str(output_path))
+
+        assert output_path.exists()
+        # Verify the file contains valid YAML
+        with open(output_path) as f:
+            config = yaml.safe_load(f)
+        assert "account-groups" in config
+        assert "ss" in config["account-groups"]
+        assert "top-costs-count" in config
+
+    @patch("amc.__main__.LOGGER")
+    def test_generate_skeleton_config_with_nested_dirs(self, mock_logger, tmp_path):
+        """Test generating skeleton config with nested directories."""
+        output_path = tmp_path / "nested" / "dir" / "config.yaml"
+
+        generate_skeleton_config(str(output_path))
+
+        assert output_path.exists()
+        with open(output_path) as f:
+            config = yaml.safe_load(f)
+        assert config is not None
